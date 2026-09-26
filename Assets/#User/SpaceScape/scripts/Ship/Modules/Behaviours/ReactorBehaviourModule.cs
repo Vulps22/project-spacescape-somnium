@@ -68,6 +68,20 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             }
         }
 
+        /// The crew's dial, from rods fully in (0) to fully out (1).
+        public float TargetWithdrawal
+        {
+            get => _targetWithdrawal;
+            set
+            {
+                _targetWithdrawal = Mathf.Clamp01(value);
+                if (_reactor != null) _reactor.Core.TargetWithdrawal = _targetWithdrawal;
+            }
+        }
+
+        /// How far in the rods actually are, from fully out (0) to fully in (1).
+        public double RodInsertion => 1.0 - Reactor.Core.Withdrawal;
+
         public override IPowerSource Source => Reactor;
 
         public override IPowerSink Sink => Reactor;

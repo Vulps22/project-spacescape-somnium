@@ -7,6 +7,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// A tile on the grid. Every tile is the same kind of thing — a conduit, a battery and a bulb
     /// differ only by what else is on the object. Declares what it feeds; power flows that way.
+    [SelectionBase]
     public sealed class GridNode : MonoBehaviour
     {
         [SerializeField] private Vector3Int _size = Vector3Int.one;

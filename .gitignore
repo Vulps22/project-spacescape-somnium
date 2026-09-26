@@ -120,6 +120,7 @@ InitTestScene*.unity*
 
 # Somnium's scripting tool, personal editor settings, reference images
 /ScriptingTool/
+/Scripting/
 /.vscode/
 /inspiration.png
 
