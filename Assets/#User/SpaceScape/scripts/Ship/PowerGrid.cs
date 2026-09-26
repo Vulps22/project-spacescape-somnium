@@ -35,11 +35,19 @@ namespace SpaceScape.Ship
             var nodes = FindObjectsByType<GridNode>(FindObjectsSortMode.None);
             foreach (var placed in nodes)
             {
-                var source = placed.GetComponent<IPowerSource>();
-                var sink = placed.GetComponent<IPowerSink>();
+                var behaviours = placed.GetComponents<BehaviourModule>();
+                if (behaviours.Length == 0)
+                    Debug.LogWarning($"'{placed.name}' has no behaviour module, so it acts as bare cable", placed);
+                else if (behaviours.Length > 1)
+                    Debug.LogWarning($"'{placed.name}' has {behaviours.Length} behaviour modules; only the first counts", placed);
+
+                var behaviour = behaviours.Length > 0 ? behaviours[0] : null;
+                var source = behaviour != null ? behaviour.Source : null;
+                var sink = behaviour != null ? behaviour.Sink : null;
                 var node = source != null
                     ? _graph.AddSource(placed.name, source, sink)
                     : _graph.AddNode(placed.name, sink);
+                if (placed.TryGetComponent<IntegrityModule>(out var integrity)) node.Integrity = integrity.Integrity;
                 placed.Bind(node);
             }
 
@@ -82,7 +90,7 @@ namespace SpaceScape.Ship
                         if (!joined.Add(neighbour)) continue;
                         if (neighbour.Node == null) continue;
 
-                        if (!neighbour.AcceptsFrom(socket))
+                        if (neighbour.Edges == null || !neighbour.Edges.AcceptsFrom(socket))
                         {
                             Debug.LogWarning(
                                 $"'{placed.name}' sends power {face} at '{neighbour.name}', which has no {socket} input",

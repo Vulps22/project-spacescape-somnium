@@ -10,7 +10,9 @@ GameObject:
   m_Component:
   - component: {fileID: 5187116636911277731}
   - component: {fileID: 2833991655219536647}
-  - component: {fileID: 635035163947046321}
+  - component: {fileID: 2143405136521953521}
+  - component: {fileID: 4449412485874695310}
+  - component: {fileID: 2150240035828596904}
   m_Layer: 0
   m_Name: Reactor
   m_TagString: Untagged
@@ -53,12 +55,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.GridNode
   _size: {x: 5, y: 5, z: 5}
-  _outputs: 
-  _inputs: 
   _on: 1
   _readout: {fileID: 0}
   _readoutInterval: 0.25
---- !u!114 &635035163947046321
+--- !u!114 &2143405136521953521
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -67,9 +67,41 @@ MonoBehaviour:
   m_GameObject: {fileID: 67106170869057476}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 839c36787d8d64cf398e96427f748132, type: 3}
+  m_Script: {fileID: 11500000, guid: 8a80c9bf0b1849a0787c57b6f1829f61, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.ReactorModule
+  m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.NodeEdgeModule
+  _xPlus: 1
+  _xMinus: 1
+  _yPlus: 1
+  _yMinus: 1
+  _zPlus: 1
+  _zMinus: 1
+--- !u!114 &4449412485874695310
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 67106170869057476}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b05f5790b1216ecd59d65e7bf0f2a894, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.CapacitorModule
+  _capacityJoules: 40
+  _startFull: 0
+--- !u!114 &2150240035828596904
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 67106170869057476}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d78748bdb0ceb7b4a9a61d0362387a71, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.ReactorBehaviourModule
   _outputPerCore: 100
   _cores: 1
   _heatRatio: 2
@@ -79,7 +111,6 @@ MonoBehaviour:
   _raisePerSecond: 0.05
   _dropPerSecond: 0.5
   _controlWatts: 20
-  _magnetHoldJoules: 40
   _coolantLitres: 200
   _degreesPerLitre: 20
   _maxFlowLitresPerSecond: 2
@@ -243,7 +274,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e6321920270dc7e1ebf451b0ed2454fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.ReactorLamp
-  _reactor: {fileID: 635035163947046321}
+  _reactor: {fileID: 2150240035828596904}
   _light: {fileID: 824410083718408152}
   _bulb: {fileID: 8994602418211325104}
   _accumulating: {r: 1, g: 0.62, b: 0.1, a: 1}

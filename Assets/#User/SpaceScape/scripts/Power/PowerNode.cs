@@ -16,24 +16,22 @@ namespace SpaceScape.Power
         /// False when whatever is on this tile is switched off.
         public bool On = true;
 
-        /// Whether power arriving here may leave again by an output. True for a cable and for a
-        /// store, which is what makes a cell mid-run behave as a UPS. False for anything with a
-        /// diode across its innards: a reactor's output carries what its core made and nothing else,
-        /// so feeding its control circuit cannot push power out into the ship.
-        public bool PassesThrough = true;
+        /// Whether power arriving here may leave again by an output. Only a bare conduit forwards: a
+        /// component's input fills its own hold and its output carries only what it chose to release.
+        public bool ForwardsPower => Source == null && Sink == null;
 
         /// True once this tile has blown. Unlike a switch it cannot be undone by flipping anything.
-        /// Only bare conduits blow: anything with durability takes damage instead.
+        /// Only tiles without integrity blow: anything with integrity takes damage instead.
         public bool IsPopped { get; internal set; }
 
         /// Set when a component sits here. A thermal failure damages it rather than severing the
         /// tile. A wrecked component stays wired in and keeps taking what it is given - it simply
         /// stops doing anything with it, so it becomes a dead end that cooks its own compartment.
-        public Durability Durability;
+        public Integrity Integrity;
 
         /// True once the component here is beyond saving. It stays wired in and keeps taking what it
         /// is given; it simply does nothing with it.
-        public bool IsWrecked => Durability != null && Durability.IsDestroyed;
+        public bool IsWrecked => Integrity != null && Integrity.IsDestroyed;
 
         /// Whether the grid should process this tile at all. Asked every tick rather than cached, and
         /// overridable so a breaker or a fault can answer with more than a flag.

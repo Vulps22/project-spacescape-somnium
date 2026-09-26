@@ -7,7 +7,7 @@ namespace SpaceScape.Ship
     /// harder the core is working, so output is readable from across the room with no numbers.
     public sealed class ReactorLamp : MonoBehaviour
     {
-        [SerializeField] private ReactorModule _reactor;
+        [SerializeField] private ReactorBehaviourModule _reactor;
         [SerializeField] private Light _light;
         [SerializeField] private Renderer _bulb;
 
@@ -23,7 +23,7 @@ namespace SpaceScape.Ship
 
         private void Awake()
         {
-            if (_reactor == null) _reactor = GetComponentInParent<ReactorModule>();
+            if (_reactor == null) _reactor = GetComponentInParent<ReactorBehaviourModule>();
             if (_light == null) _light = GetComponentInChildren<Light>();
         }
 
@@ -83,7 +83,7 @@ namespace SpaceScape.Ship
 
         private void OnValidate()
         {
-            if (_reactor == null) _reactor = GetComponentInParent<ReactorModule>();
+            if (_reactor == null) _reactor = GetComponentInParent<ReactorBehaviourModule>();
             if (_light == null) _light = GetComponentInChildren<Light>();
             if (_bulb == null && _light != null) _bulb = _light.GetComponent<Renderer>();
         }

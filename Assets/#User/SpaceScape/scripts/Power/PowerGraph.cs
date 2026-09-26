@@ -41,6 +41,7 @@ namespace SpaceScape.Power
         private double[] _heatDelta;
         private Stack<PowerNode> _reachStack;
         private Random _rng;
+        private List<PowerNode> _mergePoints;
 
         /// Raised for a bare conduit the instant it blows.
         public event Action<PowerNode> Popped;
@@ -72,7 +73,7 @@ namespace SpaceScape.Power
         }
 
         /// Adds a node whose output never varies.
-        public PowerNode AddSource(string name, double watts) => AddSource(name, new ConstantSource(watts));
+        public PowerNode AddSource(string name, double watts) => AddSource(name, new ConstantSourceBehaviour(watts));
 
         /// Runs a conduit from one node to another.
         public PowerEdge Connect(PowerNode from, PowerNode to)
@@ -94,6 +95,7 @@ namespace SpaceScape.Power
         public void Tick(double seconds)
         {
             MarkReachability();
+            FindMergePoints();
 
             for (int i = 0; i < _nodes.Count; i++)
             {
@@ -107,7 +109,7 @@ namespace SpaceScape.Power
                 }
                 node.HasOutlet = hasOutlet;
                 node.Offered = node.Source != null && !node.IsWrecked
-                    ? node.Source.WattsOffered(node)
+                    ? node.Source.WattsOffered(node, seconds)
                     : 0.0;
 
                 double arriving = 0.0;
@@ -138,12 +140,11 @@ namespace SpaceScape.Power
                 if (wanted < 0.0) wanted = 0.0;
                 double drawn = wanted < node.Arriving ? wanted : node.Arriving;
 
-                // Without a diode, whatever arrived and was not used carries on downstream. With
-                // one, it stops here: the output offers only what this node produced, and the
-                // surplus that arrived has nowhere left to go.
+                // A conduit carries on whatever arrived. A component does not: its output offers only
+                // what it chose to release, and whatever arrived that it did not take has nowhere to go.
                 double blocked = 0.0;
                 double remainder;
-                if (node.PassesThrough)
+                if (node.ForwardsPower)
                 {
                     remainder = node.Inflow - drawn;
                 }
@@ -213,6 +214,7 @@ namespace SpaceScape.Power
 
             Conduct(seconds);
             RollForPops(seconds);
+            BlowMergePoints();
 
             for (int i = 0; i < _nodes.Count; i++)
             {
@@ -299,21 +301,129 @@ namespace SpaceScape.Power
                 double chance = 1.0 - Math.Exp(-k * power * heat * seconds);
                 if (_rng.NextDouble() >= chance) continue;
 
-                // A bare conduit severs. A component takes it on its condition instead and stays
-                // wired in, so it keeps being fed, keeps wasting, and keeps wearing itself down.
-                if (node.Durability == null)
+                // A bare conduit severs. Anything with integrity takes it on its condition instead; a
+                // component stays wired in, so it keeps being fed, keeps wasting, and keeps wearing down.
+                if (node.Integrity == null)
                 {
-                    node.IsPopped = true;
-                    Popped?.Invoke(node);
+                    Sever(node);
                     continue;
                 }
 
-                if (node.Durability.IsDestroyed) continue;
-                node.Durability.TakeDamage(PopDamage);
+                if (node.Integrity.IsDestroyed) continue;
+                node.Integrity.TakeDamage(PopDamage);
                 Damaged?.Invoke(node);
-                if (node.Durability.IsDestroyed) Lost?.Invoke(node);
+                if (!node.Integrity.IsDestroyed) continue;
+                Lost?.Invoke(node);
+                if (node.ForwardsPower) Sever(node);
             }
         }
+
+        /// Cuts a tile out of the grid for good.
+        private void Sever(PowerNode node)
+        {
+            node.IsPopped = true;
+            Popped?.Invoke(node);
+        }
+
+        /// Collects every tile where power enters a ring, from the conduits live this tick.
+        private void FindMergePoints()
+        {
+            if (_mergePoints == null) _mergePoints = new List<PowerNode>();
+            _mergePoints.Clear();
+
+            foreach (var ring in FindRings(live: true))
+            {
+                var members = new HashSet<PowerNode>(ring);
+                foreach (var node in ring)
+                {
+                    foreach (var edge in node.Incoming)
+                    {
+                        if (!IsLive(edge) || members.Contains(edge.From)) continue;
+                        _mergePoints.Add(node);
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// Blows every merge point power has reached. A ring cannot be fed without shorting.
+        private void BlowMergePoints()
+        {
+            for (int i = 0; i < _mergePoints.Count; i++)
+            {
+                var node = _mergePoints[i];
+                if (node.IsPopped || node.Arriving <= 0.0) continue;
+
+                if (node.Integrity != null && !node.Integrity.IsDestroyed)
+                {
+                    node.Integrity.TakeDamage(node.Integrity.Current);
+                    Damaged?.Invoke(node);
+                    Lost?.Invoke(node);
+                }
+                Sever(node);
+            }
+        }
+
+        /// True when a conduit can carry power this tick.
+        private static bool IsLive(PowerEdge edge) =>
+            edge.Enabled && edge.Share > 0.0 && edge.From.CanReceivePower() && edge.To.CanReceivePower();
+
+        /// Groups of forwarding tiles that power can travel round and round, found as strongly
+        /// connected components of the conduits. Components never forward, so they never join one.
+        private List<List<PowerNode>> FindRings(bool live)
+        {
+            var rings = new List<List<PowerNode>>();
+            var index = new Dictionary<PowerNode, int>();
+            var low = new Dictionary<PowerNode, int>();
+            var onStack = new HashSet<PowerNode>();
+            var stack = new Stack<PowerNode>();
+            int counter = 0;
+
+            foreach (var n in _nodes)
+                if (InRingGraph(n, live) && !index.ContainsKey(n))
+                    Visit(n);
+
+            return rings;
+
+            void Visit(PowerNode node)
+            {
+                index[node] = low[node] = counter++;
+                stack.Push(node);
+                onStack.Add(node);
+
+                foreach (var edge in node.Outgoing)
+                {
+                    var next = edge.To;
+                    if (!InRingGraph(next, live) || (live && !IsLive(edge))) continue;
+                    if (!index.ContainsKey(next))
+                    {
+                        Visit(next);
+                        if (low[next] < low[node]) low[node] = low[next];
+                    }
+                    else if (onStack.Contains(next) && index[next] < low[node])
+                    {
+                        low[node] = index[next];
+                    }
+                }
+
+                if (low[node] != index[node]) return;
+
+                var group = new List<PowerNode>();
+                PowerNode popped;
+                do
+                {
+                    popped = stack.Pop();
+                    onStack.Remove(popped);
+                    group.Add(popped);
+                } while (popped != node);
+
+                if (group.Count > 1) rings.Add(group);
+            }
+        }
+
+        /// Whether a tile counts when looking for rings: only conduits, and only live ones when asked.
+        private static bool InRingGraph(PowerNode node, bool live) =>
+            node.ForwardsPower && (!live || node.CanReceivePower());
 
         /// Moves excess heat along the conduits, from the tile furthest over where it should be to
         /// the one least over. Computed against the tick's starting temperatures and applied
@@ -403,8 +513,12 @@ namespace SpaceScape.Power
             foreach (var n in _nodes) if (n.Source != null) { anySource = true; break; }
             if (!anySource) problems.Add("no node on the grid produces power");
 
-            foreach (var cycle in FindCycles())
-                problems.Add("cycle (power never leaves it, so the grid will not conserve): " + string.Join(" -> ", cycle));
+            foreach (var ring in FindRings(live: false))
+            {
+                var names = new List<string>();
+                foreach (var n in ring) names.Add(n.Name);
+                problems.Add("ring (its merge point blows the moment power reaches it): " + string.Join(", ", names));
+            }
 
             var fed = ReachableFromSources();
             foreach (var node in _nodes)
@@ -437,47 +551,6 @@ namespace SpaceScape.Power
                     if (seen.Add(edge.To)) stack.Push(edge.To);
             }
             return seen;
-        }
-
-        /// Finds loops in the wiring, which trap power and break conservation.
-        private List<List<string>> FindCycles()
-        {
-            var found = new List<List<string>>();
-            var state = new Dictionary<PowerNode, int>();   // 0 unseen, 1 on the stack, 2 done
-            var path = new List<PowerNode>();
-
-            foreach (var n in _nodes) state[n] = 0;
-            foreach (var n in _nodes)
-                if (state[n] == 0) Walk(n, state, path, found);
-
-            return found;
-        }
-
-        /// Depth-first walk that records a loop the moment it steps onto its own path.
-        private void Walk(PowerNode node, Dictionary<PowerNode, int> state, List<PowerNode> path, List<List<string>> found)
-        {
-            state[node] = 1;
-            path.Add(node);
-
-            foreach (var edge in node.Outgoing)
-            {
-                var next = edge.To;
-                if (state[next] == 1)
-                {
-                    var names = new List<string>();
-                    int start = path.IndexOf(next);
-                    for (int i = start; i < path.Count; i++) names.Add(path[i].Name);
-                    names.Add(next.Name);
-                    found.Add(names);
-                }
-                else if (state[next] == 0)
-                {
-                    Walk(next, state, path, found);
-                }
-            }
-
-            path.RemoveAt(path.Count - 1);
-            state[node] = 2;
         }
     }
 }

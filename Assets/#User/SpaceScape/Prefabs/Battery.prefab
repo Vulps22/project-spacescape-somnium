@@ -10,7 +10,9 @@ GameObject:
   m_Component:
   - component: {fileID: 683127601117633016}
   - component: {fileID: 6955895559191364340}
-  - component: {fileID: 7084958389094105078}
+  - component: {fileID: 6068380658789489308}
+  - component: {fileID: 7415347714470690146}
+  - component: {fileID: 3070622359727791729}
   m_Layer: 0
   m_Name: Battery
   m_TagString: Untagged
@@ -48,12 +50,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e6013906d4bf89199958320bee726dfa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.GridNode
-  _outputs: 01000000
-  _inputs: 
+  _size: {x: 1, y: 1, z: 1}
   _on: 1
   _readout: {fileID: 5734371357772465972}
   _readoutInterval: 0.25
---- !u!114 &7084958389094105078
+--- !u!114 &6068380658789489308
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -62,15 +63,43 @@ MonoBehaviour:
   m_GameObject: {fileID: 4501853603252209032}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a4e42c7e88277f3f29afc8a720df8d48, type: 3}
+  m_Script: {fileID: 11500000, guid: 8a80c9bf0b1849a0787c57b6f1829f61, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.BatteryModule
-  _tier: 0
-  _throttle: 1
-  _chargeWatts: 100
-  _dischargeWatts: 100
+  m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.NodeEdgeModule
+  _xPlus: 2
+  _xMinus: 1
+  _yPlus: 1
+  _yMinus: 1
+  _zPlus: 1
+  _zMinus: 1
+--- !u!114 &7415347714470690146
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4501853603252209032}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b05f5790b1216ecd59d65e7bf0f2a894, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.CapacitorModule
   _capacityJoules: 20000000
   _startFull: 1
+--- !u!114 &3070622359727791729
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4501853603252209032}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ee4861858347526468487993ab5f408b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.BatteryBehaviourModule
+  _chargeWatts: 100
+  _dischargeWatts: 100
   _readout: {fileID: 8109224630009500633}
   _readoutInterval: 0.25
 --- !u!1 &6146438960224612187

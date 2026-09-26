@@ -101,6 +101,8 @@ GameObject:
   - component: {fileID: 8595810082917729088}
   - component: {fileID: 6188858714494615930}
   - component: {fileID: 9145094132889522741}
+  - component: {fileID: 429537042426333565}
+  - component: {fileID: 8018056076950434251}
   m_Layer: 0
   m_Name: Conduit
   m_TagString: Untagged
@@ -140,7 +142,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e6013906d4bf89199958320bee726dfa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.GridNode
-  _output: 0
+  _size: {x: 1, y: 1, z: 1}
   _on: 1
   _readout: {fileID: 0}
   _readoutInterval: 0.25
@@ -169,8 +171,40 @@ MonoBehaviour:
   _loaded: {r: 1, g: 0.85, b: 0.3, a: 1}
   _open: {r: 0.35, g: 0.08, b: 0.08, a: 1}
   _wasting: {r: 1, g: 0.25, b: 0.1, a: 1}
+  _autoName: 1
+  _namePrefix: Conduit
   _readout: {fileID: 8378256661037859021}
   _readoutInterval: 0.25
+--- !u!114 &429537042426333565
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1668457962673484642}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a80c9bf0b1849a0787c57b6f1829f61, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.NodeEdgeModule
+  _xPlus: 1
+  _xMinus: 1
+  _yPlus: 1
+  _yMinus: 1
+  _zPlus: 1
+  _zMinus: 1
+--- !u!114 &8018056076950434251
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1668457962673484642}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a729d457bd103933a9120cbc3284332, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.ConduitBehaviourModule
 --- !u!1 &4537588025519644564
 GameObject:
   m_ObjectHideFlags: 0

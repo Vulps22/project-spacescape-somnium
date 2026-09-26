@@ -3,12 +3,15 @@ namespace SpaceScape.Power
     /// A cell that only releases while something on the grid is actually asking for watts, and lets
     /// the crew cap how fast it does so. Because a full component asks for nothing, it stops on its
     /// own once the ship is topped up, and so never feeds the waste heat of an idle grid.
-    public sealed class SmartStore : EnergyStore
+    public sealed class SmartBatteryBehaviour : BatteryBehaviour
     {
         /// Share of its discharge rate the crew has dialled in, from nothing to everything.
         public double Throttle = 1.0;
 
-        public SmartStore(double chargeWatts, double dischargeWatts, double capacityJoules,
+        public SmartBatteryBehaviour(Capacitor hold, double chargeWatts, double dischargeWatts)
+            : base(hold, chargeWatts, dischargeWatts) { }
+
+        public SmartBatteryBehaviour(double chargeWatts, double dischargeWatts, double capacityJoules,
             double startingJoules = -1.0)
             : base(chargeWatts, dischargeWatts, capacityJoules, startingJoules) { }
 

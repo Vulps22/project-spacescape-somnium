@@ -15,7 +15,7 @@ namespace SpaceScape.Power
         public IPowerProducer Producer => _producer;
 
         /// Offers the lot regardless of whether there is anywhere for it to go.
-        public double WattsOffered(PowerNode node) => _producer.WattsProduced;
+        public double WattsOffered(PowerNode node, double seconds) => _producer.WattsProduced;
 
         public void ProvidePower(PowerNode node, double seconds) => _producer.ProducePower(seconds);
 

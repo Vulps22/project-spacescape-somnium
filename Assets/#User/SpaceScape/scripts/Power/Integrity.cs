@@ -4,7 +4,7 @@ namespace SpaceScape.Power
 {
     /// How much punishment a component has left. A thermal failure damages it rather than destroying
     /// it outright, but a worn component starts refusing to do its job before it is gone.
-    public sealed class Durability
+    public sealed class Integrity
     {
         /// Condition when new.
         public double Max;
@@ -20,7 +20,7 @@ namespace SpaceScape.Power
 
         private readonly Random _rng;
 
-        public Durability(double max, int seed = 20260917)
+        public Integrity(double max, int seed = 20260917)
         {
             Max = max;
             Current = max;

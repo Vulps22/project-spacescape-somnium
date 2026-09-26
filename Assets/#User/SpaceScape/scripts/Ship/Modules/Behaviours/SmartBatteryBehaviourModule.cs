@@ -1,0 +1,23 @@
+using SpaceScape.Power;
+using UnityEngine;
+
+namespace SpaceScape.Ship
+{
+    /// A cell that only releases while something is asking, at a rate the crew dials in.
+    public sealed class SmartBatteryBehaviourModule : BatteryBehaviourModule
+    {
+        [SerializeField, Range(0f, 1f)] private float _throttle = 1f;
+
+        protected override string Label => "Smart";
+
+        protected override string Extra => $"\n{_throttle:P0} dial";
+
+        protected override BatteryBehaviour Create(Capacitor hold, double chargeWatts, double dischargeWatts) =>
+            new SmartBatteryBehaviour(hold, chargeWatts, dischargeWatts);
+
+        protected override void Push(BatteryBehaviour battery)
+        {
+            if (battery is SmartBatteryBehaviour smart) smart.Throttle = _throttle;
+        }
+    }
+}

@@ -1,13 +1,13 @@
 namespace SpaceScape.Power
 {
-    /// A reactor on the grid. It draws power like anything else — its rod magnets are a load, not a
-    /// separate machine — and it produces power like nothing else, because a reaction cannot be
-    /// declined. Lose the draw and the rods fall: the fail-safe is just the grid working normally.
-    public sealed class Reactor : IPowerSink, IPowerSource
+    /// A reactor on the grid. Its hold is what keeps the rod magnets gripping: the core tops it up
+    /// before anything reaches the output, and the grid fills it only when the core cannot. Lose both
+    /// and the rods fall, so the fail-safe is just the grid working normally.
+    public sealed class ReactorBehaviour : IPowerSink, IPowerSource
     {
         private readonly FissionCore _core;
 
-        public Reactor(FissionCore core, Accumulator control, CoolantLoop coolant = null)
+        public ReactorBehaviour(FissionCore core, LoadBehaviour control, CoolantLoop coolant = null)
         {
             _core = core;
             Control = control;
@@ -18,7 +18,7 @@ namespace SpaceScape.Power
 
         /// What holds the rods up. Its capacity is how long the magnets keep their grip once the
         /// power stops, so it is the window the crew has to fix a fault before the reactor drops.
-        public Accumulator Control;
+        public LoadBehaviour Control;
 
         /// Optional. Without one the core simply sits at its working temperature and no higher.
         public CoolantLoop Coolant;
@@ -61,13 +61,9 @@ namespace SpaceScape.Power
 
         /// Offers the lot, and tells the tile how hot it ought to be while doing it, so the core is
         /// not damaged for merely running.
-        public double WattsOffered(PowerNode node)
+        public double WattsOffered(PowerNode node, double seconds)
         {
             node.BaselineCelsius = _core.BaselineCelsius;
-
-            // A diode across the casing: power fed to the magnets cannot leave by the output port,
-            // so the control circuit can never push the core's supply back into the ship.
-            node.PassesThrough = false;
 
             // House load first. The magnets are inside the housing, so the core holds its own rods
             // before a watt reaches the output port; only the shortfall is asked of the ship.
@@ -82,14 +78,9 @@ namespace SpaceScape.Power
         /// Lets the rods go if the magnets have lost their grip, burns fuel, then cools what it can.
         public void ProvidePower(PowerNode node, double seconds)
         {
-            Dropped = false;
-            if (!RodsHeld && _core.TargetWithdrawal > 0.0)
-            {
-                // De-energised magnets drop the rods, and bringing the power back does not lift
-                // them again. Someone has to walk over and raise them.
-                _core.Scram();
-                Dropped = true;
-            }
+            // Without grip the rods fall; with it they head back for the dial.
+            Dropped = _core.Gripped && !RodsHeld && _core.Withdrawal > 0.0;
+            _core.Gripped = RodsHeld;
 
             _core.ProducePower(seconds);
             node.BaselineCelsius = _core.BaselineCelsius;

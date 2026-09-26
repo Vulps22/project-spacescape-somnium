@@ -4,6 +4,10 @@ Brain dump. Nothing in the "Open questions" section is decided.
 
 ## Answered since this was written
 
+- **Cycles.** A loop through a component is fine, because components never forward. A cycle of
+  conduits only is a ring, and a ring blows its merge point the tick power reaches it. **Built**
+  (2026-09-26, `modules.md`).
+
 - **Does SpaceScape belong in Project Garden's repository?** No. It moved to its own project,
   `~/Documents/project-spacescape-somnium`, on 2026-09-26.
 
@@ -17,8 +21,8 @@ Brain dump. Nothing in the "Open questions" section is decided.
 - **Does the reactor need the grid to hold its rods?** Only to *start*. House load comes off the top
   inside the housing, so a running core holds its own magnets. **Built** — and it traded away the
   blackout scenario, see `reactor.md`.
-- **Does control power leak into the ship?** It did. A diode across the casing
-  (`PowerNode.PassesThrough = false`) stops it, and the same change stops a cold-start loop
+- **Does control power leak into the ship?** It did. No component forwards power any more, which
+  stops it, and the same rule stops a cold-start loop
   compounding on every lap. **Built.**
 
 - **Can a damaged module draw more than its rating?** Not by over-drawing — components are endpoints,
@@ -35,46 +39,41 @@ Brain dump. Nothing in the "Open questions" section is decided.
 
 Roughly in order of how much depends on the answer.
 
-1. **Cycles.** The flow model does not handle them: power circulates and compounds each lap. A
-   cold-start loop is a *legitimate* topology — reactor feeds a cell, cell holds the magnets — and
-   the reactor's diode happens to stop that particular loop compounding, but nothing general does.
-   `Validate()` warns on any cycle, which is now a false alarm for a loop containing a
-   non-forwarding node. Either the solve learns to handle cycles or `Validate()` learns about diodes.
 
-2. **The fail-safe now fires almost never.** Self-sustaining means no external fault can drop the
+1. **The fail-safe now fires almost never.** Self-sustaining means no external fault can drop the
    rods. They only fall on a manual SCRAM, out of fuel, throttled below minimum stable output, or
    destroyed. It needs both a way to *fire* and a way to *fail* — see `reactor.md`.
 
-3. **What is the player's counter to a thermal cascade?** Sharper than it was: a cascade does not
+2. **What is the player's counter to a thermal cascade?** Sharper than it was: a cascade does not
    spread outward, it **decapitates**. Heat conducts back toward the source, which carries every watt
    on the grid, so a fault on any branch kills the reactor about ten seconds later. A breaker's job
    is therefore to cut a wasteful branch loose *before its heat reaches the trunk* — it protects
    upstream, not the branch it sits on. That makes breakers close to mandatory rather than optional,
    which is worth deciding on purpose.
 
-4. **Can a switched-off component be damaged by heat?** A tile that is off carries no current, so its
+3. **Can a switched-off component be damaged by heat?** A tile that is off carries no current, so its
    hazard is zero and you could protect something from a fire by flipping its switch. A *wrecked*
    component is a different case and is already handled: it stays wired in, keeps being fed, keeps
    wasting, and keeps taking rolls.
 
-5. **Is the misfire curve right at the edges?** `FailureChanceWhenSpent = 0.5`, scaling from zero at
+4. **Is the misfire curve right at the edges?** `FailureChanceWhenSpent = 0.5`, scaling from zero at
    the 20% worn line. At 2% condition that is 95 misfires in 200 cycles, which may be past the point
    of being recoverable.
 
-6. **Conduit capacity.** Worked through and parked. The viable shape is a **restrictor**: a cable
+5. **Conduit capacity.** Worked through and parked. The viable shape is a **restrictor**: a cable
    carries at most its rating and the excess dumps as heat at the fork. The two alternatives both
    cascade the instant one cable is mismatched, with no player input at all. Capacity would make thin
    cable a deliberate regulator whose ratio is visible as thickness — the answer to "no 70/30
    splitter" — at the cost of heat at the junction.
 
-7. **Does the hidden completion level reseed with the galaxy at midnight?** Daily reset means every
+6. **Does the hidden completion level reseed with the galaxy at midnight?** Daily reset means every
    session starts at the rim and nobody ever sees the centre. Persistent completion means tomorrow's
    crew inherits today's difficulty *and* a galaxy they have never mapped.
 
-8. **With nav dead, can the ship jump at all?** Point the drive and hope, or stranded until power is
+7. **With nav dead, can the ship jump at all?** Point the drive and hope, or stranded until power is
    restored. Decides whether an unpowered nav system is inconvenient or fatal.
 
-9. **What visual channel carries scanner confidence?** Red reads as *no*, not *unsure*. Fuzzy or
+8. **What visual channel carries scanner confidence?** Red reads as *no*, not *unsure*. Fuzzy or
    dashed lines are the obvious alternative, keeping colour for genuinely binary things.
 
 
@@ -96,9 +95,10 @@ when the thing you physically rotate needs to show its aim. Runs are hardwired u
 **A tile with no faces is completely invisible.** It renders nothing, which reads as broken rather
 than unconfigured. `Validate()` could warn; a tile using no faces is almost always a mistake.
 
-**Two-way sync between a serialized field and the sim is a trap.** `ReactorModule` both pushes
-`_targetWithdrawal` into the core and reads it back, so the Inspector is only authoritative because
-`OnValidate` lands the edit first. It works, but it is the shape of a bug.
+~~**Two-way sync between a serialized field and the sim is a trap.**~~ **Resolved** (2026-09-26). The
+old `ReactorModule` pushed `_targetWithdrawal` into the core and read it back, and when the core
+zeroed the dial the Inspector could not be changed at all. `ReactorBehaviourModule` only pushes; the
+dial is the crew's and the sim never writes it.
 
 **Two runaway loops is the budget.** Conduit cascade and reactor feedback can already trigger each
 other. A third positive feedback system would make failures unreadable.

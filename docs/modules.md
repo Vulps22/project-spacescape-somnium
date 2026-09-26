@@ -1,6 +1,7 @@
 # Modules
 
-**Status: design, not built** (2026-09-26). Replaces the one-script-per-thing layer in `scripts/Ship/`.
+**Status: built** (2026-09-26). The sim, the Unity modules, and the scene and prefabs migrated onto
+them. Compiles clean and runs in Play mode; not yet uploaded to Somnium.
 
 A conduit and a component are the same kind of thing. Both take power in, hold it, do something
 with it, and put power out. What differs is the *something*. So every tile on the grid is a
@@ -11,17 +12,20 @@ feature or a behaviour.
 
 | Kind | Concrete | Owns | How many per tile |
 |---|---|---|---|
-| `NodeEdgeModule` | — | which faces power enters and leaves by, kept live as the ship changes | exactly one |
-| `CapacitorModule` | — | how much the tile can hold, and how much it holds now | at most one |
-| `IntegrityModule` | — | condition, wear, misfires, and which model shows the damage | at most one, optional |
+| `NodeEdgeModule` | — | which faces power enters and leaves by | exactly one |
+| `CapacitorModule` | — | how much the tile can hold, and how much it holds now | one on every component; none on a conduit |
+| `IntegrityModule` | — | condition, wear, misfires, and which model shows the damage | optional |
 | `BehaviourModule` | `ConduitBehaviourModule`, `BatteryBehaviourModule`, `ReactorBehaviourModule`, … | what the tile *does* with its hold, and how much it lets go of | exactly one |
 
 **Only the behaviour knows what the tile is.** The edges, the capacitor and integrity know nothing
 about batteries or reactors. The behaviour decides how they interact, or whether they interact at all.
 
+A conduit has no `CapacitorModule` because it has nothing to put in one: its hold is the one tick of
+flow its edges already carry.
+
 ## Examples
 
-What you would see in the Inspector.
+What the Inspector shows. Faces not listed are `None`.
 
 ```
 Conduit                     Switch                      Tee
@@ -29,11 +33,9 @@ Conduit                     Switch                      Tee
   NodeEdgeModule              NodeEdgeModule              NodeEdgeModule
     -X In                       -X In                       -X In
     +X Out                      +X Out                      +X Out
-                                                            -Z Out       <- the whole splitter
-  CapacitorModule (tiny)      CapacitorModule (tiny)      CapacitorModule (tiny)
-  ConduitBehaviourModule      SwitchConduitBehaviour-     ConduitBehaviourModule
-  Conduit (visual)              Module                    Conduit (visual)
-                              Conduit (visual)
+  ConduitBehaviourModule      SwitchConduitBehaviour-       -Z Out       <- the whole splitter
+  Conduit (visual)              Module                    ConduitBehaviourModule
+                              Conduit (visual)            Conduit (visual)
 
 Battery                     Light                       Shield (not built)
   GridNode                    GridNode                    GridNode
@@ -41,25 +43,24 @@ Battery                     Light                       Shield (not built)
     -X In                       -X In                       -X In
     +X Out
   CapacitorModule             CapacitorModule             CapacitorModule
-  IntegrityModule             IntegrityModule             IntegrityModule
-  SmartBatteryBehaviour-      LightBehaviourModule        ShieldBehaviourModule
-    Module
+  SmartBatteryBehaviour-      LightBehaviourModule        IntegrityModule
+    Module                                                ShieldBehaviourModule
 
 Reactor
-  GridNode (3x3x3)
+  GridNode (5x5x5)
   NodeEdgeModule
-    -Z In                   <- starter / control socket
-    +X Out
-  CapacitorModule (small)   <- the core fills it, the magnets and the output drain it
-  IntegrityModule
+    -X In                   <- starter / control socket
+    +Z Out
+  CapacitorModule (40 J)    <- the magnets' hold: the core tops it up, the input fills it on a cold start
   ReactorBehaviourModule
 ```
 
-Faces not listed are `None`. A **splitter stops being a module of its own.** A branch is one more
-`Out` face. The share rule
-does the rest, as it already does.
+**A splitter is not a module of its own.** A branch is one more `Out` face, and the share rule does
+the rest.
 
 ## Class diagram
+
+The Unity layer. Each module holds a plain C# sim object, listed in the table after the diagram.
 
 ```mermaid
 classDiagram
@@ -69,20 +70,21 @@ classDiagram
     class Module {
         <<abstract>>
         +Tile: GridNode
-        #OnValidate() void
     }
     MonoBehaviour <|-- Module
 
     class NodeEdgeModule {
-        -_faces: FlowDirection[6]
+        -_xPlus: FlowDirection
+        -_xMinus: FlowDirection
+        -_yPlus: FlowDirection
+        -_yMinus: FlowDirection
+        -_zPlus: FlowDirection
+        -_zMinus: FlowDirection
         +Outputs: IEnumerable~GridDirection~
-        +InputFaces: IEnumerable~GridDirection~
+        +Inputs: IEnumerable~GridDirection~
         +GetFace(face: GridDirection) FlowDirection
         +SetFace(face: GridDirection, flow: FlowDirection) void
         +AcceptsFrom(face: GridDirection) bool
-        +Changed: event
-        -LateUpdate() void
-        -ToWorld(face: GridDirection) GridDirection
     }
     Module <|-- NodeEdgeModule
 
@@ -95,152 +97,153 @@ classDiagram
     NodeEdgeModule ..> FlowDirection
 
     class CapacitorModule {
-        +CapacityJoules: double
-        +Charge: double
-        +Room: double
-        +Fraction: double
-        +Fill(joules: double) double
-        +Draw(joules: double) double
+        -_capacityJoules: double
+        -_startFull: bool
+        +Capacitor: Capacitor
     }
     Module <|-- CapacitorModule
 
     class IntegrityModule {
-        +Max: double
-        +Current: double
-        +Fraction: double
-        +IsWorn: bool
-        +IsDestroyed: bool
+        -_max: double
+        -_wornBelowFraction: float
+        -_failureChanceWhenSpent: float
         -_damageThresholds: float[]
         -_damageModels: GameObject[]
-        +TakeDamage(amount: double) bool
-        +Restore(amount: double) void
-        +FailsToWork() bool
+        +Integrity: Integrity
         -ShowDamage() void
     }
     Module <|-- IntegrityModule
 
     class BehaviourModule {
         <<abstract>>
-        #Edges: NodeEdgeModule
-        #Capacitor: CapacitorModule
-        #Integrity: IntegrityModule
-        +ForwardsPower: bool
-        +IsSevered: bool
-        +WattsWanted() double
-        +Release() double
-        +Tick(seconds: double) void
+        +Source: IPowerSource
+        +Sink: IPowerSink
+        #Hold: Capacitor
+        #Integrity: Integrity
     }
     Module <|-- BehaviourModule
 
-    class ConduitBehaviourModule {
-        +ForwardsPower = true
-        +Release() double
-    }
+    class ConduitBehaviourModule
     class SwitchConduitBehaviourModule {
+        -_closed: bool
         +Closed: bool
         +Toggle() void
-        +IsSevered: bool
     }
     BehaviourModule <|-- ConduitBehaviourModule
     ConduitBehaviourModule <|-- SwitchConduitBehaviourModule
 
     class BatteryBehaviourModule {
-        +Release() double
-        #MayRelease() bool
+        -_chargeWatts: double
+        -_dischargeWatts: double
+        +Battery: BatteryBehaviour
+        #Create(hold, chargeWatts, dischargeWatts) BatteryBehaviour
     }
-    class SafetyBatteryBehaviourModule {
-        #MayRelease() bool
-    }
+    class SafetyBatteryBehaviourModule
     class SmartBatteryBehaviourModule {
-        +Throttle: double
-        #MayRelease() bool
+        -_throttle: float
     }
     BehaviourModule <|-- BatteryBehaviourModule
     BatteryBehaviourModule <|-- SafetyBatteryBehaviourModule
     BatteryBehaviourModule <|-- SmartBatteryBehaviourModule
 
     class LoadBehaviourModule {
-        <<abstract>>
-        +ThresholdJoules: double
-        +DrainWatts: double
+        -_ratedWatts: double
+        -_drainWatts: double
+        +Load: LoadBehaviour
         +Working: bool
-        +Misfired: bool
-        +Tick(seconds: double) void
+        +ChargeFraction: double
     }
     class LightBehaviourModule {
         -_light: Light
         -_maxIntensity: float
     }
-    class ShieldBehaviourModule
+    class ShieldBehaviourModule {
+        <<not built>>
+    }
     BehaviourModule <|-- LoadBehaviourModule
     LoadBehaviourModule <|-- LightBehaviourModule
     LoadBehaviourModule <|-- ShieldBehaviourModule
 
     class ReactorBehaviourModule {
-        -_core: FissionCore
-        -_coolant: CoolantLoop
-        +MagnetWatts: double
-        +RodsHeld: bool
-        +Release() double
-        +Tick(seconds: double) void
+        -_targetWithdrawal: float
+        -_controlWatts: double
+        +Reactor: ReactorBehaviour
         +Scram() void
     }
     BehaviourModule <|-- ReactorBehaviourModule
+
+    class ConstantSourceBehaviourModule {
+        -_watts: double
+    }
+    BehaviourModule <|-- ConstantSourceBehaviourModule
 
     class GridNode {
         +Size: Vector3Int
         +Cells: IEnumerable~Vector3Int~
         +Node: PowerNode
-        +Celsius: double
+        +Edges: NodeEdgeModule
+        +Outputs: IEnumerable~GridDirection~
+        +InputFaces: IEnumerable~GridDirection~
+        +On: bool
     }
     GridNode "1" o-- "*" Module : modules on the same GameObject
 
     class PowerGrid {
-        +Rewire(tile: GridNode) void
-        +Remove(tile: GridNode) void
-        -CheckRings() void
+        -Build() void
     }
-    PowerGrid ..> NodeEdgeModule : listens to Changed
+    PowerGrid ..> GridNode : one PowerNode per tile
+    PowerGrid ..> BehaviourModule : Source and Sink
 ```
 
-`#` is protected. `LoadBehaviourModule` is today's `Accumulator`, the relaxation oscillator. A
-light, a shield, a radar and a gun are that same cycle with different numbers and a different
-thing to switch on.
+`#` is protected. `InputFaces` on `GridNode` is where power *actually* arrives, worked out from the
+neighbours pointing at the tile; `Inputs` on `NodeEdgeModule` is where it *may*. The cable's shape
+is drawn from the first.
+
+### The sim object behind each module
+
+| Module | Sim object (`scripts/Power/`) |
+|---|---|
+| `CapacitorModule` | `Capacitor` — charge, capacity, `Fill`, `Draw` |
+| `IntegrityModule` | `Integrity` |
+| `BatteryBehaviourModule` / `Safety…` / `Smart…` | `BatteryBehaviour` / `SafetyBatteryBehaviour` / `SmartBatteryBehaviour`, over the tile's `Capacitor` |
+| `LoadBehaviourModule`, `LightBehaviourModule` | `LoadBehaviour`, over the tile's `Capacitor` |
+| `ReactorBehaviourModule` | `ReactorBehaviour`, whose magnets are a `LoadBehaviour` over the tile's `Capacitor` |
+| `ConstantSourceBehaviourModule` | `ConstantSourceBehaviour` |
+| `ConduitBehaviourModule`, `SwitchConduit…` | none — a tile with no source and no sink forwards |
+
+`PowerGraph` only ever sees the sim objects, which is why the tests run outside the Editor.
 
 ### What each behaviour does
 
-| Behaviour | `ForwardsPower` | `WattsWanted` | `Release` | `Tick` |
-|---|---|---|---|---|
-| Conduit | **yes** | room in the hold | the whole hold | nothing |
-| Switch conduit | yes | nothing while open | nothing while open | nothing |
-| Battery | no | room, up to charge rate | discharge rate, if `MayRelease` | nothing |
-| Safety / Smart | no | as battery | `MayRelease` asks for a consumer / for demand × throttle | nothing |
-| Load | no | room, up to draw rate | — (no output) | charge to threshold, work while draining, misfire if worn |
-| Reactor | no | room, while the core is not covering the magnets | the hold **minus one tick of magnet draw** | core fills the hold, magnets drain it, rods drop if they go short |
+| Behaviour | Forwards | Offers | Wants |
+|---|---|---|---|
+| Conduit | **yes** | — | — |
+| Switch conduit | yes; open takes the tile off the grid | — | — |
+| Battery | no | discharge rate while it has an outlet, and never more than its hold can give this tick | charge rate, while there is room |
+| Safety / Smart | no | as battery, released only toward a component / only while something asks, × throttle | as battery |
+| Load | no | — | draw rate until full; works from full to empty, misfires if worn |
+| Reactor | no | what the core made, less what the magnets still needed | whatever the magnets need that the core cannot cover |
 
-The reactor row is the old house-load code, now expressed as a reservation on a shared hold. A
-running core covers its own magnets because the magnets draw from the same capacitor the core fills.
-A cold core fills that capacitor through its input from a starter battery instead. It's one path,
-not two, and the `PassesThrough` flag and the casing diode go away.
+**The reactor's hold is its magnets' hold.** The core tops it up before a watt reaches the output
+(house load), and the input fills it only when the core cannot, which is a cold start. Grid power
+never leaves by the output. The dial (`TargetWithdrawal`) belongs to the crew: while the magnets
+grip, the rods head for it; without grip they fall; when grip comes back they head for it again.
+See `reactor.md`.
 
 ## One tick
 
-The grid's rules stay the same. What changes is where power sits between steps.
-
-1. **Offer.** Every tile's behaviour decides what it `Release`s from its hold. The graph splits that
-   across the live output edges by `Share`, as now. With no live edge, nothing leaves and the power
-   stays in the hold.
-2. **Travel.** One tile per tick, as now.
-3. **Accept.** Each tile takes up to its behaviour's `WattsWanted` into the hold. **What does not fit
-   is dumped here, as heat.** That is today's dead-end rule, moved into the inputs.
-4. **Behave.** Each behaviour's `Tick`.
-5. **Heat, conduction, pop rolls.** Unchanged, per tile.
+1. **Offer.** Each tile's source says what it puts out (`WattsOffered(node, seconds)`). The graph
+   splits that across the live output edges by `Share`. With no live edge, nothing leaves.
+2. **Travel.** One tile per tick.
+3. **Accept.** Each tile's sink takes up to its `WattsWanted` of what arrived. A conduit carries the
+   rest on; **a component does not, and what it did not take is dumped there, as heat.**
+4. **Behave.** Sources advance (`ProvidePower`), sinks bank what they got (`Receive`).
+5. **Heat, conduction, pop rolls, then rings.**
 
 Power only ever moves between holds or is counted as waste, so it conserves by construction
 (principle 11).
 
-**A component never passes power through.** Its inputs fill its hold, and its outputs drain the hold
-only as far as its behaviour allows. Only a conduit's behaviour releases the whole hold, so only
+**A component never passes power through.** Only a tile with no source and no sink forwards, so only
 conduits are links in the chain:
 
 ```
@@ -255,21 +258,33 @@ C-C-C-C-C
 A1 -> A2 -> B1 -> B2 -> A1      every tile forwards. A ring.
 ```
 
-**A ring pops its merge point instantly.** A ring is a cycle made only of tiles whose behaviour
-`ForwardsPower`. Its merge point is the tile on the ring fed from outside it (A1 above). The check
-runs whenever the wiring changes, not every tick. On the first tick power reaches the merge point,
-it takes its full integrity as damage, or severs if it has no `IntegrityModule`.
+**A ring blows its merge point instantly.** A ring is a cycle made only of forwarding tiles. Its
+merge point is the tile on the ring fed from outside it (A1 above). The check runs every tick over
+the live conduits (one walk over a few dozen tiles), so a switch that closes a ring is caught the
+tick it closes. On the first tick power reaches the merge point, it is severed, and loses all its
+integrity if it has any.
 
 ## Faces
 
 Every face of a tile is `In`, `Out` or `None`, set with `SetFace` and read with `GetFace`. A face is
-never both. Storage is one `FlowDirection` per face (`_faces[6]`, indexed by `GridDirection`), so
-the inputs and outputs are one list and cannot disagree. A plain enum array survives the Somnium
-bundle export, where an array of custom classes arrives empty.
+never both. They are six named fields (`_xPlus` … `_zMinus`) so the Inspector shows each face by
+name, and plain enums survive the Somnium bundle export where an array of custom classes arrives
+empty. A new `NodeEdgeModule` starts with every face `In`.
 
-**No more "empty means any".** Today a tile with no inputs declared accepts from every side. With a
-value per face, a neighbour takes power only on a face it has set to `In`, so a conduit that accepts
-from anywhere has `In` on every face that is not an `Out`. It says what it means.
+A tile takes power only on a face set to `In`, so a conduit that accepts from anywhere has `In` on
+every face that is not an `Out`. Faces are **world directions** for now; making them turn with the
+tile is part of live rewiring, below.
+
+## Conduit variants — pinned until after the first static upload
+
+Switches and splitters are going to be parts a player **places on top of a conduit**. The model fits
+seamlessly into the cable, and the part **takes over that conduit's behaviour**. How that works
+while the ship is running comes after something static has been uploaded to Somnium.
+
+Until then, the scene bakes them in. The switch is a `SwitchConduitBehaviourModule` on the conduit
+tile itself, and the splitter is an extra `Out` face on that tile's `NodeEdgeModule`. The
+`SwitchModule` and `SplitterModule` prefabs survive only as script-less markers that show where
+they are. Their names predate "module" meaning what it does now.
 
 ## Rewiring live — after the MVP
 
@@ -301,51 +316,48 @@ integrity belong to the tile, not to its edges, so they survive a rewire.
 An edge carries one tick's flow at most, so dropping one mid-flight loses at most one tick of power.
 It is counted as waste on the sending tile, so the books still balance.
 
-## Deliberate changes from today
+## What changed from the old model
 
-- A full battery mid-run dumps what arrives as heat on itself. Today it passes it on.
-- Everything downstream of a battery gets at most the battery's discharge rate. It is a real UPS.
-- A ring of conduits pops its merge point. Today it quietly compounds (open question 1, closed).
-- `PowerNode.PassesThrough` is deleted. What gets through a tile is its behaviour's business.
-- `Validate()`'s cycle warning becomes the ring check.
+- **A component never passes power through.** A full battery mid-run dumps what arrives as heat on
+  itself, and everything downstream of a battery gets at most its discharge rate: a real UPS.
+- **A battery cannot offer more than it holds.** It used to offer its full rating whenever it had any
+  charge at all, and the grid handed that out before the battery found it could not pay, so a
+  nearly empty cell on a trickle put out its full rating from nothing. Found in Play mode on
+  2026-09-26; `WattsOffered` now takes the tick's length.
+- **The reactor's dial is the crew's.** It used to zero itself when the magnets lost grip, which also
+  made a cold start impossible, since the magnets have no grip on the first tick.
+- **A ring of conduits blows its merge point.** It used to compound quietly on every lap.
+- `PowerNode.PassesThrough` is gone; `Validate()` reports rings instead of every cycle.
 
-Everything else must come out of the rebuild with the **same numbers** as `power.md`. That is what
-the recovered test harness is for.
+Everything else came through with the same numbers. The harness went from 224 to 242 checks, with
+the old expectations changed only where one of the rules above says they should.
 
 ## Renames
 
-| Now | Becomes |
+| Was | Is |
 |---|---|
 | `ConduitModule` (abstract, switch + splitter) | gone |
 | `SplitterModule` | one more `Out` face on `NodeEdgeModule` |
 | `SwitchModule` | `SwitchConduitBehaviourModule` |
-| `BatteryModule` + `CellTier` | `NodeEdgeModule` + `CapacitorModule` + `BatteryBehaviourModule` / `Safety…` / `Smart…` |
-| `LightModule`, `AccumulatorModule` | `NodeEdgeModule` + `CapacitorModule` + `LightBehaviourModule` / a `LoadBehaviourModule` |
-| `ReactorModule` | the reactor stack above; `FissionCore` and `CoolantLoop` stay as they are |
-| `ConstantSourceModule` | `ConstantSourceBehaviourModule` (a test source: fills its hold from nothing) |
-| `Durability` | `IntegrityModule` |
-| `GridNode._outputs` / `_inputs`, `Outputs`, `InputFaces`, `AcceptsFrom` | `NodeEdgeModule._faces`, one `FlowDirection` per face |
-| `Conduit` | unchanged. It is the cable's look, not a module |
+| `BatteryModule` + `CellTier` | `CapacitorModule` + `BatteryBehaviourModule` / `Safety…` / `Smart…` |
+| `LightModule`, `AccumulatorModule` | `CapacitorModule` + `LightBehaviourModule` / `LoadBehaviourModule` |
+| `ReactorModule` | `CapacitorModule` + `ReactorBehaviourModule` |
+| `ConstantSourceModule` | `ConstantSourceBehaviourModule` |
+| `GridNode._outputs` / `_inputs` | `NodeEdgeModule`'s six faces |
+| `EnergyStore`, `SafetyStore`, `SmartStore` | `BatteryBehaviour`, `SafetyBatteryBehaviour`, `SmartBatteryBehaviour` |
+| `Accumulator` | `LoadBehaviour` |
+| `Reactor` | `ReactorBehaviour` |
+| `ConstantSource` | `ConstantSourceBehaviour` |
+| `Durability` | `Integrity` |
+| `Conduit` | unchanged; it is the cable's look, not a module |
 
-Five prefabs and the scene need re-stacking. The scene is untracked (see `README.md` → Repo), so it
-is done with an `eval` script against the Editor, not by hand.
+The scene and prefabs were migrated in the Editor: every old component's serialized fields were
+snapshotted to JSON while the old scripts were still loaded, then applied to the new modules and
+checked back tile by tile.
 
-## Two things that are not obvious
+## Damage models are two plain arrays
 
-**The maths still lives in plain C#.** Each module holds a small sim object (`CapacitorModule` holds
-a `Capacitor`, and so on), the way `BatteryModule` holds an `EnergyStore` today. `PowerGraph` only
-ever sees the sim objects. That is the only reason the tests run outside the Editor.
-
-**`IntegrityModule`'s damage list is two plain arrays, not an array of pairs.** Arrays of custom
-`[Serializable]` classes arrive **empty** from a Somnium bundle export, while plain arrays survive
-(Project Garden lost uploads to this before it was understood). So the list is
-`float[] _damageThresholds` beside `GameObject[] _damageModels`, same length. Below each threshold,
-its model is shown and the rest are hidden.
-
-## Settled by current behaviour
-
-- **Refused power is dumped where it stops.** Power reaching a tile that cannot take or forward it
-  is dumped there. A tile that is off is not an outlet, so its sender keeps the power in its hold
-  until full, then dumps.
-- **Heat stays on the tile** (`PowerNode.Celsius`), as it does now.
-- **A conduit holds one tick of flow**, which is what an edge carries now.
+`IntegrityModule`'s damage list is `float[] _damageThresholds` beside `GameObject[] _damageModels`,
+same length, not an array of pairs. Arrays of custom `[Serializable]` classes arrive **empty** from a
+Somnium bundle export while plain arrays survive (Project Garden lost uploads to this before it was
+understood). Below each threshold its model is shown and the rest are hidden.

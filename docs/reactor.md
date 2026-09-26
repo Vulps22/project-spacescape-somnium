@@ -1,7 +1,7 @@
 # The reactor
 
-**Built and running in the scene.** `FissionCore`, `CoolantLoop`, `Reactor`, and the Unity
-`ReactorModule` + `ReactorLamp`, all covered by the sim tests. Fuel and coolant quantities are preset
+**Built and running in the scene.** `FissionCore`, `CoolantLoop`, `ReactorBehaviour`, and the Unity
+`ReactorBehaviourModule` + `CapacitorModule` + `ReactorLamp`, all covered by the sim tests. Fuel and coolant quantities are preset
 stand-ins; the rack and the pad are not built.
 
 Cold-started in-world on 2026-09-18: a battery through a switch lights the magnets, the rods come up
@@ -43,14 +43,14 @@ running  produces 100 →  house 20  →  exports 80 W, asks the grid for nothin
 So the starter supply is genuinely a **starter**: needed to get the rods up, irrelevant afterwards.
 Pull it, switch it off, take it away — a running reactor ignores losing it.
 
-### And a diode across the casing
+### Power fed in never comes out
 
-**Decided and built.** `PowerNode.PassesThrough` is false on a reactor, so power fed to the magnets
-**cannot leave by the output port**. Without it, a 100 W control feed against 20 W of magnets pushes
+**Decided and built.** A reactor is a component, and no component forwards, so power fed to the
+magnets **cannot leave by the output port**. Without it, a 100 W control feed against 20 W of magnets pushes
 80 W out into the ship — and in a cold-start loop that compounds on every lap, because the reactor
 forwards what arrives *on top of* its own production.
 
-With the diode, the output carries only what the core made, and arriving surplus it cannot use
+So the output carries only what the core made, and arriving surplus it cannot use
 becomes heat at the core. Conservation holds: `in = drawn + blocked + passed`.
 
 Practical consequence: **over-feeding the control circuit cooks the reactor.** A 100 W starter
@@ -99,6 +99,11 @@ Real operating temperatures, if a running baseline is wanted: PWR coolant ~325 �
 
 ## Control rods
 
+**The dial is the crew's.** `TargetWithdrawal` is written by the crew and nothing else. While the
+magnets grip, the rods head for it; without grip they fall; when grip comes back they head for it
+again, with nobody touching the dial. The scram button is the crew turning the dial to zero. So a
+cold start is: set the dial, close the starter switch, and the rods climb once the magnets charge.
+
 Rods are held up by **electromagnets**. Cut the current and they fall in under gravity. The reactor
 is fail-safe by construction: losing power to the control system shuts it down rather than letting it
 run away. A SCRAM is just de-energising the magnets.
@@ -129,7 +134,8 @@ a band during startup where the ship is genuinely depended on.
 anything else on the grid; the rods stay up while that draw is satisfied. The fail-safe is not a
 special case, it is the grid working normally.
 
-What holds them is an ordinary `Accumulator`, and its **capacity is the window** — how long the
+What holds them is an ordinary `LoadBehaviour` over the reactor's `CapacitorModule`, and its
+**capacity is the window** — how long the
 magnets keep their grip after the power stops, which is how long the crew has to fix a fault before
 the reactor drops. Coasting down on stored charge is what every accumulator already does.
 
@@ -200,7 +206,7 @@ physical act is the information.
   ship, and it only happens once the crew has let the machinery get that bad.
 - ~~**Do the rod magnets draw from the grid?**~~ **Yes**, and they are not a separate machine — the
   reactor simply has an input and works or not on available power, like everything else. What holds
-  them is an ordinary `Accumulator`, whose capacity is the window. Built.
+  them is an ordinary `LoadBehaviour` over the reactor's hold, whose capacity is the window. Built.
 - ~~**Does a running reactor have a baseline temperature?**~~ **Yes.** Heat per watt delivered *is*
   the baseline, not the overflow — so a reactor holds a working temperature proportional to how hard
   it is running, and only waste accumulates on top of that. Damage measures what it is minus what it
@@ -212,9 +218,8 @@ physical act is the information.
   run too hot takes hits and is eventually lost. No separate meltdown state, no positive void
   coefficient.
 
-- **Cold start.** The reactor needs power to hold its rods, and the only thing making power is the
-  reactor. So a start needs a charged cell — and charging that cell *from the reactor* is a
-  topological cycle, which `Validate()` currently warns about. Unresolved, and the first thing that
-  will bite when a reactor goes into the scene.
+- ~~**Cold start.**~~ **Resolved.** A start needs a charged cell, and charging that cell from the
+  reactor is a loop, but the reactor and the cell are components, so it is not a ring and nothing
+  warns. The rods rise on their own once the starter has charged the magnets.
 
 See also: `power.md` (the built model), `open-questions.md`, `principles.md`.

@@ -3,7 +3,8 @@
 Co-op ship management. VR-first, 2D supported. **One ship, one galaxy, unlimited crew.**
 
 Status: **committed** (2026-09-17). The power model and a first-pass reactor are built, tested, and
-running in the scene; the galaxy and courier layer is still design.
+running in the scene, on the module structure in `modules.md` (2026-09-26); the galaxy and courier
+layer is still design.
 
 Scene: `Assets/#User/SpaceScape/SpaceScape.unity`. Its own project at `~/Documents/project-spacescape-somnium`
 since 2026-09-26, split out of Project Garden's working tree.
@@ -29,22 +30,24 @@ second face and an edge with a higher share.
 
 ## What is actually built
 
-Everything in `Assets/#User/SpaceScape/scripts/Power/` — plain C#, **zero Unity references**, 224
+Everything in `Assets/#User/SpaceScape/scripts/Power/` — plain C#, **zero Unity references**, 242
 tests. `scripts/Ship/` is the Unity layer that puts it in a scene.
 
 | | |
 |---|---|
 | flow | shares at forks, endpoints, dead-end dumping, one tile per tick |
-| sinks | `Accumulator` — one type, relaxation oscillator, duty cycle = supply ÷ rated |
-| sources | `IPowerProducer` / `IPowerSource` split, `ProducerSource`, `ConstantSource` |
-| stores | `EnergyStore` — sink and source over one charge |
+| holds | `Capacitor` — the charge every component keeps, owned by its `CapacitorModule` |
+| sinks | `LoadBehaviour` — one type, relaxation oscillator, duty cycle = supply ÷ rated |
+| sources | `IPowerProducer` / `IPowerSource` split, `ProducerSource`, `ConstantSourceBehaviour` |
+| stores | `BatteryBehaviour` — sink and source over one hold, never offering more than it has |
+| rings | a cycle of conduits blows its merge point; components never pass power through |
 | state | `CanReceivePower()`, asked every tick, virtual |
 | faults | `PowerEdge.Share` — a short behaves as several cables |
 | heat | gain from waste, shed to ambient, conduction along conduits |
 | failure | `power × heat` hazard; conduits sever, components take damage and misfire |
 | footprints | a tile can occupy many cells; a face is a whole flank; overlaps warn |
 | tiers | plain / safety / smart cells, each asking a harder question |
-| reactor | cores, rods on magnets, house load off the top, coolant, a casing diode |
+| reactor | cores, rods on magnets, house load off the top, coolant, a crew-owned dial |
 
 **Running in the scene:** a reactor cold-started from a battery through a switch, feeding two
 batteries and two loads across a branched grid, with heat and durability live underneath it.
@@ -105,9 +108,9 @@ Programmer art. No flying, no combat, no galaxy. If that is fun for ten minutes 
 
 - `principles.md` — **read first.** The ten rules, including the ones learned by breaking them.
 - `power.md` — the built model, with measured numbers.
-- `reactor.md` — cores, rods, house load, the casing diode and coolant. Built.
+- `reactor.md` — cores, rods, house load, the dial and coolant. Built.
 - `the-loop.md` — galaxy, courier contracts, difficulty by depth, navigation. Design only.
-- `modules.md` — the module stack every tile is built from. Designed, not built.
+- `modules.md` — the module stack every tile is built from. Built.
 - `open-questions.md` — what is undecided, what is parked, and what must not be re-proposed.
 
 ## Repo

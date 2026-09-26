@@ -17,8 +17,11 @@ namespace SpaceScape.Power
         /// What it settles at with the rods fully out. Below full output it sits proportionally lower.
         public double WorkingCelsius = 400.0;
 
-        /// Where the crew has asked the rods to be, from fully in to fully out.
+        /// Where the crew has asked the rods to be, from fully in to fully out. Only the crew writes it.
         public double TargetWithdrawal;
+
+        /// True while something holds the rods up. Without it they fall, whatever the dial says.
+        public bool Gripped = true;
 
         /// Where the rods actually are. Chases the target, slowly up and quickly down.
         public double Withdrawal { get; private set; }
@@ -55,7 +58,7 @@ namespace SpaceScape.Power
         /// True while it is making anything at all.
         public bool Running => WattsProduced > 0.0;
 
-        /// Drops the rods. De-energising the magnets does this on its own; this is the button.
+        /// Turns the dial to zero, for the crew's big red button.
         public void Scram() => TargetWithdrawal = 0.0;
 
         /// Burns fuel and lets the rods travel toward where they have been asked to be.
@@ -68,7 +71,7 @@ namespace SpaceScape.Power
                 if (FuelSeconds < 0.0) FuelSeconds = 0.0;
             }
 
-            double target = Clamp(TargetWithdrawal);
+            double target = Gripped ? Clamp(TargetWithdrawal) : 0.0;
             if (Withdrawal < target)
             {
                 Withdrawal += RaisePerSecond * seconds;
@@ -84,7 +87,7 @@ namespace SpaceScape.Power
         private static double Clamp(double v) => v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v);
 
         public override string ToString() =>
-            $"{WattsProduced:0} W, rods {Withdrawal:P0} of {Clamp(TargetWithdrawal):P0}, " +
+            $"{WattsProduced:0} W, rods {Withdrawal:P0} of {Clamp(TargetWithdrawal):P0}{(Gripped ? "" : " NO GRIP")}, " +
             $"{BaselineCelsius:0} C nominal, fuel {FuelSeconds:0} s";
     }
 }

@@ -3,13 +3,13 @@ namespace SpaceScape.Power
     /// Anything that banks power to do its job. A bulb, a helm and a gun differ only in the numbers.
     /// Charge to the threshold, work while burning it off, stop at empty, charge again. Underfeed it
     /// and the cycle simply gets longer, which is the flicker.
-    public sealed class Accumulator : IPowerSink
+    public sealed class LoadBehaviour : IPowerSink
     {
+        /// What it banks into. Full is the threshold it must reach before it can start working.
+        public readonly Capacitor Hold;
+
         /// Most it can pull at once, in watts, regardless of what the line offers.
         public double DrawWatts;
-
-        /// Joules it must hold before it can start working.
-        public double Capacity;
 
         /// Watts it burns while working. Zero means it holds its charge until something discharges it.
         public double DrainWatts;
@@ -19,13 +19,10 @@ namespace SpaceScape.Power
 
         /// Condition of the thing this drives, used only for the chance of misfiring. Whether a
         /// wrecked component draws at all is the grid's business, not this class's.
-        public Durability Durability;
+        public Integrity Integrity;
 
         /// True on the tick it reached its threshold but failed to do anything with it.
         public bool Misfired { get; private set; }
-
-        /// Joules stored right now.
-        public double Charge { get; private set; }
 
         /// True while it holds enough to be doing its job.
         public bool Working { get; private set; }
@@ -40,34 +37,35 @@ namespace SpaceScape.Power
         public double SecondsSinceStarted { get; private set; }
 
         /// Draw and drain are the same for almost everything: a 50 W bulb pulls 50 W and burns 50 W.
-        public Accumulator(double ratedWatts, double capacityJoules)
-        {
-            DrawWatts = ratedWatts;
-            DrainWatts = ratedWatts;
-            Capacity = capacityJoules;
-        }
+        public LoadBehaviour(Capacitor hold, double ratedWatts) : this(hold, ratedWatts, ratedWatts) { }
 
         /// For something that banks and holds, like a gun waiting to be fired.
-        public Accumulator(double drawWatts, double capacityJoules, double drainWatts)
+        public LoadBehaviour(Capacitor hold, double drawWatts, double drainWatts)
         {
+            Hold = hold;
             DrawWatts = drawWatts;
             DrainWatts = drainWatts;
-            Capacity = capacityJoules;
         }
+
+        /// A load with a hold of its own, for anything not built from modules.
+        public LoadBehaviour(double ratedWatts, double capacityJoules)
+            : this(new Capacitor(capacityJoules), ratedWatts) { }
+
+        /// A load with a hold of its own that burns at a different rate than it draws.
+        public LoadBehaviour(double drawWatts, double capacityJoules, double drainWatts)
+            : this(new Capacitor(capacityJoules), drawWatts, drainWatts) { }
+
+        /// Joules stored right now.
+        public double Charge => Hold.Charge;
+
+        /// Joules it must hold before it can start working.
+        public double Capacity => Hold.Capacity;
 
         /// How full it is, which is how brightly a lamp burns or how ready a gun is.
-        public double ChargeFraction
-        {
-            get
-            {
-                if (Capacity <= 0.0) return 0.0;
-                double f = Charge / Capacity;
-                return f < 0.0 ? 0.0 : (f > 1.0 ? 1.0 : f);
-            }
-        }
+        public double ChargeFraction => Hold.Fraction;
 
         /// Nothing while it is off or already full, otherwise its full rated draw.
-        public double WattsWanted => (!Enabled || Charge >= Capacity) ? 0.0 : DrawWatts;
+        public double WattsWanted => (!Enabled || Hold.IsFull) ? 0.0 : DrawWatts;
 
         /// Banks what arrived, burns what it burns while working, and crosses the thresholds either way.
         public void Receive(double watts, double seconds)
@@ -77,18 +75,18 @@ namespace SpaceScape.Power
             Misfired = false;
             SecondsSinceStarted += seconds;
 
-            if (Enabled) Charge += watts * seconds;
-            if (Working) Charge -= DrainWatts * seconds;
+            double net = (Enabled ? watts * seconds : 0.0) - (Working ? DrainWatts * seconds : 0.0);
+            if (net > 0.0) Hold.Fill(net);
+            else Hold.Draw(-net);
 
-            if (Charge >= Capacity)
+            if (Hold.IsFull)
             {
-                Charge = Capacity;
                 if (!Working)
                 {
                     // A damaged component can spend its charge and still do nothing.
-                    if (Durability != null && Durability.FailsToWork())
+                    if (Integrity != null && Integrity.FailsToWork())
                     {
-                        Charge = 0.0;
+                        Hold.Empty();
                         Misfired = true;
                     }
                     else
@@ -99,9 +97,8 @@ namespace SpaceScape.Power
                     }
                 }
             }
-            else if (Charge <= 0.0)
+            else if (Hold.Charge <= 0.0)
             {
-                Charge = 0.0;
                 if (Working)
                 {
                     Working = false;
@@ -113,14 +110,13 @@ namespace SpaceScape.Power
         /// Spends the whole charge at once, for a gun going off.
         public void Discharge()
         {
-            Charge = 0.0;
+            Hold.Empty();
             if (!Working) return;
             Working = false;
             Stopped = true;
         }
 
         public override string ToString() =>
-            $"{Charge:0.##}/{Capacity:0.##} J ({ChargeFraction:P0}), " +
-            $"{(Working ? "working" : "dark")}, wants {WattsWanted:0.##} W{(Enabled ? "" : " (off)")}";
+            $"{Hold}, {(Working ? "working" : "dark")}, wants {WattsWanted:0.##} W{(Enabled ? "" : " (off)")}";
     }
 }

@@ -57,12 +57,18 @@ static class Program
         ZeroDrainHolds();
         IdleShipDumps();
         CycleDetected();
+        RingBlowsItsMergePoint();
+        UnfedRingStaysQuiet();
+        ComponentsBreakRings();
+        OpenSwitchBreaksARing();
+        RingTakesAllOfAMergePointsIntegrity();
         SurgePropagation();
         VaryingSource();
         BatteryIsBoth();
         ProducerCannotDecline();
         StoreHoldsWhenIsolated();
         StoreChargesAndSuppliesAtOnce();
+        EmptyStoreCannotSupplyMoreThanItGets();
         ThreeTiersOfCell();
         ReactorRunsHotWithoutBeingBroken();
         RodsDropFastAndRiseSlow();
@@ -128,7 +134,7 @@ static class Program
     static void EndpointsDoNotPassPower()
     {
         Console.WriteLine("a component is a leaf, not a pass-through");
-        var bulb = new Accumulator(50, 1e9);
+        var bulb = new LoadBehaviour(50, 1e9);
 
         var g = new PowerGraph();
         var src = g.AddSource("source", 100);
@@ -152,9 +158,9 @@ static class Program
         //    B1
         // R--|------|---B2
         //           \--B3
-        var near = new Accumulator(1000, 1e9);
-        var far1 = new Accumulator(1000, 1e9);
-        var far2 = new Accumulator(1000, 1e9);
+        var near = new LoadBehaviour(1000, 1e9);
+        var far1 = new LoadBehaviour(1000, 1e9);
+        var far2 = new LoadBehaviour(1000, 1e9);
 
         var g = new PowerGraph();
         var src = g.AddSource("source", 1000);
@@ -181,8 +187,8 @@ static class Program
     static void MoreCablesPromote()
     {
         Console.WriteLine("more conduits to one place raise its share");
-        var hungry = new Accumulator(1000, 1e9);
-        var other = new Accumulator(1000, 1e9);
+        var hungry = new LoadBehaviour(1000, 1e9);
+        var other = new LoadBehaviour(1000, 1e9);
 
         var g = new PowerGraph();
         var src = g.AddSource("source", 900);
@@ -203,8 +209,8 @@ static class Program
     static void ShortStealsFromItsSiblings()
     {
         Console.WriteLine("a shorted conduit steals its siblings' share");
-        var scanner = new Accumulator(1000, 1e9);
-        var gun = new Accumulator(1000, 1e9);
+        var scanner = new LoadBehaviour(1000, 1e9);
+        var gun = new LoadBehaviour(1000, 1e9);
 
         var g = new PowerGraph();
         var src = g.AddSource("source", 1000);
@@ -231,9 +237,9 @@ static class Program
     static void FaultStaysOnSharedWiring()
     {
         Console.WriteLine("a fault only reaches what shares its branch");
-        var near = new Accumulator(1000, 1e9);
-        var farA = new Accumulator(1000, 1e9);
-        var farB = new Accumulator(1000, 1e9);
+        var near = new LoadBehaviour(1000, 1e9);
+        var farA = new LoadBehaviour(1000, 1e9);
+        var farB = new LoadBehaviour(1000, 1e9);
 
         var g = new PowerGraph();
         var src = g.AddSource("source", 1000);
@@ -266,7 +272,7 @@ static class Program
     static void DeadEndStealsPower()
     {
         Console.WriteLine("a forgotten dead end steals power");
-        var gun = new Accumulator(500, 1e9);
+        var gun = new LoadBehaviour(500, 1e9);
 
         var g = new PowerGraph();
         var r = g.AddSource("source", 1000);
@@ -285,7 +291,7 @@ static class Program
     static void SwitchTrap()
     {
         Console.WriteLine("the switch trap: at the module vs at the fork");
-        var laser = new Accumulator(500, 1e9);
+        var laser = new LoadBehaviour(500, 1e9);
 
         var g = new PowerGraph();
         var r = g.AddSource("source", 1000);
@@ -328,7 +334,7 @@ static class Program
             for (int i = 0; i < count; i++)
             {
                 bool sink = rng.NextDouble() < 0.5;
-                var n = g.AddNode("n" + i, sink ? new Accumulator(rng.Next(50, 400), 1e9) : null);
+                var n = g.AddNode("n" + i, sink ? new LoadBehaviour(rng.Next(50, 400), 1e9) : null);
                 g.Connect(nodes[rng.Next(nodes.Count)], n);   // always to an existing node, so no cycles
                 nodes.Add(n);
             }
@@ -350,7 +356,7 @@ static class Program
 
         double DutyAt(double suppliedWatts)
         {
-            var lamp = new Accumulator(100, 100);      // 100 W rated, 100 J threshold
+            var lamp = new LoadBehaviour(100, 100);      // 100 W rated, 100 J threshold
             var g = new PowerGraph();
             var src = g.AddSource("source", suppliedWatts);
             var n = g.AddNode("lamp", lamp);
@@ -373,7 +379,7 @@ static class Program
     static void NothingStartsInstantly()
     {
         Console.WriteLine("a component has to charge before it works");
-        var lamp = new Accumulator(50, 50);           // 50 W rated, 50 J threshold
+        var lamp = new LoadBehaviour(50, 50);           // 50 W rated, 50 J threshold
         var g = new PowerGraph();
         var src = g.AddSource("source", 50);
         var n = g.AddNode("lamp", lamp);
@@ -392,7 +398,7 @@ static class Program
     static void NothingStopsInstantly()
     {
         Console.WriteLine("a component coasts down when power is cut");
-        var lamp = new Accumulator(50, 50);
+        var lamp = new LoadBehaviour(50, 50);
         var g = new PowerGraph();
         var src = g.AddSource("source", 50);
         var n = g.AddNode("lamp", lamp);
@@ -412,7 +418,7 @@ static class Program
     static void ZeroDrainHolds()
     {
         Console.WriteLine("a zero-drain accumulator holds its charge");
-        var gun = new Accumulator(500, 1000, 0.0);    // draws 500 W, 1000 J, burns nothing
+        var gun = new LoadBehaviour(500, 1000, 0.0);    // draws 500 W, 1000 J, burns nothing
         var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };   // not what this test measures
         var src = g.AddSource("source", 500);
         var n = g.AddNode("gun", gun);
@@ -433,7 +439,7 @@ static class Program
     static void IdleShipDumps()
     {
         Console.WriteLine("a topped-up ship dumps everything");
-        var helm = new Accumulator(200, 100);
+        var helm = new LoadBehaviour(200, 100);
         var g = new PowerGraph();
         var r = g.AddSource("source", 500);
         var h = g.AddNode("helm", helm);
@@ -451,9 +457,87 @@ static class Program
     }
 
     // A loop traps power, so the grid says so rather than quietly failing to conserve.
+    // A1 -> A2 -> B1 -> B2 -> A1, fed at A1: every tile forwards, so power would circulate forever.
+    static void RingBlowsItsMergePoint()
+    {
+        Console.WriteLine("a ring blows its merge point");
+        var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
+        var src = g.AddSource("source", 100);
+        var a1 = g.AddNode("A1"); var a2 = g.AddNode("A2");
+        var b1 = g.AddNode("B1"); var b2 = g.AddNode("B2");
+        g.Connect(src, a1); g.Connect(a1, a2); g.Connect(a2, b1); g.Connect(b1, b2); g.Connect(b2, a1);
+
+        var popped = new List<string>();
+        g.Popped += n => popped.Add(n.Name);
+
+        g.Tick(0.05);
+        CheckTrue("nothing blows before power arrives", popped.Count == 0);
+        g.Tick(0.05);
+        CheckTrue("the merge point blows the tick power reaches it", a1.IsPopped);
+        CheckTrue("and only the merge point", popped.Count == 1 && popped[0] == "A1");
+
+        for (int t = 0; t < 20; t++) g.Tick(0.05);
+        CheckTrue("the rest of the ring is left standing", !a2.IsPopped && !b1.IsPopped && !b2.IsPopped);
+        Check("and power no longer circulates", a2.Inflow + b1.Inflow + b2.Inflow, 0);
+    }
+
+    static void UnfedRingStaysQuiet()
+    {
+        Console.WriteLine("a ring nothing feeds stays quiet");
+        var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
+        var a = g.AddNode("a"); var b = g.AddNode("b"); var c = g.AddNode("c");
+        g.Connect(a, b); g.Connect(b, c); g.Connect(c, a);
+        for (int t = 0; t < 20; t++) g.Tick(0.05);
+        CheckTrue("nothing blows", !a.IsPopped && !b.IsPopped && !c.IsPopped);
+    }
+
+    // source -> c1 -> cell -> c2 -> c1: a loop on paper, but the cell does not forward.
+    static void ComponentsBreakRings()
+    {
+        Console.WriteLine("a component in a loop means it is not a ring");
+        var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
+        var src = g.AddSource("source", 100);
+        var c1 = g.AddNode("c1");
+        var store = new BatteryBehaviour(100, 50, 1e6, 0);
+        var cell = g.AddSource("cell", store, store);
+        var c2 = g.AddNode("c2");
+        g.Connect(src, c1); g.Connect(c1, cell); g.Connect(cell, c2); g.Connect(c2, c1);
+        for (int t = 0; t < 40; t++) g.Tick(0.05);
+        CheckTrue("nothing blows", !c1.IsPopped && !c2.IsPopped);
+        CheckTrue("Validate reports no ring", g.Validate().Count == 0);
+    }
+
+    static void OpenSwitchBreaksARing()
+    {
+        Console.WriteLine("an open switch breaks a ring");
+        var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
+        var src = g.AddSource("source", 100);
+        var a = g.AddNode("a"); var b = g.AddNode("b"); var sw = g.AddNode("switch");
+        g.Connect(src, a); g.Connect(a, b); g.Connect(b, sw); g.Connect(sw, a);
+        sw.On = false;
+        for (int t = 0; t < 20; t++) g.Tick(0.05);
+        CheckTrue("open, nothing blows", !a.IsPopped);
+        sw.On = true;
+        for (int t = 0; t < 4; t++) g.Tick(0.05);
+        CheckTrue("closed, the merge point blows", a.IsPopped);
+    }
+
+    static void RingTakesAllOfAMergePointsIntegrity()
+    {
+        Console.WriteLine("a merge point with integrity is wrecked, not just dented");
+        var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
+        var src = g.AddSource("source", 100);
+        var a = g.AddNode("a"); var b = g.AddNode("b");
+        a.Integrity = new Integrity(100);
+        g.Connect(src, a); g.Connect(a, b); g.Connect(b, a);
+        for (int t = 0; t < 4; t++) g.Tick(0.05);
+        CheckTrue("its integrity is gone", a.Integrity.IsDestroyed);
+        CheckTrue("and it is severed", a.IsPopped);
+    }
+
     static void CycleDetected()
     {
-        Console.WriteLine("cycles are reported");
+        Console.WriteLine("rings are reported");
         var g = new PowerGraph();
         var r = g.AddSource("source", 1000);
         var a = g.AddNode("a");
@@ -461,12 +545,12 @@ static class Program
         g.Connect(r, a); g.Connect(a, b); g.Connect(b, a);
         var problems = g.Validate();
         bool named = false;
-        foreach (var p in problems) if (p.StartsWith("cycle")) named = true;
-        CheckTrue("Validate() names the cycle", named);
+        foreach (var p in problems) if (p.StartsWith("ring")) named = true;
+        CheckTrue("Validate() names the ring", named);
 
         var clean = new PowerGraph();
         var r2 = clean.AddSource("source", 1000);
-        var x = clean.AddNode("x", new Accumulator(100, 1e9));
+        var x = clean.AddNode("x", new LoadBehaviour(100, 1e9));
         clean.Connect(r2, x);
         CheckTrue("a sound grid reports no problems", clean.Validate().Count == 0);
     }
@@ -496,11 +580,11 @@ static class Program
     static void BatteryIsBoth()
     {
         Console.WriteLine("a node can be source and sink at once");
-        var cell = new ConstantSource(200);
-        var charge = new Accumulator(50, 1e9);
+        var cell = new ConstantSourceBehaviour(200);
+        var charge = new LoadBehaviour(50, 1e9);
         var g = new PowerGraph();
         var battery = g.AddSource("battery", cell, charge);
-        var load = g.AddNode("load", new Accumulator(100, 1e9));
+        var load = g.AddNode("load", new LoadBehaviour(100, 1e9));
         g.Connect(battery, load);
         g.Settle();
 
@@ -519,7 +603,7 @@ static class Program
         var core = new RampProducer(500, 0);
         var g = new PowerGraph();
         var src = g.AddSource("core", new ProducerSource(core));
-        var load = g.AddNode("load", new Accumulator(200, 1e9));
+        var load = g.AddNode("load", new LoadBehaviour(200, 1e9));
         var cable = g.Connect(src, load);
         g.Settle();
 
@@ -538,10 +622,10 @@ static class Program
     static void StoreHoldsWhenIsolated()
     {
         Console.WriteLine("an isolated store keeps its charge");
-        var store = new EnergyStore(0, 100, 1000);    // no intake, 100 W out, 1000 J, starts full
+        var store = new BatteryBehaviour(0, 100, 1000);    // no intake, 100 W out, 1000 J, starts full
         var g = new PowerGraph();
         var cell = g.AddSource("cell", store);
-        var load = g.AddNode("load", new Accumulator(100, 1e9));
+        var load = g.AddNode("load", new LoadBehaviour(100, 1e9));
         var cable = g.Connect(cell, load);
 
         for (int i = 0; i < 100; i++) g.Tick(0.05);  // 5 s of supplying
@@ -558,14 +642,38 @@ static class Program
     }
 
     // A store takes in and puts out in the same tick, which is the exception to endpoints-only.
+    // A cell nearly empty and trickle-fed must not offer its full rating: that makes power from nothing.
+    static void EmptyStoreCannotSupplyMoreThanItGets()
+    {
+        Console.WriteLine("a nearly empty cell cannot supply more than it is given");
+        var store = new BatteryBehaviour(100, 100, 1000, 0.1);
+        var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
+        var src = g.AddSource("trickle", 2);
+        var cell = g.AddSource("cell", store, store);
+        var load = g.AddNode("load", new LoadBehaviour(100, 1e9));
+        g.Connect(src, cell);
+        g.Connect(cell, load);
+
+        double delivered = 0.0, fed = 0.0;
+        for (int t = 0; t < 400; t++)
+        {
+            g.Tick(0.05);
+            delivered += load.Drawn * 0.05;
+            fed += cell.Drawn * 0.05;
+        }
+        Console.WriteLine($"         delivered {delivered:0.##} J, held 0.1 J + fed {fed:0.##} J");
+        CheckTrue("over 20 s it delivers no more than it held plus what it was fed", delivered <= fed + 0.1 + 1e-9);
+        Check("so it settles at the trickle", cell.Offered, 2, 0.01);
+    }
+
     static void StoreChargesAndSuppliesAtOnce()
     {
         Console.WriteLine("a store charges from its input while supplying its output");
-        var store = new EnergyStore(100, 100, 1000, 500);   // 100 W in, 100 W out, half full
+        var store = new BatteryBehaviour(100, 100, 1000, 500);   // 100 W in, 100 W out, half full
         var g = new PowerGraph();
         var src = g.AddSource("source", 200);
         var cell = g.AddSource("cell", store, store);       // both faces on one node
-        var load = g.AddNode("load", new Accumulator(100, 1e9));
+        var load = g.AddNode("load", new LoadBehaviour(100, 1e9));
         g.Connect(src, cell);
         g.Connect(cell, load);
         g.Settle();
@@ -573,16 +681,17 @@ static class Program
         Check("arriving from upstream", cell.Arriving, 200);
         Check("charging from the input", cell.Drawn, 100);
         Check("offering to the output", cell.Offered, 100);
-        Check("passing on the rest plus its own output", cell.Passed, 200);
+        Check("passing on only its own output", cell.Passed, 100);
+        Check("what it cannot bank is heat at the cell", cell.Dumped, 100);
         Check("load takes its rating", load.Drawn, 100);
-        Check("nothing is lost", cell.Arriving + cell.Offered, cell.Drawn + cell.Passed);
+        Check("nothing is lost", cell.Arriving + cell.Offered, cell.Drawn + cell.Passed + cell.Dumped);
     }
 
     // Turning a component off takes it out of the graph, so the cable before it becomes the dead end.
     static void SwitchedOffNodeRejectsPower()
     {
         Console.WriteLine("a node that is off rejects power");
-        var lamp = new Accumulator(50, 1e9);
+        var lamp = new LoadBehaviour(50, 1e9);
         var g = new PowerGraph();
         var src = g.AddSource("source", 100);
         var cable = g.AddNode("cable");
@@ -606,7 +715,7 @@ static class Program
         Check("off: source still pushing", src.Offered, 100);
 
         // and what it was holding fades rather than freezing
-        var fading = new Accumulator(50, 50);
+        var fading = new LoadBehaviour(50, 50);
         var g2 = new PowerGraph();
         var s2 = g2.AddSource("source", 50);
         var lamp2 = g2.AddNode("lamp", fading);
@@ -653,7 +762,7 @@ static class Program
     static void HeatShedsWhenNothingIsWasted()
     {
         Console.WriteLine("a grid that wastes nothing cools off");
-        var lamp = new Accumulator(100, 1e9);
+        var lamp = new LoadBehaviour(100, 1e9);
         var g = new PowerGraph();
         var src = g.AddSource("source", 100);
         var cable = g.AddNode("cable");
@@ -801,7 +910,7 @@ static class Program
         var loads = new PowerNode[3];
         for (int i = 0; i < 3; i++)
         {
-            loads[i] = g.AddNode("branch" + i, new Accumulator(333, 1e9));
+            loads[i] = g.AddNode("branch" + i, new LoadBehaviour(333, 1e9));
             g.Connect(trunk, loads[i]);
         }
         g.Settle();
@@ -843,7 +952,7 @@ static class Program
 
         var g = new PowerGraph { PopSeed = 3, ConductionPerSecond = 0.0 };
         var src = g.AddSource("reactor", 1000);
-        src.Durability = new Durability(100);                 // the reactor is a component
+        src.Integrity = new Integrity(100);                 // the reactor is a component
         var cable = g.AddNode("cable");                       // bare conduit, no durability
         g.Connect(src, cable);
         g.Settle();
@@ -851,12 +960,12 @@ static class Program
         var damaged = new List<string>();
         var lost = new List<string>();
         var popped = new List<string>();
-        g.Damaged += n => damaged.Add($"{n.Name} -> {n.Durability}");
+        g.Damaged += n => damaged.Add($"{n.Name} -> {n.Integrity}");
         g.Lost += n => lost.Add(n.Name);
         g.Popped += n => popped.Add(n.Name);
 
         src.Celsius = 300.0;
-        for (int t = 0; t < 400 && !src.Durability.IsDestroyed; t++)
+        for (int t = 0; t < 400 && !src.Integrity.IsDestroyed; t++)
         {
             g.Tick(0.05);
             if (src.Celsius < 300.0) src.Celsius = 300.0;     // hold it in the fire
@@ -866,21 +975,21 @@ static class Program
         Check("four hits ended it", damaged.Count, 4);
         Check("and it reported the loss once", lost.Count, 1);
         CheckTrue("the reactor never 'popped' - only the bare cable did", !popped.Contains("reactor"));
-        CheckTrue("it is not severed, it is spent", !src.IsPopped && src.Durability.IsDestroyed);
+        CheckTrue("it is not severed, it is spent", !src.IsPopped && src.Integrity.IsDestroyed);
         g.Settle();
         Check("a spent component produces nothing", src.Offered, 0);
 
         // it is wrecked, not removed: still wired in, still fed, still wasting
         var w = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
         var feed = w.AddSource("feed", 200);
-        var pump = w.AddNode("pump", new Accumulator(80, 1e9));
-        pump.Durability = new Durability(100);
+        var pump = w.AddNode("pump", new LoadBehaviour(80, 1e9));
+        pump.Integrity = new Integrity(100);
         w.Connect(feed, pump);
         w.Settle();
         Check("sound: it draws its rating", pump.Drawn, 80);
         Check("sound: and wastes the rest", pump.Dumped, 120);
 
-        pump.Durability.TakeDamage(100.0);
+        pump.Integrity.TakeDamage(100.0);
         w.Settle();
         CheckTrue("wrecked", pump.IsWrecked);
         CheckTrue("still in the grid", pump.CanReceivePower());
@@ -896,10 +1005,10 @@ static class Program
 
         int MisfiresAt(double conditionFraction, int cycles)
         {
-            var wear = new Durability(100, seed: 11);
+            var wear = new Integrity(100, seed: 11);
             wear.TakeDamage(100.0 * (1.0 - conditionFraction));
 
-            var gun = new Accumulator(500, 500, 0.0) { Durability = wear };
+            var gun = new LoadBehaviour(500, 500, 0.0) { Integrity = wear };
             var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
             var src = g.AddSource("source", 500);
             var node = g.AddNode("gun", gun);
@@ -928,13 +1037,13 @@ static class Program
         Console.WriteLine("three tiers of cell");
 
         // cell -> cable -> cable -> lamp, with a switch we can open partway along
-        PowerGraph Rig(EnergyStore cell, out PowerNode cellNode, out PowerEdge cut, out Accumulator lamp)
+        PowerGraph Rig(BatteryBehaviour cell, out PowerNode cellNode, out PowerEdge cut, out LoadBehaviour lamp)
         {
             var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
             cellNode = g.AddSource("cell", cell);
             var a = g.AddNode("cable a");
             var b = g.AddNode("cable b");
-            lamp = new Accumulator(100, 1e9);
+            lamp = new LoadBehaviour(100, 1e9);
             var load = g.AddNode("lamp", lamp);
             g.Connect(cellNode, a);
             cut = g.Connect(a, b);
@@ -944,7 +1053,7 @@ static class Program
         }
 
         // --- plain cell: cannot see past its own conduit ---
-        var plain = new EnergyStore(0, 100, 100000);
+        var plain = new BatteryBehaviour(0, 100, 100000);
         var g1 = Rig(plain, out var n1, out var cut1, out _);
         Check("plain: supplying", n1.Offered, 100);
         cut1.Enabled = false;                       // switch opened two tiles away
@@ -953,7 +1062,7 @@ static class Program
         CheckTrue("plain: so the cable before the break cooks", g1.TotalDumped > 0);
 
         // --- safety cell: looks for a component, not just a cable ---
-        var safety = new SafetyStore(0, 100, 100000);
+        var safety = new SafetyBatteryBehaviour(0, 100, 100000);
         var g2 = Rig(safety, out var n2, out var cut2, out _);
         Check("safety: supplying", n2.Offered, 100);
         cut2.Enabled = false;
@@ -962,7 +1071,7 @@ static class Program
         Check("safety: and nothing is wasted", g2.TotalDumped, 0);
 
         // --- safety cell still feeds a component that is merely full ---
-        var safety2 = new SafetyStore(0, 100, 100000);
+        var safety2 = new SafetyBatteryBehaviour(0, 100, 100000);
         var g3 = Rig(safety2, out var n3, out _, out var lamp3);
         for (int t = 0; t < 40; t++) g3.Tick(0.05);
         lamp3.Enabled = false;                      // module off: wants nothing, but is still there
@@ -970,7 +1079,7 @@ static class Program
         CheckTrue("safety: keeps pushing at a sated grid", n3.Offered > 0);
 
         // --- smart cell: reads demand, and has a dial ---
-        var smart = new SmartStore(0, 100, 100000);
+        var smart = new SmartBatteryBehaviour(0, 100, 100000);
         var g4 = Rig(smart, out var n4, out _, out var lamp4);
         Check("smart: supplying while something wants it", n4.Offered, 100);
 
@@ -994,9 +1103,9 @@ static class Program
         core.TargetWithdrawal = 1.0;
 
         var g = new PowerGraph { PopSeed = 2 };
-        var reactor = g.AddSource("reactor", new Reactor(core, null));
-        reactor.Durability = new Durability(100);
-        var load = g.AddNode("load", new Accumulator(100, 1e9));
+        var reactor = g.AddSource("reactor", new ReactorBehaviour(core, null));
+        reactor.Integrity = new Integrity(100);
+        var load = g.AddNode("load", new LoadBehaviour(100, 1e9));
         g.Connect(reactor, load);
 
         for (int t = 0; t < 1200; t++) g.Tick(0.05);       // 60 s: rods take 20 s to come up
@@ -1005,7 +1114,7 @@ static class Program
         Check("producing its rating", reactor.Offered, 100);
         Check("and it is sitting at its working temperature", reactor.Celsius, 400, 0.5);
         Check("which reads as zero excess", reactor.HeatAboveBaseline, 0, 0.5);
-        Check("so it takes no damage for running", reactor.Durability.Fraction, 1.0);
+        Check("so it takes no damage for running", reactor.Integrity.Fraction, 1.0);
 
         // now shove it above where it should be
         reactor.Celsius = 500.0;
@@ -1022,8 +1131,8 @@ static class Program
 
         var core = new FissionCore { RaisePerSecond = 0.05, DropPerSecond = 0.5 };
         var g = new PowerGraph();
-        var reactor = g.AddSource("reactor", new Reactor(core, null));
-        g.Connect(reactor, g.AddNode("load", new Accumulator(100, 1e9)));
+        var reactor = g.AddSource("reactor", new ReactorBehaviour(core, null));
+        g.Connect(reactor, g.AddNode("load", new LoadBehaviour(100, 1e9)));
 
         core.TargetWithdrawal = 1.0;
         double t1 = 0.0;
@@ -1048,8 +1157,8 @@ static class Program
         core.TargetWithdrawal = 1.0;
 
         var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
-        var reactor = g.AddSource("reactor", new Reactor(core, null, coolant));
-        g.Connect(reactor, g.AddNode("load", new Accumulator(100, 1e9)));
+        var reactor = g.AddSource("reactor", new ReactorBehaviour(core, null, coolant));
+        g.Connect(reactor, g.AddNode("load", new LoadBehaviour(100, 1e9)));
         for (int t = 0; t < 600; t++) g.Tick(0.05);        // spin up
 
         Check("drum untouched while the dial is at zero", coolant.Litres, 100);
@@ -1080,32 +1189,30 @@ static class Program
         Console.WriteLine("the starter is for starting, not for running");
 
         var core = new FissionCore { OutputPerCore = 200, Cores = 1, RaisePerSecond = 0.5, DropPerSecond = 0.5 };
-        var control = new Accumulator(20, 40);          // 20 W to hold, 40 J of grip once cut
-        var reactor = new Reactor(core, control);
+        var control = new LoadBehaviour(20, 40);          // 20 W to hold, 40 J of grip once cut
+        var reactor = new ReactorBehaviour(core, control);
 
         var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
-        var cell = new EnergyStore(0, 20, 100000);
+        var cell = new BatteryBehaviour(0, 20, 100000);
         var battery = g.AddSource("battery", cell);
         var feed = g.AddNode("control feed");
         var node = g.AddSource("reactor", reactor, reactor);   // both faces on one tile
         var bus = g.AddNode("bus");
-        var load = g.AddNode("load", new Accumulator(200, 1e9));
+        var load = g.AddNode("load", new LoadBehaviour(200, 1e9));
         g.Connect(battery, feed);
         var supply = g.Connect(feed, node);
         g.Connect(node, bus);
         g.Connect(bus, load);
 
-        // cold start: asking for rods before the magnets have their grip gets you nowhere
+        // cold start: the crew can ask for rods before the magnets grip; they rise once they do
         core.TargetWithdrawal = 1.0;
         g.Tick(0.05);
         CheckTrue("magnets not yet charged", !reactor.RodsHeld);
-        Check("so the request was dropped on the spot", core.TargetWithdrawal, 0);
+        Check("the dial stays where the crew put it", core.TargetWithdrawal, 1.0);
+        Check("but the rods cannot rise without grip", core.Withdrawal, 0);
 
-        for (int t = 0; t < 400; t++) g.Tick(0.05);      // let control charge
+        for (int t = 0; t < 400; t++) g.Tick(0.05);      // control charges, then the rods climb
         CheckTrue("magnets holding", reactor.RodsHeld);
-        Check("but the rods are still down", core.Withdrawal, 0);
-
-        core.TargetWithdrawal = 1.0;                     // now it takes
         for (int t = 0; t < 400; t++) g.Tick(0.05);
         Check("rods up", core.Withdrawal, 1.0);
         Check("and it is exporting, less its own house load", node.Offered, 180, 0.5);
@@ -1123,53 +1230,49 @@ static class Program
         for (int t = 0; t < 600; t++) g.Tick(0.05);
         CheckTrue("with no production and no starter, the magnets die", !reactor.RodsHeld);
 
-        core.TargetWithdrawal = 1.0;
-        g.Tick(0.05);
-        Check("and it cannot be restarted from nothing", core.TargetWithdrawal, 0);
+        core.TargetWithdrawal = 1.0;                      // the crew asks for power back
+        for (int t = 0; t < 40; t++) g.Tick(0.05);
+        Check("the dial holds what the crew asked for", core.TargetWithdrawal, 1.0);
+        Check("but with no grip the rods cannot rise", core.Withdrawal, 0);
 
         supply.Enabled = true;                            // starter back on
         for (int t = 0; t < 400; t++) g.Tick(0.05);
         CheckTrue("magnets live again", reactor.RodsHeld);
-
-        core.TargetWithdrawal = 1.0;                     // someone walks over
-        for (int t = 0; t < 200; t++) g.Tick(0.05);
-        Check("and then it comes back", node.Offered, 180, 0.5);
+        Check("and the rods climb back to the dial on their own", node.Offered, 180, 0.5);
     }
 
     // Power fed to the magnets must not leave by the output port.
     static void DiodeStopsControlPowerLeakingOut()
     {
-        Console.WriteLine("a diode stops control power leaking into the ship");
+        Console.WriteLine("a component never passes power through");
 
-        // A plain node with a 20 W load and an output: the comparison the reactor cannot make for
-        // itself, because it insists on its own diode every tick.
-        double LeakedWith(bool diode)
+        // The same tile as a bare conduit and as a 20 W load, each with an output onward.
+        double PassedOnBy(bool component)
         {
             var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
             var feed = g.AddSource("feed", 100);
-            var box = g.AddNode("box", new Accumulator(20, 1e9));
-            var downstream = g.AddNode("ship", new Accumulator(500, 1e9));
+            var box = component ? g.AddNode("box", new LoadBehaviour(20, 1e9)) : g.AddNode("box");
+            var downstream = g.AddNode("ship", new LoadBehaviour(500, 1e9));
             g.Connect(feed, box);
             g.Connect(box, downstream);
-            box.PassesThrough = !diode;
             g.Settle();
             return downstream.Inflow;
         }
 
-        Check("without a diode, 80 W of the feed leaks downstream", LeakedWith(false), 80);
-        Check("with one, nothing leaks", LeakedWith(true), 0);
+        Check("a bare conduit passes the whole feed on", PassedOnBy(false), 100);
+        Check("a component passes none of it on", PassedOnBy(true), 0);
 
-        // and the reactor fits its own, without being asked
+        // and a reactor is a component like any other
         var core2 = new FissionCore { OutputPerCore = 100, Cores = 1 };
-        var r2 = new Reactor(core2, new Accumulator(20, 40));
+        var r2 = new ReactorBehaviour(core2, new LoadBehaviour(20, 40));
         var g2 = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
         var feed2 = g2.AddSource("feed", 100);
         var rn = g2.AddSource("reactor", r2, r2);
-        var ship = g2.AddNode("ship", new Accumulator(500, 1e9));
+        var ship = g2.AddNode("ship", new LoadBehaviour(500, 1e9));
         g2.Connect(feed2, rn);
         g2.Connect(rn, ship);
         g2.Settle();
-        CheckTrue("the reactor sets its own diode", !rn.PassesThrough);
+        CheckTrue("the reactor does not forward", !rn.ForwardsPower);
         Check("rods down, so nothing reaches the ship", ship.Inflow, 0);
         Check("and the feed it could not use is heat at the reactor", rn.Dumped, 80);
     }
@@ -1181,9 +1284,9 @@ static class Program
 
         // reactor -> cable -> cell -> cable -> back to the reactor's control input
         var core = new FissionCore { OutputPerCore = 100, Cores = 1, RaisePerSecond = 1.0 };
-        var control = new Accumulator(20, 40);
-        var reactor = new Reactor(core, control);
-        var cell = new EnergyStore(100, 100, 5000, 5000);   // starts full, so it stops absorbing early
+        var control = new LoadBehaviour(20, 40);
+        var reactor = new ReactorBehaviour(core, control);
+        var cell = new BatteryBehaviour(100, 100, 5000, 5000);   // starts full, so it stops absorbing early
 
         var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
         var rnode = g.AddSource("reactor", reactor, reactor);
@@ -1195,7 +1298,7 @@ static class Program
         g.Connect(cnode, back);
         g.Connect(back, rnode);
 
-        CheckTrue("Validate still flags it as a cycle", g.Validate().Count > 0);
+        CheckTrue("Validate does not flag it: the reactor and the cell each break the loop", g.Validate().Count == 0);
 
         for (int t = 0; t < 60; t++) g.Tick(0.05);
         core.TargetWithdrawal = 1.0;
@@ -1221,14 +1324,14 @@ static class Program
         Console.WriteLine("a running reactor holds its own rods");
 
         var core = new FissionCore { OutputPerCore = 100, Cores = 1, RaisePerSecond = 0.5 };
-        var control = new Accumulator(20, 40);
-        var reactor = new Reactor(core, control);
+        var control = new LoadBehaviour(20, 40);
+        var reactor = new ReactorBehaviour(core, control);
 
         var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
         var starter = g.AddSource("starter", 100);
         var feed = g.AddNode("starter feed");
         var node = g.AddSource("reactor", reactor, reactor);
-        var ship = g.AddNode("ship", new Accumulator(500, 1e9));
+        var ship = g.AddNode("ship", new LoadBehaviour(500, 1e9));
         g.Connect(starter, feed);
         var starterCable = g.Connect(feed, node);
         g.Connect(node, ship);
@@ -1265,13 +1368,13 @@ static class Program
         Console.WriteLine("rods can be lowered as well as raised");
 
         var core = new FissionCore { OutputPerCore = 100, Cores = 1, RaisePerSecond = 0.5, DropPerSecond = 0.5 };
-        var reactor = new Reactor(core, new Accumulator(20, 40));
+        var reactor = new ReactorBehaviour(core, new LoadBehaviour(20, 40));
 
         var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
         var starter = g.AddSource("starter", 100);
         var node = g.AddSource("reactor", reactor, reactor);
         g.Connect(starter, node);
-        g.Connect(node, g.AddNode("ship", new Accumulator(500, 1e9)));
+        g.Connect(node, g.AddNode("ship", new LoadBehaviour(500, 1e9)));
 
         for (int t = 0; t < 200; t++) g.Tick(0.05);
         core.TargetWithdrawal = 1.0;
@@ -1301,13 +1404,13 @@ static class Program
         Console.WriteLine("throttling below house load self-scrams");
 
         var core = new FissionCore { OutputPerCore = 100, Cores = 1, RaisePerSecond = 0.5, DropPerSecond = 0.5 };
-        var reactor = new Reactor(core, new Accumulator(20, 40));
+        var reactor = new ReactorBehaviour(core, new LoadBehaviour(20, 40));
 
         var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
         var starter = g.AddSource("starter", 100);
         var node = g.AddSource("reactor", reactor, reactor);
         var starterCable = g.Connect(starter, node);
-        g.Connect(node, g.AddNode("ship", new Accumulator(500, 1e9)));
+        g.Connect(node, g.AddNode("ship", new LoadBehaviour(500, 1e9)));
 
         for (int t = 0; t < 200; t++) g.Tick(0.05);
         core.TargetWithdrawal = 1.0;
@@ -1332,9 +1435,11 @@ static class Program
         Check("so it scrams itself", core.Withdrawal, 0);
         Check("and is making nothing", core.WattsProduced, 0);
 
+        Check("the dial is still where the crew left it", core.TargetWithdrawal, 0.1);
         core.TargetWithdrawal = 1.0;
-        g.Tick(0.05);
-        Check("and cannot be restarted without the starter", core.TargetWithdrawal, 0);
+        for (int t = 0; t < 40; t++) g.Tick(0.05);
+        Check("with no grip the rods stay down", core.Withdrawal, 0);
+        Check("so it cannot be restarted without the starter", core.WattsProduced, 0);
     }
 
     // Power moves one hop per tick, which is the surge you see when a conduit is reconnected.

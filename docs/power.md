@@ -1,7 +1,7 @@
 # Power, heat and the machine
 
 The spine of the game. Everything here is implemented in `Assets/#User/SpaceScape/scripts/Power/` as
-plain C# with **no Unity references**, and is covered by 224 tests that run outside the Editor
+plain C# with **no Unity references**, and is covered by 242 tests that run outside the Editor
 (`dotnet run` against the real source files, see `README.md`).
 
 Status markers: **Decided** — settled and built. **Open** — see `open-questions.md`.
@@ -138,23 +138,27 @@ fact gives both halves of the switch-placement lesson:
 
 ### Does power pass through?
 
-**Decided and built.** `PowerNode.PassesThrough`, default true.
+**Decided and built.** Only a conduit. `PowerNode.ForwardsPower` is true exactly when a tile has no
+source and no sink, so every component is a diode: its input fills its own hold, and its output
+carries only what it chose to release. Arriving surplus it did not take lands as heat on it.
 
 - a **cable** passes through, obviously
-- a **store** passes through, which is what makes a cell mid-run behave as a UPS
-- a **reactor** does not. A diode across its casing means power fed to its magnets cannot leave by
-  its output port, so its output carries only what its core made
+- a **battery** does not. Everything downstream of one gets at most its discharge rate
+- a **reactor** does not, so power fed to its magnets cannot leave by its output port
 
-Without that, a component with both an input and an output forwards arriving surplus *on top of* its
-own production — which in a loop compounds on every lap. Conservation holds either way:
-`in = drawn + blocked + passed`, with `blocked` landing as heat.
+A component that forwarded would push arriving surplus out *on top of* its own production, which in
+a loop compounds on every lap. Conservation: `in = drawn + blocked + passed`, with `blocked` as heat.
+
+**A ring of conduits blows its merge point.** A cycle made only of forwarding tiles would circulate
+power forever, so the tile where power enters the ring is severed the tick power reaches it. A loop
+through any component is not a ring. See `modules.md` → One tick.
 
 **Wrecked means broken, not removed.** A destroyed component stays wired in, keeps being fed, and
 does nothing with it — so it becomes a dead end cooking its own compartment. Busted pistons, engine
 still running. Whether a wrecked thing does anything is asked in exactly one place
 (`PowerNode.IsWrecked`, consulted by the graph), so every source and sink type gets it free.
 
-## Sinks: everything is an accumulator
+## Sinks: everything is a load
 
 **Decided.** There is one sink type. A bulb, a helm and a gun differ only in their numbers.
 
@@ -223,18 +227,18 @@ The split earns itself with one equation, which is the design restated:
 
 ### Batteries
 
-`EnergyStore` is one charge with a sink face and a source face — the single exception to
-components-being-endpoints, and it needs an input conduit and an output conduit.
+`BatteryBehaviour` is one hold with a sink face and a source face, so it needs an input conduit and
+an output conduit. It can never offer more than its hold can give in one tick.
 
 **A sink draws only from what arrived, never from its own node's output**, or a battery charges from
 its own discharge and swallows everything. `Arriving` and `Inflow` are separate for exactly this.
 
-A cell mid-run is a UPS that nobody designed: 200 W arriving, it charges at 100 W, discharges at
-100 W and passes 200 W on, all in the same tick, conserving exactly.
+A cell mid-run is a UPS: 200 W arriving, it charges at 100 W and discharges at 100 W in the same
+tick, and the 100 W it could not bank is heat on the cell. It never passes arriving power on.
 
 ### Three cell tiers
 
-**Decided and built.** `EnergyStore` is the base; each tier overrides one question.
+**Decided and built.** `BatteryBehaviour` is the base; each tier overrides one question.
 
 | tier | asks | pushes into a dead run? | idle ship |
 |---|---|---|---|
@@ -321,7 +325,7 @@ and is wasting nothing.
   back
 - a **component** takes `PopDamage = 25` off its condition instead, so four hits end it
 
-`Durability` also makes a component unreliable before it is gone: below 20% condition it **misfires**
+`Integrity` also makes a component unreliable before it is gone: below 20% condition it **misfires**
 — spends its charge and does nothing — with the chance scaling from zero at the worn line to
 `FailureChanceWhenSpent` at nothing left. At 2% condition: 95 misfires in 200 cycles. The gun
 charges, fires, nothing comes out, and it keeps drawing power to recharge, so it keeps wearing itself

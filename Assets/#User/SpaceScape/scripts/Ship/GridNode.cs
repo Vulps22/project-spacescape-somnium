@@ -10,8 +10,6 @@ namespace SpaceScape.Ship
     public sealed class GridNode : MonoBehaviour
     {
         [SerializeField] private Vector3Int _size = Vector3Int.one;
-        [SerializeField] private GridDirection[] _outputs = new GridDirection[0];
-        [SerializeField] private GridDirection[] _inputs = new GridDirection[0];
         [SerializeField] private bool _on = true;
 
         [Header("Readout")]
@@ -21,39 +19,18 @@ namespace SpaceScape.Ship
         /// The sim node this stands for, handed over by PowerGrid once the graph is built.
         public PowerNode Node { get; private set; }
 
-        /// Faces this tile sends power out of, as authored.
-        public GridDirection[] AuthoredOutputs => _outputs;
+        /// Which faces power crosses on this tile, or null when it has none.
+        public NodeEdgeModule Edges => TryGetComponent<NodeEdgeModule>(out var edges) ? edges : null;
 
-        /// Faces this tile will accept power at, as authored. Empty means it does not mind.
-        public GridDirection[] AuthoredInputs => _inputs;
-
-        /// Every face power leaves by: this tile's own, plus whatever the installed modules opened.
+        /// Every face power leaves by.
         public IEnumerable<GridDirection> Outputs
         {
             get
             {
-                for (int i = 0; i < _outputs.Length; i++)
-                    if (_outputs[i] != GridDirection.None) yield return _outputs[i];
-
-                var modules = GetComponentsInChildren<ConduitModule>();
-                for (int i = 0; i < modules.Length; i++)
-                {
-                    var extra = modules[i].ExtraOutputs;
-                    if (extra == null) continue;
-                    for (int j = 0; j < extra.Length; j++)
-                        if (extra[j] != GridDirection.None) yield return extra[j];
-                }
+                var edges = Edges;
+                if (edges == null) yield break;
+                foreach (var face in edges.Outputs) yield return face;
             }
-        }
-
-        /// Whether power may enter by a given face. A tile with no inputs declared takes it from
-        /// anywhere, so only the things that care — a reactor's control socket, say — need saying.
-        public bool AcceptsFrom(GridDirection face)
-        {
-            if (_inputs.Length == 0) return true;
-            for (int i = 0; i < _inputs.Length; i++)
-                if (_inputs[i] == face) return true;
-            return false;
         }
 
         /// Faces power arrives by: every neighbour that points at this tile. Read from the graph
@@ -63,13 +40,6 @@ namespace SpaceScape.Ship
         {
             get
             {
-                if (_inputs.Length > 0)
-                {
-                    for (int i = 0; i < _inputs.Length; i++)
-                        if (_inputs[i] != GridDirection.None) yield return _inputs[i];
-                    yield break;
-                }
-
                 var here = Coordinate;
 
                 if (Node != null)
@@ -316,9 +286,8 @@ namespace SpaceScape.Ship
                 Gizmos.DrawLine(transform.position, transform.position + face.Vector() * 0.9f);
 
             Gizmos.color = new Color(0.4f, 0.8f, 1f, 0.6f);
-            for (int i = 0; i < _inputs.Length; i++)
-                if (_inputs[i] != GridDirection.None)
-                    Gizmos.DrawLine(transform.position, transform.position + _inputs[i].Vector() * 0.6f);
+            foreach (var face in InputFaces)
+                Gizmos.DrawLine(transform.position, transform.position + face.Vector() * 0.6f);
         }
     }
 }
