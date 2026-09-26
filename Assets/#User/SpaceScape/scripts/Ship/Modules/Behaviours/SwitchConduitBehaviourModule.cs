@@ -6,6 +6,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// one decides what it costs: beside a source the source stops, further along the cable before it cooks.
     public sealed class SwitchConduitBehaviourModule : ConduitBehaviourModule
     {
+        [Tooltip("Ticked: part of the grid. Unticked: the whole tile is off, and whatever feeds it has nowhere to go.")]
         [SerializeField] private bool _closed = true;
 
         /// True while the tile is part of the grid.

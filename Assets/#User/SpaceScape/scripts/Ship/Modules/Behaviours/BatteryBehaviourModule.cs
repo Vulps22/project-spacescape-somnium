@@ -9,11 +9,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     [RequireComponent(typeof(CapacitorModule))]
     public class BatteryBehaviourModule : BehaviourModule
     {
+        [Tooltip("Most it takes in, in watts, while it has room. Anything more arriving is heat on the cell.")]
         [SerializeField] private double _chargeWatts = 100.0;
+        [Tooltip("Most it puts out, in watts, when its release rule allows. Never more than it holds.")]
         [SerializeField] private double _dischargeWatts = 100.0;
 
         [Header("Readout")]
+        [Tooltip("Debug text showing charge and temperature. Optional.")]
         [SerializeField] private TMP_Text _readout;
+        [Tooltip("Seconds between readout updates.")]
         [SerializeField] private float _readoutInterval = 0.25f;
 
         private BatteryBehaviour _battery;

@@ -7,16 +7,23 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// harder the core is working, so output is readable from across the room with no numbers.
     public sealed class ReactorLamp : MonoBehaviour
     {
+        [Tooltip("The reactor this lamp watches. Found automatically in a parent.")]
         [SerializeField] private ReactorBehaviourModule _reactor;
+        [Tooltip("The light that shines. Found automatically in a child.")]
         [SerializeField] private Light _light;
+        [Tooltip("The bulb mesh tinted to match. Found automatically on the light.")]
         [SerializeField] private Renderer _bulb;
 
         [Header("Colours")]
+        [Tooltip("Colour while the magnets hold charge but the core makes nothing.")]
         [SerializeField] private Color _accumulating = new Color(1f, 0.62f, 0.1f);
+        [Tooltip("Colour while the core is making power.")]
         [SerializeField] private Color _producing = new Color(0.25f, 1f, 0.4f);
+        [Tooltip("Brightness of the light when on.")]
         [SerializeField] private float _intensity = 3f;
 
         [Header("Spin")]
+        [Tooltip("How fast the lamp spins at full output. It spins proportionally slower below that.")]
         [SerializeField] private float _maxDegreesPerSecond = 220f;
 
         private MaterialPropertyBlock _block;

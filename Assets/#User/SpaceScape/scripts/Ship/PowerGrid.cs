@@ -7,7 +7,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// Builds the ship's grid from what is in the scene, then ticks it at a fixed rate.
     public sealed class PowerGrid : MonoBehaviour
     {
+        [Tooltip("How many times a second the grid is simulated. Behaviour is per second, so this changes smoothness, not speed.")]
         [SerializeField] private float _ticksPerSecond = 20f;
+        [Tooltip("Logs wiring problems (rings, unreachable loads, loose tiles) when the grid is built.")]
         [SerializeField] private bool _logValidation = true;
 
         private PowerGraph _graph;
@@ -23,11 +25,19 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _step = 1.0 / Mathf.Max(1f, _ticksPerSecond);
 
             Build();
+            _graph.Popped += n => Report("Popped", n, "severed, carries nothing from now on");
+            _graph.Damaged += n => Report("Damaged", n, $"condition {n.Integrity}");
+            _graph.Lost += n => Report("Lost", n, "wrecked, still wired in and wasting what it gets");
 
             if (!_logValidation) return;
             foreach (var problem in _graph.Validate())
                 Debug.LogWarning($"PowerGrid: {problem}", this);
         }
+
+        /// Logs a thermal failure with what the tile was doing when it happened.
+        private static void Report(string what, PowerNode node, string outcome) =>
+            Debug.LogWarning($"[SpaceScape] {what}() '{node.Name}' — {outcome}; {node.Celsius:0} C " +
+                             $"({node.HeatAboveBaseline:0} over), in {node.Inflow:0} W, wasting {node.Dumped:0} W");
 
         /// Turns every GridNode and Conduit in the scene into the sim's nodes and edges.
         private void Build()

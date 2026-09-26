@@ -6,12 +6,17 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// How much punishment a tile has left, and which model shows how damaged it is.
     public sealed class IntegrityModule : Module
     {
+        [Tooltip("Condition when new. Each heat failure takes the grid's Pop Damage (25) off it; at 0 it is wrecked.")]
         [SerializeField] private double _max = 100.0;
+        [Tooltip("Share of full condition below which it starts to misfire. 0.2 means below 20% of Max.")]
         [SerializeField, Range(0f, 1f)] private float _wornBelowFraction = 0.2f;
+        [Tooltip("Chance of a misfire at 0 condition. Rises from nothing at the worn line to this.")]
         [SerializeField, Range(0f, 1f)] private float _failureChanceWhenSpent = 0.5f;
 
         [Header("Damage models")]
+        [Tooltip("Condition shares (0-1), one per damage model in the same order. Below a threshold its model shows; the lowest passed wins.")]
         [SerializeField] private float[] _damageThresholds = new float[0];
+        [Tooltip("Objects to show as it gets damaged, paired by order with the thresholds. The rest are hidden.")]
         [SerializeField] private GameObject[] _damageModels = new GameObject[0];
 
         private Integrity _integrity;

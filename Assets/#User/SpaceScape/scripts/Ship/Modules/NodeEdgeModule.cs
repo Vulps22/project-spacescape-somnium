@@ -7,11 +7,17 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// cannot disagree. Faces are world directions until live rewiring makes them turn with the tile.
     public sealed class NodeEdgeModule : Module
     {
+        [Tooltip("The +X face (world): In takes power from a neighbour's Out, Out sends to a neighbour's In, None is sealed.")]
         [SerializeField] private FlowDirection _xPlus = FlowDirection.In;
+        [Tooltip("The -X face (world): In, Out or None.")]
         [SerializeField] private FlowDirection _xMinus = FlowDirection.In;
+        [Tooltip("The +Y face (world): In, Out or None.")]
         [SerializeField] private FlowDirection _yPlus = FlowDirection.In;
+        [Tooltip("The -Y face (world): In, Out or None.")]
         [SerializeField] private FlowDirection _yMinus = FlowDirection.In;
+        [Tooltip("The +Z face (world): In, Out or None.")]
         [SerializeField] private FlowDirection _zPlus = FlowDirection.In;
+        [Tooltip("The -Z face (world): In, Out or None.")]
         [SerializeField] private FlowDirection _zMinus = FlowDirection.In;
 
         private static readonly GridDirection[] AllFaces =

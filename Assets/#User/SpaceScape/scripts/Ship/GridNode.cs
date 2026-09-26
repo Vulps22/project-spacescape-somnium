@@ -10,11 +10,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     [SelectionBase]
     public sealed class GridNode : MonoBehaviour
     {
+        [Tooltip("How many cells this occupies (x, y, z). A cable is 1,1,1. A face covers a whole side.")]
         [SerializeField] private Vector3Int _size = Vector3Int.one;
+        [Tooltip("Part of the grid while ticked. Behaviours and switches set this; off means nothing enters or leaves.")]
         [SerializeField] private bool _on = true;
 
         [Header("Readout")]
+        [Tooltip("Debug text showing power in, drawn, wasted and temperature. Optional.")]
         [SerializeField] private TMP_Text _readout;
+        [Tooltip("Seconds between readout updates.")]
         [SerializeField] private float _readoutInterval = 0.25f;
 
         /// The sim node this stands for, handed over by PowerGrid once the graph is built.

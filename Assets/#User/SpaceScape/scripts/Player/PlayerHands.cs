@@ -8,6 +8,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Player
     [RequireComponent(typeof(SomniumPlayersContainer))]
     public sealed class PlayerHands : MonoBehaviour
     {
+        [Tooltip("Somnium's list of players, filled at runtime. Found automatically on this object.")]
         [SerializeField] private SomniumPlayersContainer _players;
 
         [Tooltip("Stand-in hands for testing in the Editor, where Somnium has no player. Drag these about in Play mode.")]

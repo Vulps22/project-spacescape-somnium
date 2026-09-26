@@ -14,24 +14,37 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     [RequireComponent(typeof(GridNode))]
     public sealed class Conduit : MonoBehaviour
     {
+        [Tooltip("Cable pieces, one per face this tile uses. Spares are hidden.")]
         [SerializeField] private Transform[] _stubs = new Transform[0];
+        [Tooltip("Renderer of the cable body. Found automatically.")]
         [SerializeField] private Renderer _bodyRenderer;
+        [Tooltip("Length of the stub mesh at scale 1, in metres (2 for Unity's cylinder).")]
         [SerializeField] private float _bodyLengthAtScaleOne = 2f;   // Unity's cylinder primitive
+        [Tooltip("Length of one tile, in metres.")]
         [SerializeField] private float _tileLength = 1f;
 
         [Header("Appearance")]
+        [Tooltip("Watts at which the cable shows fully lit. Less shows proportionally dimmer.")]
         [SerializeField] private double _referenceWatts = 100.0;
+        [Tooltip("Colour when carrying nothing.")]
         [SerializeField] private Color _idle = new Color(0.16f, 0.18f, 0.2f);
+        [Tooltip("Colour at Reference Watts.")]
         [SerializeField] private Color _loaded = new Color(1f, 0.85f, 0.3f);
+        [Tooltip("Colour while this tile is switched off.")]
         [SerializeField] private Color _open = new Color(0.35f, 0.08f, 0.08f);
+        [Tooltip("Colour while this tile is dumping power as heat.")]
         [SerializeField] private Color _wasting = new Color(1f, 0.25f, 0.1f);
 
         [Header("Naming")]
+        [Tooltip("Renames the object after its grid position, so log lines say where to look.")]
         [SerializeField] private bool _autoName = true;
+        [Tooltip("Text before the coordinates in the automatic name.")]
         [SerializeField] private string _namePrefix = "Conduit";
 
         [Header("Readout")]
+        [Tooltip("Debug text showing watts, waste and temperature. Optional.")]
         [SerializeField] private TMP_Text _readout;
+        [Tooltip("Seconds between readout updates.")]
         [SerializeField] private float _readoutInterval = 0.25f;
 
         private GridNode _tile;

@@ -6,6 +6,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// A source with fixed output. Stands in until stateful sources exist.
     public sealed class ConstantSourceBehaviourModule : BehaviourModule
     {
+        [Tooltip("Watts it puts out every tick, whether or not anything can take them.")]
         [SerializeField] private double _watts = 1000.0;
 
         private ConstantSourceBehaviour _source;

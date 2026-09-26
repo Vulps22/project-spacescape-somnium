@@ -8,7 +8,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     [RequireComponent(typeof(CapacitorModule))]
     public class LoadBehaviourModule : BehaviourModule
     {
+        [Tooltip("Watts it draws while filling its hold, and burns while working.")]
         [SerializeField] private double _ratedWatts = 100.0;
+        [Tooltip("Watts it burns while working. Below 0 means the same as Rated Watts; 0 means it holds its charge until fired.")]
         [SerializeField] private double _drainWatts = -1.0;
 
         private LoadBehaviour _load;

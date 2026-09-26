@@ -10,19 +10,29 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     {
         private const int MaxHands = 8;
 
+        [Tooltip("The switch tile this rocker throws. Found automatically when placed under it.")]
         [SerializeField] private SwitchConduitBehaviourModule _switch;
+        [Tooltip("The part that tilts.")]
         [SerializeField] private Transform _paddle;
+        [Tooltip("Ticked: pressing the top pad in closes the switch. Unticked: the bottom pad does.")]
         [SerializeField] private bool _topInMeansClosed = true;
 
         [Header("Shape")]
+        [Tooltip("Half the pad's width, in metres.")]
         [SerializeField] private float _halfWidth = 0.05f;
+        [Tooltip("Distance from the pivot to one end of the pad, in metres.")]
         [SerializeField] private float _halfHeight = 0.09f;
+        [Tooltip("How far each end tips in or out at rest, in degrees.")]
         [SerializeField] private float _tiltDegrees = 12f;
 
         [Header("Feel")]
+        [Tooltip("How far through its travel a push must go before it snaps over. 0.5 is the midpoint; higher needs a deeper push.")]
         [SerializeField, Range(0.05f, 0.95f)] private float _snapAt = 0.5f;
+        [Tooltip("How big a hand is treated as, in metres. Bigger touches the pad sooner.")]
         [SerializeField] private float _handRadius = 0.04f;
+        [Tooltip("How far behind the pad a hand still counts, in metres. Stops a hand deep in the wall pressing it.")]
         [SerializeField] private float _reach = 0.08f;
+        [Tooltip("How fast it springs back when let go before snapping, in degrees per second.")]
         [SerializeField] private float _returnDegreesPerSecond = 120f;
 
         private readonly Vector3[] _hands = new Vector3[MaxHands];

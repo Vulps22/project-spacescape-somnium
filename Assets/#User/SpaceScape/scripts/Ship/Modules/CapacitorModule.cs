@@ -6,7 +6,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// How much power a tile can hold, and how much it holds now.
     public sealed class CapacitorModule : Module
     {
+        [Tooltip("Joules it can hold. A load must fill it before it works; on a reactor it is the magnets' grip after power stops (joules / magnet watts = seconds).")]
         [SerializeField] private double _capacityJoules = 100.0;
+        [Tooltip("Starts the session full rather than empty.")]
         [SerializeField] private bool _startFull;
 
         private Capacitor _capacitor;

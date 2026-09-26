@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 6068380658789489308}
   - component: {fileID: 7415347714470690146}
   - component: {fileID: 3070622359727791729}
+  - component: {fileID: 2645210537694950702}
   m_Layer: 0
   m_Name: Battery
   m_TagString: Untagged
@@ -102,6 +103,23 @@ MonoBehaviour:
   _dischargeWatts: 100
   _readout: {fileID: 8109224630009500633}
   _readoutInterval: 0.25
+--- !u!114 &2645210537694950702
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4501853603252209032}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 18cc6b2ef294c3ebb8504f4cfc71e23f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.IntegrityModule
+  _max: 100
+  _wornBelowFraction: 0.2
+  _failureChanceWhenSpent: 0.5
+  _damageThresholds: []
+  _damageModels: []
 --- !u!1 &6146438960224612187
 GameObject:
   m_ObjectHideFlags: 0

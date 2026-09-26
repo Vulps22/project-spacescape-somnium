@@ -335,6 +335,7 @@ GameObject:
   - component: {fileID: 82753305}
   - component: {fileID: 82753309}
   - component: {fileID: 82753308}
+  - component: {fileID: 82753310}
   m_Layer: 0
   m_Name: SceneManager
   m_TagString: Untagged
@@ -419,6 +420,23 @@ MonoBehaviour:
   PlayerRemoved:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &82753310
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 82753304}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 623455afdbb37f844b954f67267f93c6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.TileEffects
+  _sparksPrefab: {fileID: 6443977256035573766, guid: 81cd665cf3e4ddd629b9ac65b9f7322a,
+    type: 3}
+  _smokePrefab: {fileID: 1365080250641598528, guid: 358d3fe4380ae1e69bca59bac0a04e06,
+    type: 3}
+  _maxSmokePerSecond: 12
 --- !u!1001 &134601169
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7288,7 +7306,7 @@ MonoBehaviour:
   AssetDescription: 'HEAVY WORK IN PROGRESS! DO NOT EXPECT MUCH                               '
   PreviewPicturePath: 
   PreviewTexture: {fileID: 2800000, guid: 750677d32b678c542867f18786dca16f, type: 3}
-  LastBuildSizeBytes: 1010112
+  LastBuildSizeBytes: 1012352
   BoundsIsDisplay: 0
   IsOpen360Preview: 0
   IsEditSpawnPos: 0
@@ -7316,7 +7334,7 @@ MonoBehaviour:
     Free:
       Count: 4
       MaxCount: 10
-      AvailableSize: 249015184
+      AvailableSize: 249012944
     Paid:
       Entries: []
   OwnedTokens: []
