@@ -104,3 +104,26 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# ---- SpaceScape ----------------------------------------------------------------
+# This repo is public. The Somnium template, Photon, and Asset Store packs are
+# not ours to redistribute, so under Assets/ only our own folder is tracked.
+/Assets/*
+!/Assets/#User/
+!/Assets/#User.meta
+/Assets/#User/*
+!/Assets/#User/SpaceScape/
+!/Assets/#User/SpaceScape.meta
+
+# Somnilux has its own repo
+/Packages/com.somnilux.sdk/
+
+# Somnium's scripting tool, personal editor settings, reference images
+/ScriptingTool/
+/.vscode/
+/inspiration.png
+
+# Sim test harness: its project file is hand-written, unlike Unity's; its build output is not ours
+!/docs/simtest/simtest.csproj
+/docs/simtest/bin/
+/docs/simtest/obj/
