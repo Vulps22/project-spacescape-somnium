@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// Holds the one switch that turns the development overlay on. Lives on SceneManager.
     public sealed class DebugVisuals : MonoBehaviour

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// A script added to a tile to give it a feature or a behaviour. Knows only the tile it sits on.
     [RequireComponent(typeof(GridNode))]

@@ -1,6 +1,6 @@
-using SpaceScape.Power;
+using SomniumSpace.Worlds.SpaceScape.Power;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// A cell that will not push into a run ending in bare cable.
     public sealed class SafetyBatteryBehaviourModule : BatteryBehaviourModule

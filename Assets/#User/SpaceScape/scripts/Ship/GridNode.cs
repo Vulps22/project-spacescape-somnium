@@ -1,9 +1,9 @@
 using System.Collections.Generic;
-using SpaceScape.Power;
+using SomniumSpace.Worlds.SpaceScape.Power;
 using TMPro;
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// A tile on the grid. Every tile is the same kind of thing — a conduit, a battery and a bulb
     /// differ only by what else is on the object. Declares what it feeds; power flows that way.

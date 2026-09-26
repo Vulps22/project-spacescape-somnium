@@ -1,8 +1,8 @@
-using SpaceScape.Power;
+using SomniumSpace.Worlds.SpaceScape.Power;
 using TMPro;
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// A reactor. Its hold keeps the rod magnets gripping; the core tops it up before anything reaches
     /// the output, and the input fills it only when the core cannot, so cutting both drops the rods.

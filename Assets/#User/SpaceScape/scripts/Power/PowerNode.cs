@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace SpaceScape.Power
+namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// A point on the grid. Sums what arrives, takes what it wants, splits the rest evenly downstream.
     public class PowerNode

@@ -1,7 +1,7 @@
-using SpaceScape.Power;
+using SomniumSpace.Worlds.SpaceScape.Power;
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// How much punishment a tile has left, and which model shows how damaged it is.
     public sealed class IntegrityModule : Module

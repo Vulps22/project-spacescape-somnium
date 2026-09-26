@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// The lamp on a reactor's rim. Dark with no power, amber once the control system has something
     /// in it, green and turning once the core is actually making watts — and it turns faster the

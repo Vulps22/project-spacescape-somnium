@@ -1,8 +1,8 @@
-using SpaceScape.Power;
+using SomniumSpace.Worlds.SpaceScape.Power;
 using TMPro;
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// A cell. Charges its hold from its input and discharges the same hold out of its output, as far
     /// as its release rule allows. The plain cell's rule is only "have I got a cable".

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace SpaceScape.Power
+namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// The ship's grid. Power splits at every fork by the conduits' shares, components are endpoints,
     /// and wasted power becomes heat that travels back along the run.

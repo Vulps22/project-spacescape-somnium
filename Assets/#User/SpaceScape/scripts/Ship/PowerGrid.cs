@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using SpaceScape.Power;
+using SomniumSpace.Worlds.SpaceScape.Power;
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// Builds the ship's grid from what is in the scene, then ticks it at a fixed rate.
     public sealed class PowerGrid : MonoBehaviour

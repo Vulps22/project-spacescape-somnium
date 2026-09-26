@@ -1,4 +1,4 @@
-namespace SpaceScape.Power
+namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// A reactor on the grid. Its hold is what keeps the rod magnets gripping: the core tops it up
     /// before anything reaches the output, and the grid fills it only when the core cannot. Lose both

@@ -1,4 +1,4 @@
-namespace SpaceScape.Power
+namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// A source that offers the same output every tick.
     public sealed class ConstantSourceBehaviour : IPowerSource

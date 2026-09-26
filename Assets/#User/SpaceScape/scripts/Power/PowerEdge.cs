@@ -1,4 +1,4 @@
-namespace SpaceScape.Power
+namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// A conduit. Carries whatever its upstream node passed on, and can be opened by a switch.
     public sealed class PowerEdge

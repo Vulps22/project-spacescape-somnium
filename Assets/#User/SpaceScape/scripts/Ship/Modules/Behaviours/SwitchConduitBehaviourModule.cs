@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// A conduit with a switch in it. Opening it takes the whole tile out of the grid, so where you fit
     /// one decides what it costs: beside a source the source stops, further along the cable before it cooks.

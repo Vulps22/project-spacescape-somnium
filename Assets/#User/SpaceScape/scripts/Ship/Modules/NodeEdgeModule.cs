@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// Which faces of a tile power enters and leaves by. One value per face, so inputs and outputs
     /// cannot disagree. Faces are world directions until live rewiring makes them turn with the tile.

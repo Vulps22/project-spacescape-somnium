@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// A face of a tile. Tiles sit one unit apart on integers, so a face is also its neighbour's offset.
     public enum GridDirection

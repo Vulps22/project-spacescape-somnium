@@ -1,7 +1,7 @@
-using SpaceScape.Power;
+using SomniumSpace.Worlds.SpaceScape.Power;
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// How much power a tile can hold, and how much it holds now.
     public sealed class CapacitorModule : Module

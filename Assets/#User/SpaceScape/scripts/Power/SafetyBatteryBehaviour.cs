@@ -1,4 +1,4 @@
-namespace SpaceScape.Power
+namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// A cell that will not push into a run ending in bare cable. It looks past its own conduit for
     /// a component, so opening a switch anywhere downstream stops it rather than cooking everything

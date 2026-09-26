@@ -1,4 +1,4 @@
-namespace SpaceScape.Power
+namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// Anything that banks power to do its job. A bulb, a helm and a gun differ only in the numbers.
     /// Charge to the threshold, work while burning it off, stop at empty, charge again. Underfeed it

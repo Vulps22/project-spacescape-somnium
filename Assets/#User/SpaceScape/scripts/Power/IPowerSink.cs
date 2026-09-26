@@ -1,4 +1,4 @@
-namespace SpaceScape.Power
+namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// Something on a conduit that wants power. A node without one is a junction.
     public interface IPowerSink

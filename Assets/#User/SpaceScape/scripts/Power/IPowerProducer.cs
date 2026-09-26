@@ -1,4 +1,4 @@
-namespace SpaceScape.Power
+namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// Something that generates power. It knows nothing about the grid, only about making watts.
     public interface IPowerProducer

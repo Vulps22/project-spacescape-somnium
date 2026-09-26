@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using SpaceScape.Power;
+using SomniumSpace.Worlds.SpaceScape.Power;
 
 /// A producer that winds its output up at a fixed rate, to prove generation can be stateful.
 sealed class RampProducer : IPowerProducer

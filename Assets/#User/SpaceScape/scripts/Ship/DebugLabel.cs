@@ -1,7 +1,7 @@
 using TMPro;
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// A readout that only exists for development. A meter is a plain label and carries none of this.
     [RequireComponent(typeof(TMP_Text))]

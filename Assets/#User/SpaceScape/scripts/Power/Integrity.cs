@@ -1,6 +1,6 @@
 using System;
 
-namespace SpaceScape.Power
+namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// How much punishment a component has left. A thermal failure damages it rather than destroying
     /// it outright, but a worn component starts refusing to do its job before it is gone.

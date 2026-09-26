@@ -1,4 +1,4 @@
-namespace SpaceScape.Power
+namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// Puts a producer's output onto the grid. A reaction cannot be declined, so everything it makes
     /// is offered whether the grid can take it or not, and what cannot leave becomes heat at the node.

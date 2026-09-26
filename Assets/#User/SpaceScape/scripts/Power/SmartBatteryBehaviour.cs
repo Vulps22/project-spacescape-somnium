@@ -1,4 +1,4 @@
-namespace SpaceScape.Power
+namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// A cell that only releases while something on the grid is actually asking for watts, and lets
     /// the crew cap how fast it does so. Because a full component asks for nothing, it stops on its

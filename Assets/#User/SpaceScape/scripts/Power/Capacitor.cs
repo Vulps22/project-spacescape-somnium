@@ -1,4 +1,4 @@
-namespace SpaceScape.Power
+namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// Joules held on a tile. Owns the charge and its limits; knows nothing about why it is filled or drained.
     public sealed class Capacitor

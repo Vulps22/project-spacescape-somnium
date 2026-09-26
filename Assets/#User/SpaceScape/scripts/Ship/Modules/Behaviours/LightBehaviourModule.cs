@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// A lamp. Lit while it is working, as brightly as it is full, so the room is the readout.
     public sealed class LightBehaviourModule : LoadBehaviourModule

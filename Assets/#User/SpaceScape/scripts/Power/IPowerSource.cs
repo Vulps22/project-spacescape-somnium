@@ -1,4 +1,4 @@
-namespace SpaceScape.Power
+namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// The grid-facing side of anything that puts power onto the grid.
     public interface IPowerSource

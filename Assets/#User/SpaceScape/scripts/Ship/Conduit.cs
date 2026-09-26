@@ -1,8 +1,8 @@
-using SpaceScape.Power;
+using SomniumSpace.Worlds.SpaceScape.Power;
 using TMPro;
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// Cable occupying a single tile. It carries no topology of its own — the GridNode beside it
     /// declares what it feeds — and it exists to show what is passing through it.

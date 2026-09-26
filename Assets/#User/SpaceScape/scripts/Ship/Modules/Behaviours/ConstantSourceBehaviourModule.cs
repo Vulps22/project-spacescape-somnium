@@ -1,7 +1,7 @@
-using SpaceScape.Power;
+using SomniumSpace.Worlds.SpaceScape.Power;
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// A source with fixed output. Stands in until stateful sources exist.
     public sealed class ConstantSourceBehaviourModule : BehaviourModule

@@ -1,4 +1,4 @@
-namespace SpaceScape.Power
+namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// A drum of coolant and a pump. Coolant carries heat away and boils off doing it, so running hot
     /// costs supplies, and the pump is a hard ceiling a reactor can be pushed past.

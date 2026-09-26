@@ -1,4 +1,4 @@
-namespace SpaceScape.Power
+namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// A battery. It takes power off the grid into its hold and puts power back out of the same hold.
     /// Isolate it and it simply holds what it has, because a store is allowed to decline.

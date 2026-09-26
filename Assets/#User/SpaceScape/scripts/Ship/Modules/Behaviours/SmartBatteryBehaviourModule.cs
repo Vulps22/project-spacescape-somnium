@@ -1,7 +1,7 @@
-using SpaceScape.Power;
+using SomniumSpace.Worlds.SpaceScape.Power;
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// A cell that only releases while something is asking, at a rate the crew dials in.
     public sealed class SmartBatteryBehaviourModule : BatteryBehaviourModule

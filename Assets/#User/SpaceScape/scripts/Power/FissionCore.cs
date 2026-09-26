@@ -1,4 +1,4 @@
-namespace SpaceScape.Power
+namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// A reactor core. Knows nothing about the grid: it burns fuel and makes watts, and its rods are
     /// held up by magnets, so losing them drops the rods rather than letting it run away.

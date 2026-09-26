@@ -1,7 +1,7 @@
-using SpaceScape.Power;
+using SomniumSpace.Worlds.SpaceScape.Power;
 using UnityEngine;
 
-namespace SpaceScape.Ship
+namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// Anything that banks power to work: charge the hold full, work while draining it, stop at empty.
     /// Leave drain below zero to match the rated watts, or set it to zero to hold charge until fired.
