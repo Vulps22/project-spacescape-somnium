@@ -44,6 +44,21 @@ namespace SomniumSpace.Worlds.SpaceScape.Player
             return count;
         }
 
+        /// Where the local player's head is, falling back to the main camera in the Editor.
+        public static bool TryHead(out Vector3 position)
+        {
+            position = default;
+            var body = _instance != null && _instance._players != null && _instance._players.LocalPlayer != null
+                ? _instance._players.LocalPlayer.References?.Body
+                : null;
+            if (body != null && body.Head != null) { position = body.Head.position; return true; }
+
+            var camera = Camera.main;
+            if (camera == null) return false;
+            position = camera.transform.position;
+            return true;
+        }
+
         private void OnValidate()
         {
             if (_players == null) _players = GetComponent<SomniumPlayersContainer>();

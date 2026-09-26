@@ -111,6 +111,7 @@ Programmer art. No flying, no combat, no galaxy. If that is fun for ten minutes 
 - `reactor.md` — cores, rods, house load, the dial and coolant. Built.
 - `the-loop.md` — galaxy, courier contracts, difficulty by depth, navigation. Design only.
 - `modules.md` — the module stack every tile is built from. Built.
+- `credits.md` — third-party work used, and the licence terms each needs; mirrored in-world on the Credits prefab.
 - `todolist.md` — single-player work queued before networking: live wiring, repairing, loading, coolant.
 - `open-questions.md` — what is undecided, what is parked, and what must not be re-proposed.
 
