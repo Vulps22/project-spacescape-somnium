@@ -277,6 +277,11 @@ tile is part of live rewiring, below.
 
 ## Conduit variants — pinned until after the first static upload
 
+**Superseded (2026-09-26)** by the hologram design in `todolist.md` → *Live wiring*: a switch or a
+junction is now an **addon** installed into an open conduit, which reshapes it, rather than a part
+placed on top of it. Splitters and mergers are gone in favour of Junction +1 to +4. The rest of this
+section is what the scene still does today.
+
 Switches and splitters are going to be parts a player **places on top of a conduit**. The model fits
 seamlessly into the cable, and the part **takes over that conduit's behaviour**. How that works
 while the ship is running comes after something static has been uploaded to Somnium.
