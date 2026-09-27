@@ -104,12 +104,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (speed < _stillBelowDegreesPerSecond || Time.time < _nextPulse) return;
             _nextPulse = Time.time + _pulseSeconds * 0.8f;
 
-            float amplitude = _maxAmplitude * Mathf.Clamp01(speed / _speedForFullBuzz);
-            if (_grabber is XRBaseInputInteractor input && input.SendHapticImpulse(amplitude, _pulseSeconds)) return;
-#pragma warning disable CS0618
-            var controller = (_grabber as Component)?.GetComponentInParent<XRBaseController>();
-            if (controller != null) controller.SendHapticImpulse(amplitude, _pulseSeconds);
-#pragma warning restore CS0618
+            Haptics.Pulse(_grabber, _maxAmplitude * Mathf.Clamp01(speed / _speedForFullBuzz), _pulseSeconds);
         }
 
         private void Apply()

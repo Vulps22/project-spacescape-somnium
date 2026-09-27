@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using SomniumSpace.Bridge.Components;
 using UnityEngine;
 
@@ -42,6 +43,29 @@ namespace SomniumSpace.Worlds.SpaceScape.Player
                 if (hand != null && count < buffer.Length) buffer[count++] = hand.position;
 
             return count;
+        }
+
+        /// The solid colliders on the local player's avatar (the capsule that follows the head, and any
+        /// others), into the list. Triggers are left out: a hand usually grabs through one. Empty in the
+        /// Editor, where there is no avatar.
+        public static void BodyColliders(List<Collider> into)
+        {
+            into.Clear();
+            var body = _instance != null && _instance._players != null && _instance._players.LocalPlayer != null
+                ? _instance._players.LocalPlayer.References?.Body
+                : null;
+            if (body == null || body.Root == null) return;
+            foreach (var c in body.Root.root.GetComponentsInChildren<Collider>(true))
+                if (!c.isTrigger) into.Add(c);
+        }
+
+        /// True when a collider belongs to the local player's avatar.
+        public static bool IsLocalPlayer(Collider collider)
+        {
+            var body = _instance != null && _instance._players != null && _instance._players.LocalPlayer != null
+                ? _instance._players.LocalPlayer.References?.Body
+                : null;
+            return body != null && body.Root != null && collider != null && collider.transform.IsChildOf(body.Root.root);
         }
 
         /// Where the local player's head is, falling back to the main camera in the Editor.

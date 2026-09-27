@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
@@ -10,6 +11,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private Transform _tip;
         [Tooltip("The flow arrow. Points up (outward) for Out and is turned round for In; hidden while parked.")]
         [SerializeField] private Transform _arrow;
+        [Tooltip("What a hand grabs to move the segment to another face, or into the middle to park it.")]
+        [SerializeField] private XRBaseInteractable _tipGrab;
+        [Tooltip("What a hand grabs and slides along the segment to set its flow In or Out.")]
+        [SerializeField] private XRBaseInteractable _arrowGrab;
         [Tooltip("Distance from the conduit's centre to its face at scale 1, in metres.")]
         [SerializeField] private float _faceDistance = 0.5f;
         [Tooltip("How far out along the segment the arrow sits, in metres at scale 1.")]
@@ -22,6 +27,23 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private Vector3 _side = Vector3.forward;
         private bool _outward;
         private bool _parked;
+        private bool _sliding;
+        private float _slideSpeed;
+
+        /// The handle at the segment's tip.
+        public Transform Tip => _tip;
+
+        /// What a hand grabs to move the segment.
+        public XRBaseInteractable TipGrab => _tipGrab;
+
+        /// What a hand grabs to set the segment's flow.
+        public XRBaseInteractable ArrowGrab => _arrowGrab;
+
+        /// Distance from the centre to a face at scale 1, in metres.
+        public float FaceDistance => _faceDistance;
+
+        /// True while a hand is moving the handle, so posing leaves it where the hand put it.
+        public bool TipHeld { get; set; }
 
         /// Points the segment at a face, with its arrow floating on the given "above" side showing which
         /// way power crosses it. The arrow belongs to the segment, so moving the handle does not move it.
@@ -36,6 +58,19 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (_arrow != null) _arrow.gameObject.SetActive(true);
         }
 
+        /// Lets go of the handle where the hand left it, and glides it home from there over the given time.
+        public void SlideHome(Vector3 fromWorld, float seconds)
+        {
+            TipHeld = false;
+            if (_tip == null) return;
+            _tip.position = fromWorld;
+            _sliding = true;
+            _slideSpeed = seconds > 0f ? _faceDistance / seconds : float.MaxValue;
+        }
+
+        /// Turns the arrow round without moving the segment, for previewing a flow change.
+        public void SetOutward(bool outward) => _outward = outward;
+
         /// Pulls the handle into the centre and hides the arrow, since a parked segment carries nothing.
         public void Park()
         {
@@ -48,7 +83,16 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// the cable, rolling about the direction it points. 0 is closed, 1 fully open.
         public void Pose(float open)
         {
-            if (_tip != null) _tip.localPosition = _parked ? Vector3.zero : Vector3.up * (_faceDistance * open);
+            if (_tip != null && !TipHeld)
+            {
+                Vector3 home = _parked ? Vector3.zero : Vector3.up * (_faceDistance * open);
+                if (_sliding)
+                {
+                    _tip.localPosition = Vector3.MoveTowards(_tip.localPosition, home, _slideSpeed * Time.deltaTime);
+                    _sliding = (_tip.localPosition - home).sqrMagnitude > 1e-8f;
+                }
+                else _tip.localPosition = home;
+            }
             if (_parked || _arrow == null) return;
 
             _arrow.localPosition = Vector3.up * _arrowAlong + _side * (_arrowAbove * open);

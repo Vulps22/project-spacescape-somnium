@@ -35,7 +35,7 @@ tests. `scripts/Ship/` is the Unity layer that puts it in a scene.
 
 | | |
 |---|---|
-| flow | shares at forks, endpoints, dead-end dumping, one tile per tick |
+| flow | shares at forks, only toward reachable receivers, endpoints, one tile per tick |
 | holds | `Capacitor` — the charge every component keeps, owned by its `CapacitorModule` |
 | sinks | `LoadBehaviour` — one type, relaxation oscillator, duty cycle = supply ÷ rated |
 | sources | `IPowerProducer` / `IPowerSource` split, `ProducerSource`, `ConstantSourceBehaviour` |

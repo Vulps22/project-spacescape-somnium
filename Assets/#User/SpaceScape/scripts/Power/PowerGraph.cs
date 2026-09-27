@@ -89,6 +89,22 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
             return edge;
         }
 
+        /// Mends a tile that has blown, so it carries power again. It keeps the heat it blew with.
+        public void Repair(PowerNode node)
+        {
+            if (node == null) return;
+            node.IsPopped = false;
+        }
+
+        /// Takes a conduit out of the grid. Whatever it was carrying this tick goes with it.
+        public void Disconnect(PowerEdge edge)
+        {
+            if (edge == null) return;
+            edge.From.Outgoing.Remove(edge);
+            edge.To.Incoming.Remove(edge);
+            _edges.Remove(edge);
+        }
+
         /// Advances the grid one tick. Every node reads the last tick's conduits, so order does not matter.
         /// Power therefore moves one conduit per tick, and a node's readings sit one step behind the
         /// conduits leaving it until the grid settles. Settle() runs it out to the fixed point.
@@ -105,7 +121,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
                 for (int j = 0; j < node.Outgoing.Count; j++)
                 {
                     var out_ = node.Outgoing[j];
-                    if (out_.Enabled && out_.Share > 0.0 && out_.To.CanReceivePower()) { hasOutlet = true; break; }
+                    if (Carries(out_)) { hasOutlet = true; break; }
                 }
                 node.HasOutlet = hasOutlet;
                 node.Offered = node.Source != null && !node.IsWrecked
@@ -168,7 +184,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
                 for (int j = 0; j < node.Outgoing.Count; j++)
                 {
                     var edge = node.Outgoing[j];
-                    if (edge.Enabled && edge.Share > 0.0 && edge.To.CanReceivePower()) shares += edge.Share;
+                    if (Carries(edge)) shares += edge.Share;
                 }
 
                 node.Drawn = drawn;
@@ -178,7 +194,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
                     for (int j = 0; j < node.Outgoing.Count; j++)
                     {
                         var edge = node.Outgoing[j];
-                        edge.NextFlow = edge.Enabled && edge.Share > 0.0 && edge.To.CanReceivePower()
+                        edge.NextFlow = Carries(edge)
                             ? remainder * (edge.Share / shares)
                             : 0.0;
                     }
@@ -244,14 +260,30 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
 
             if (_reachStack == null) _reachStack = new Stack<PowerNode>();
 
-            // anything with a sink is a destination; anything whose sink wants watts is a demand
+            // Every receiver marks whatever feeds it, not itself: a battery's own intake is not somewhere
+            // its output can go. A wrecked receiver still counts, since it stays wired in and keeps taking.
             for (int i = 0; i < _nodes.Count; i++)
             {
                 var node = _nodes[i];
-                if (node.Sink == null || node.IsWrecked || !node.CanReceivePower()) continue;
-                Flood(node, node.Sink.WattsWanted > 0.0);
+                if (!IsReceiver(node)) continue;
+                bool demanding = !node.IsWrecked && node.Sink.WattsWanted > 0.0;
+                for (int j = 0; j < node.Incoming.Count; j++)
+                {
+                    var edge = node.Incoming[j];
+                    if (!edge.Enabled || edge.Share <= 0.0 || !edge.From.CanReceivePower()) continue;
+                    Flood(edge.From, demanding);
+                }
             }
         }
+
+        /// A component that takes power in, whether or not it wants any right now.
+        private static bool IsReceiver(PowerNode node) => node.Sink != null && node.CanReceivePower();
+
+        /// True when a conduit can carry power this tick: it is live, and there is a receiver at its far end
+        /// or somewhere beyond it through conduits. Nothing is pushed down a branch with nobody on it.
+        private static bool Carries(PowerEdge edge) =>
+            edge.Enabled && edge.Share > 0.0 && edge.To.CanReceivePower()
+            && (IsReceiver(edge.To) || edge.To.ReachesConsumer);
 
         /// Marks this tile and everything that can feed it, without walking the same ground twice.
         private void Flood(PowerNode from, bool demanding)
@@ -267,6 +299,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
                 node.ReachesConsumer = true;
                 if (demanding) node.ReachesDemand = true;
                 if (already) continue;
+
+                // Power does not pass through a component, so neither does reaching a receiver.
+                if (!node.ForwardsPower) continue;
 
                 for (int i = 0; i < node.Incoming.Count; i++)
                 {
@@ -321,6 +356,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         /// Cuts a tile out of the grid for good.
         private void Sever(PowerNode node)
         {
+            // What was already on its way out of it stops here too.
+            for (int i = 0; i < node.Outgoing.Count; i++)
+            {
+                node.Outgoing[i].Flow = 0.0;
+                node.Outgoing[i].NextFlow = 0.0;
+            }
             node.IsPopped = true;
             Popped?.Invoke(node);
         }

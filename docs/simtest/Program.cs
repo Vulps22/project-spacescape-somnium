@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.Collections.Generic;
 using SomniumSpace.Worlds.SpaceScape.Power;
@@ -58,6 +59,11 @@ static class Program
         IdleShipDumps();
         CycleDetected();
         RingBlowsItsMergePoint();
+        DisconnectedConduitCarriesNothing();
+        OverfedLoadPopsOnceAndTheBranchGoesDark();
+        TwoSidedCellsFollowTheirRule();
+        APopStopsWhatWasInFlight();
+        ARepairedConduitCarriesAgain();
         UnfedRingStaysQuiet();
         ComponentsBreakRings();
         OpenSwitchBreaksARing();
@@ -95,6 +101,9 @@ static class Program
     }
 
     // 1kW into two conduits is 500 each; into three is 333 each.
+    // A receiver that always wants more than it gets, for tests about where power goes rather than who uses it.
+    static PowerNode Sink(PowerGraph g, string name) => g.AddNode(name, new LoadBehaviour(1e9, 1e12));
+
     static void EvenSplit()
     {
         Console.WriteLine("even split at a fork");
@@ -105,7 +114,7 @@ static class Program
             var ends = new List<PowerNode>();
             for (int i = 0; i < branches; i++)
             {
-                var e = g.AddNode("end" + i);
+                var e = Sink(g, "end" + i);
                 g.Connect(r, e);
                 ends.Add(e);
             }
@@ -120,8 +129,8 @@ static class Program
         Console.WriteLine("merge sums, so two cables carry two thirds");
         var g = new PowerGraph();
         var r = g.AddSource("source", 1000);
-        var spare = g.AddNode("spare");
-        var m = g.AddNode("merge");
+        var spare = Sink(g, "spare");
+        var m = Sink(g, "merge");
         g.Connect(r, spare);
         g.Connect(r, m);
         g.Connect(r, m);          // second cable to the same place
@@ -271,7 +280,7 @@ static class Program
     // A conduit to a destroyed room still takes its share at the fork.
     static void DeadEndStealsPower()
     {
-        Console.WriteLine("a forgotten dead end steals power");
+        Console.WriteLine("a forgotten dead end takes nothing");
         var gun = new LoadBehaviour(500, 1e9);
 
         var g = new PowerGraph();
@@ -282,9 +291,10 @@ static class Program
         g.Connect(r, fork); g.Connect(fork, u); g.Connect(fork, dead);
         g.Settle();
 
-        Check("gun only gets half the reactor", u.Inflow, 500);
-        Check("the dead end burns the other half", dead.Dumped, 500);
-        Check("grid heat equals the wasted half", g.TotalDumped, 500);
+        Check("the dead branch gets nothing", dead.Inflow, 0);
+        Check("and stays cold", dead.Dumped, 0);
+        Check("so the gun gets the whole reactor", u.Inflow, 1000);
+        Check("and what it cannot take is heat at the gun", u.Dumped, 500);
     }
 
     // Switching the module off leaves the branch live; switching at the fork does not.
@@ -296,7 +306,7 @@ static class Program
         var g = new PowerGraph();
         var r = g.AddSource("source", 1000);
         var fork = g.AddNode("fork");
-        var other = g.AddNode("other branch");
+        var other = Sink(g, "other branch");
         var l = g.AddNode("laser", laser);
         g.Connect(r, fork);
         var toOther = g.Connect(fork, other);
@@ -457,6 +467,133 @@ static class Program
     }
 
     // A loop traps power, so the grid says so rather than quietly failing to conserve.
+    // Reactor cranked into a long run with one small load: one thing blows, not the whole run.
+    static void OverfedLoadPopsOnceAndTheBranchGoesDark()
+    {
+        Console.WriteLine("an overfed load pops once and its branch goes dark");
+        var g = new PowerGraph();
+        var src = g.AddSource("reactor", 2000);
+        src.Integrity = new Integrity(1e9);                 // the reactor wears rather than severs
+        var run = new List<PowerNode>();
+        PowerNode prev = src;
+        for (int i = 1; i <= 8; i++) { var c = g.AddNode("c" + i); g.Connect(prev, c); run.Add(c); prev = c; }
+        var bulb = g.AddNode("bulb", new LoadBehaviour(50, 50));
+        g.Connect(prev, bulb);
+
+        var popped = new List<string>();
+        g.Popped += n => popped.Add(n.Name);
+        for (int t = 0; t < 20 * 120; t++) g.Tick(0.05);   // two minutes
+
+        Console.WriteLine($"         popped: {string.Join(", ", popped)}");
+        CheckTrue("the overfed bulb blew", bulb.IsPopped);
+        CheckTrue("and nothing else did", popped.Count == 1);
+        Check("the run carries nothing now", run.Sum(n => n.Inflow), 0);
+        Console.WriteLine($"         run: {string.Join(" ", run.Select(n => n.Celsius.ToString("0")))} C, reactor {src.Celsius:0} C");
+        CheckTrue("the run is hot from the reactor's own waste conducting along the metal, but carries nothing, so none of it pops",
+            popped.Count == 1 && run.All(n => !n.IsPopped));
+        Check("the reactor takes its own output as heat", src.Dumped, 2000);
+    }
+
+    // A battery wired both ways, as in the scene, must not count its own intake as somewhere to deliver.
+    static void TwoSidedCellsFollowTheirRule()
+    {
+        Console.WriteLine("a two-sided cell does not count itself as a receiver");
+        var feed = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
+        var safety = new SafetyBatteryBehaviour(100, 80, 10000);
+        var cell = feed.AddSource("cell", safety, safety);
+        var a = feed.AddNode("cable");
+        var sw = feed.AddNode("switch");
+        var b = feed.AddNode("cable beyond");
+        var lamp = feed.AddNode("lamp", new LoadBehaviour(50, 1e9));
+        feed.Connect(cell, a); feed.Connect(a, sw); feed.Connect(sw, b); feed.Connect(b, lamp);
+        feed.Settle();
+        Check("switch closed: it supplies the lamp", cell.Offered, 80);
+        sw.On = false;
+        feed.Settle();
+        Check("switch open: it holds its charge", cell.Offered, 0);
+        Check("and nothing is wasted", feed.TotalDumped, 0);
+
+        var idle = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
+        var smart = new SmartBatteryBehaviour(100, 80, 10000, 5000);   // half full, so it wants to charge
+        var s = idle.AddSource("cell", smart, smart);
+        var full = new LoadBehaviour(50, 10);
+        var sated = idle.AddNode("sated lamp", full);
+        idle.Connect(s, sated);
+        for (int t = 0; t < 200; t++) idle.Tick(0.05);   // lamp fills and stops asking
+        full.Enabled = false;
+        idle.Settle();
+        Check("smart: its own charging is not demand", s.Offered, 0);
+    }
+
+    // Power already on its way when a conduit blows must not arrive downstream.
+    static void APopStopsWhatWasInFlight()
+    {
+        Console.WriteLine("a pop stops what was already in flight");
+        var g = new PowerGraph { ConductionPerSecond = 0.0 };
+        var src = g.AddSource("source", 100);
+        var a = g.AddNode("a");
+        var b = g.AddNode("b");
+        var load = Sink(g, "load");
+        g.Connect(src, a); g.Connect(a, b); g.Connect(b, load);
+        g.Settle();
+        a.Celsius = 400.0;
+        int guard = 0;
+        while (!a.IsPopped && guard++ < 20000) g.Tick(0.05);
+        g.Tick(0.05);
+        Check("the next tick, nothing reaches beyond the pop", b.Inflow, 0);
+        Check("and nothing is dumped there", b.Dumped, 0);
+    }
+
+    static void ARepairedConduitCarriesAgain()
+    {
+        Console.WriteLine("a repaired conduit carries again");
+        var g = new PowerGraph { ConductionPerSecond = 0.0 };
+        var src = g.AddSource("source", 100);
+        var a = g.AddNode("a");
+        var load = Sink(g, "load");
+        g.Connect(src, a); g.Connect(a, load);
+        g.Settle();
+        a.Celsius = 400.0;
+        int guard = 0;
+        while (!a.IsPopped && guard++ < 20000) g.Tick(0.05);
+        g.Settle();
+        Check("blown: nothing reaches the load", load.Inflow, 0);
+
+        g.PopSecondsAt100WAnd120C = 0.0;           // hold off a second pop while we look
+        g.Repair(a);
+        CheckTrue("repaired", !a.IsPopped);
+        CheckTrue("but it keeps the heat it blew with", a.Celsius > g.PopFloorCelsius);
+        g.Settle();
+        Check("and the load is fed again", load.Inflow, 100);
+    }
+
+    // Rewiring by hand takes conduits out and puts new ones in while the grid runs.
+    static void DisconnectedConduitCarriesNothing()
+    {
+        Console.WriteLine("a disconnected conduit carries nothing and the grid carries on");
+        var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
+        var src = g.AddSource("source", 100);
+        var a = g.AddNode("a");
+        var left = g.AddNode("left", new LoadBehaviour(100, 1e9));
+        var right = g.AddNode("right", new LoadBehaviour(100, 1e9));
+        g.Connect(src, a);
+        var toLeft = g.Connect(a, left);
+        g.Connect(a, right);
+        g.Settle();
+        Check("split two ways, left gets half", left.Drawn, 50);
+
+        g.Disconnect(toLeft);
+        g.Settle();
+        CheckTrue("the edge is gone from the grid", !System.Linq.Enumerable.Contains(g.Edges, toLeft) && a.OutgoingEdges.Count == 1 && left.IncomingEdges.Count == 0);
+        Check("left gets nothing", left.Drawn, 0);
+        Check("right now gets the lot", right.Drawn, 100);
+
+        g.Connect(a, left);
+        g.Settle();
+        Check("reconnected, left gets half again", left.Drawn, 50);
+        Check("and nothing is lost", g.TotalInjected, g.TotalDrawn + g.TotalDumped);
+    }
+
     // A1 -> A2 -> B1 -> B2 -> A1, fed at A1: every tile forwards, so power would circulate forever.
     static void RingBlowsItsMergePoint()
     {
@@ -466,6 +603,7 @@ static class Program
         var a1 = g.AddNode("A1"); var a2 = g.AddNode("A2");
         var b1 = g.AddNode("B1"); var b2 = g.AddNode("B2");
         g.Connect(src, a1); g.Connect(a1, a2); g.Connect(a2, b1); g.Connect(b1, b2); g.Connect(b2, a1);
+        g.Connect(b1, Sink(g, "load"));           // a ring still has somewhere to deliver to
 
         var popped = new List<string>();
         g.Popped += n => popped.Add(n.Name);
@@ -514,6 +652,7 @@ static class Program
         var src = g.AddSource("source", 100);
         var a = g.AddNode("a"); var b = g.AddNode("b"); var sw = g.AddNode("switch");
         g.Connect(src, a); g.Connect(a, b); g.Connect(b, sw); g.Connect(sw, a);
+        g.Connect(b, Sink(g, "load"));
         sw.On = false;
         for (int t = 0; t < 20; t++) g.Tick(0.05);
         CheckTrue("open, nothing blows", !a.IsPopped);
@@ -530,6 +669,7 @@ static class Program
         var a = g.AddNode("a"); var b = g.AddNode("b");
         a.Integrity = new Integrity(100);
         g.Connect(src, a); g.Connect(a, b); g.Connect(b, a);
+        g.Connect(b, Sink(g, "load"));
         for (int t = 0; t < 4; t++) g.Tick(0.05);
         CheckTrue("its integrity is gone", a.Integrity.IsDestroyed);
         CheckTrue("and it is severed", a.IsPopped);
@@ -711,8 +851,10 @@ static class Program
         Check("off: nothing reaches the bulb", bulb.Inflow, 0);
         Check("off: bulb draws nothing", bulb.Drawn, 0);
         Check("off: bulb wastes nothing", bulb.Dumped, 0);
-        Check("off: the cable is now the dead end", cable.Dumped, 100);
+        Check("off: the cable carries nothing", cable.Inflow, 0);
+        Check("off: and stays cold", cable.Dumped, 0);
         Check("off: source still pushing", src.Offered, 100);
+        Check("off: so it takes its own output as heat", src.Dumped, 100);
 
         // and what it was holding fades rather than freezing
         var fading = new LoadBehaviour(50, 50);
@@ -744,18 +886,19 @@ static class Program
             g.Connect(prev, run[i]);
             prev = run[i];
         }
-        // nothing on the end, so cable4 is the dead end and takes the whole 100 W
+        // a 10 W load on the end takes 10 of the 100 W; the rest is heat at the load
+        var end = g.AddNode("load", new LoadBehaviour(10, 1e9));
+        g.Connect(prev, end);
         for (int t = 0; t < 400; t++) g.Tick(0.05);   // 20 s
 
-        CheckTrue("the dead end is the hottest tile on the run", run[4].Celsius > run[0].Celsius);
-        CheckTrue($"dead end above ambient ({run[4].Celsius:0.#} C)", run[4].Celsius > PowerGraph.AmbientCelsius + 1);
-        CheckTrue("heat reached the cable before it", run[3].Celsius > PowerGraph.AmbientCelsius + 1);
+        CheckTrue("the overfed load is the hottest tile", end.Celsius > run[4].Celsius);
+        CheckTrue($"well above ambient ({end.Celsius:0.#} C)", end.Celsius > PowerGraph.AmbientCelsius + 1);
+        CheckTrue("heat reached the cable before it", run[4].Celsius > PowerGraph.AmbientCelsius + 1);
         CheckTrue("and travelled the whole run", run[0].Celsius > PowerGraph.AmbientCelsius + 1);
-        CheckTrue("and the one before that", run[2].Celsius > PowerGraph.AmbientCelsius + 1);
-        CheckTrue("gradient falls away from the dead end",
-            run[4].Celsius > run[3].Celsius && run[3].Celsius > run[2].Celsius
+        CheckTrue("gradient falls away from the load",
+            end.Celsius > run[4].Celsius && run[4].Celsius > run[3].Celsius && run[3].Celsius > run[2].Celsius
             && run[2].Celsius > run[1].Celsius && run[1].Celsius > run[0].Celsius);
-        Console.WriteLine($"         profile: {run[0].Celsius:0.#} {run[1].Celsius:0.#} {run[2].Celsius:0.#} {run[3].Celsius:0.#} {run[4].Celsius:0.#} C  (dead end on the right)");
+        Console.WriteLine($"         profile: {run[0].Celsius:0.#} {run[1].Celsius:0.#} {run[2].Celsius:0.#} {run[3].Celsius:0.#} {run[4].Celsius:0.#} | {end.Celsius:0.#} C  (load on the right)");
     }
 
     // A sound grid drifts back to ambient on its own.
@@ -800,6 +943,7 @@ static class Program
                 var src = g.AddSource("source", watts);
                 var cable = g.AddNode("cable");
                 g.Connect(src, cable);
+                g.Connect(cable, Sink(g, "load"));
                 for (int w = 0; w < 4; w++) g.Tick(0.05);   // let the flow reach it
                 cable.Celsius = celsius;
 
@@ -858,6 +1002,7 @@ static class Program
         var b = g.AddNode("cable b");
         g.Connect(src, a);
         g.Connect(a, b);
+        g.Connect(b, Sink(g, "load"));
         g.Settle();
         Check("before: power reaches the end", b.Inflow, 100);
 
@@ -872,7 +1017,9 @@ static class Program
 
         g.Settle();
         Check("nothing reaches it any more", b.Inflow, 0);
-        Check("and the cable before it is the new dead end", a.Dumped, 100);
+        Check("the run before it goes dark rather than becoming the new dead end", a.Inflow, 0);
+        Check("so the cable before it stays cold", a.Dumped, 0);
+        Check("and the source takes its output as heat", src.Dumped, 100);
 
         b.On = true;
         g.Settle();
@@ -1058,8 +1205,8 @@ static class Program
         Check("plain: supplying", n1.Offered, 100);
         cut1.Enabled = false;                       // switch opened two tiles away
         g1.Settle();
-        Check("plain: still pushing into a dead run", n1.Offered, 100);
-        CheckTrue("plain: so the cable before the break cooks", g1.TotalDumped > 0);
+        Check("plain: stops too, since the grid sends nothing down a dead run", n1.Offered, 0);
+        Check("plain: and nothing is wasted", g1.TotalDumped, 0);
 
         // --- safety cell: looks for a component, not just a cable ---
         var safety = new SafetyBatteryBehaviour(0, 100, 100000);
@@ -1456,6 +1603,7 @@ static class Program
             chain.Add(n);
             prev = n;
         }
+        g.Connect(prev, Sink(g, "load"));
         for (int t = 0; t < 6; t++)
         {
             g.Tick(0.02);

@@ -85,14 +85,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         /// Watts the source here offered this tick, decided by the source when the grid asked.
         public double Offered { get; internal set; }
 
-        /// True when at least one conduit leaving here can carry power.
+        /// True when at least one conduit leaving here can carry power: live, with a receiver beyond it.
         public bool HasOutlet { get; internal set; }
 
-        /// True when some component is reachable from here at all, whether or not it wants anything
-        /// right now. A run that ends in bare cable is false, which is what a safety cell checks.
+        /// True when a receiver can be reached from here, through conduits only, whether or not it wants
+        /// anything right now. Never true of a tile because of its own intake. The grid pushes nothing down a
+        /// conduit unless this holds beyond it.
         public bool ReachesConsumer { get; internal set; }
 
-        /// True when something reachable from here is actually asking for watts this tick.
+        /// True when a receiver reachable from here, as above, is actually asking for watts this tick.
         public bool ReachesDemand { get; internal set; }
 
         /// Conduits leaving here that a switch has not opened.

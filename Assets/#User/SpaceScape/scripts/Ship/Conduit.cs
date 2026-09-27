@@ -20,8 +20,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private Renderer _bodyRenderer;
         [Tooltip("Length of the stub mesh at scale 1, in metres (2 for Unity's cylinder).")]
         [SerializeField] private float _bodyLengthAtScaleOne = 2f;   // Unity's cylinder primitive
-        [Tooltip("Length of one tile, in metres.")]
-        [SerializeField] private float _tileLength = 1f;
 
         [Header("Appearance")]
         [Tooltip("Watts at which the cable shows fully lit. Less shows proportionally dimmer.")]
@@ -76,7 +74,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (_stubs == null || _stubs.Length == 0) return;
 
             int used = 0;
-            float half = _tileLength * 0.5f;
+            float half = GridCell.Half;
 
             foreach (var face in Tile != null ? Tile.UsedFaces : NoFaces)
             {

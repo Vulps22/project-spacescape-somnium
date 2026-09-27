@@ -81,11 +81,19 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             }
         }
 
-        /// Every face this tile uses at all, which is the shape a cable on it should take.
+        /// Every face this tile uses: its declared In and Out faces, which for a conduit are its segments and
+        /// so the shape its cable takes. A tile with no edges module falls back to what is connected.
         public IEnumerable<GridDirection> UsedFaces
         {
             get
             {
+                var edges = Edges;
+                if (edges != null)
+                {
+                    foreach (var face in edges.Outputs) yield return face;
+                    foreach (var face in edges.Inputs) yield return face;
+                    yield break;
+                }
                 foreach (var face in Outputs) yield return face;
                 foreach (var face in InputFaces) yield return face;
             }
@@ -165,11 +173,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             return null;
         }
 
-        /// Where this tile is anchored. Cells are one unit apart and centred on integers.
-        public Vector3Int Coordinate => new Vector3Int(
-            Mathf.RoundToInt(transform.position.x),
-            Mathf.RoundToInt(transform.position.y),
-            Mathf.RoundToInt(transform.position.z));
+        /// The cell this tile is anchored in. See GridCell for how big a cell is.
+        public Vector3Int Coordinate => GridCell.ToCell(transform.position);
 
         /// How many cells this thing occupies. A cable is one; a reactor is not.
         public Vector3Int Size => new Vector3Int(
@@ -279,20 +284,19 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             var size = Size;
             if (size != Vector3Int.one)
             {
-                var centre = (Vector3)(Min + Max) * 0.5f;
                 Gizmos.color = new Color(1f, 0.5f, 0.2f, 0.5f);
-                Gizmos.DrawWireCube(centre, new Vector3(size.x, size.y, size.z));
+                Gizmos.DrawWireCube(GridCell.Centre(Min, Max), (Vector3)size * GridCell.Size);
             }
 
             Gizmos.color = new Color(0.4f, 0.8f, 1f, 0.6f);
             Gizmos.DrawWireSphere(transform.position, 0.08f);
             Gizmos.color = new Color(1f, 0.85f, 0.3f, 0.6f);
             foreach (var face in Outputs)
-                Gizmos.DrawLine(transform.position, transform.position + face.Vector() * 0.9f);
+                Gizmos.DrawLine(transform.position, transform.position + face.Vector() * (0.9f * GridCell.Size));
 
             Gizmos.color = new Color(0.4f, 0.8f, 1f, 0.6f);
             foreach (var face in InputFaces)
-                Gizmos.DrawLine(transform.position, transform.position + face.Vector() * 0.6f);
+                Gizmos.DrawLine(transform.position, transform.position + face.Vector() * (0.6f * GridCell.Size));
         }
     }
 }

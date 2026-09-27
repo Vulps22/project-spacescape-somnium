@@ -97,8 +97,14 @@ Two mechanisms, and only two:
 - **Conservation.** Verified across 200 randomly generated grids to 1e-6.
 - **Nothing is demand-driven.** A module receives whatever the topology hands it. Demand-driven flow
   auto-balances, and auto-balancing deletes the player.
-- **A forgotten dead end steals power.** A cable to a wrecked room takes its full share at the fork
-  and burns all of it.
+- **Power only goes where a receiver can be reached.** Decided 2026-09-26. A conduit carries power
+  only if a receiver lies beyond it, through conduits (components do not pass it on), whether or not
+  that receiver wants power right now. A dead end therefore takes nothing and stays cold, and a fork
+  splits only among branches with someone on them. It replaced "a forgotten dead end steals power",
+  because pushing into everything made one overfed load burn its whole run back to the reactor: each
+  pop turned the tile before it into the new dead end, which took all the surplus and popped in turn.
+  Now the load blows, its branch goes dark, and a producer with nowhere left to send its output takes
+  it as heat itself.
 - **Power moves one tile per tick**, so a node's readings sit one step behind the conduits leaving it
   until the grid settles. That lag is the visible surge when a conduit is reconnected. `Settle()`
   runs to the fixed point.
@@ -134,7 +140,10 @@ whose answer is `On && !IsPopped && flow < trip`.
 fact gives both halves of the switch-placement lesson:
 
 - a switch on the tile **beside a source** → the source has no outlet, declines, and keeps its charge
-- a switch on a tile **mid-run** → the cable before it becomes the dead end and cooks
+- a switch on a tile **mid-run** → the run before it goes dark: nothing beyond it can be reached, so
+  nothing is sent. A producer that cannot decline takes its own output as heat instead.
+- a component **switched off at the module** (the tile stays on) is still a receiver, so its branch is
+  still fed and everything arriving is heat at the module. Where the switch is still matters.
 
 ### Does power pass through?
 
@@ -242,16 +251,17 @@ tick, and the 100 W it could not bank is heat on the cell. It never passes arriv
 
 | tier | asks | pushes into a dead run? | idle ship |
 |---|---|---|---|
-| **plain** | have I got a cable? | **yes** — cooks it | keeps pushing |
+| **plain** | have I got a cable? | no — the grid never sends power down a dead run | keeps pushing |
 | **safety** | does this run reach a component? | no | keeps pushing |
 | **smart** | is anything *asking*, and at what rate? | no | **stops** |
 
-Each prevents a failure the tier below teaches you about, so the upgrade is **judgement**, not
-throughput. A plain cell cannot see past its own conduit, so a switch opened further down the run
-leaves it pushing into a dead end and cooking everything between.
+**Open:** since the reachability rule, plain and safety behave the same, because the grid itself now
+refuses dead runs. The bottom rung needs a new question, or the ladder becomes two tiers. Smart still
+earns its place: it stops at a sated grid, where the other two keep pushing into full components.
 
 The graph marks `ReachesConsumer` and `ReachesDemand` on every node in one backward walk per tick,
-from everything that can draw — one pass for the whole grid, not one per source.
+from each receiver's feeders — not the receiver itself, so a battery never counts its own intake as
+somewhere to deliver — and stops at components, since power does not pass through them.
 
 ## Heat
 
@@ -280,9 +290,9 @@ its working temperature is not hot, it is correct, and correct does not spread.
 Rates are **per second, not per tick**, so changing the 20 Hz tick never changes how the ship
 behaves.
 
-**Waste heats the tile that is wasting, then travels back along the cables.** Over 20 s a 100 W dead
-end at the end of a five-tile run gives `33.2 / 33.7 / 34.3 / 35.2 / 36.0 °C`, a clean gradient
-falling away from the dead end.
+**Waste heats the tile that is wasting, then travels back along the cables.** Over 20 s a 10 W load
+fed 100 W through a five-tile run gives `29.2 / 29.6 / 30.1 / 30.7 / 31.6 | 32.4 °C`, a clean
+gradient falling away from the overfed load.
 
 Conduction is computed against the tick's starting temperatures and applied afterwards, so no tile's
 order matters and what one loses is exactly what the next gains.
@@ -315,7 +325,7 @@ and `k` is derived. Measured over 400 runs: 30 s dial → 31.0 s mean; 5 s dial 
 Damage measures **what a tile is minus what it should be**, so a reactor is only ever damaged for
 running *hotter than its rating*, never for running.
 
-**The product is what makes diagnosis hard.** Heat is generated at the dead end and conducts back,
+**The product is what makes diagnosis hard.** Heat is generated at an overfed load and conducts back,
 but the tiles behind it carry more current — so `P · H` can peak on a tile that is not the hottest
 and is wasting nothing.
 

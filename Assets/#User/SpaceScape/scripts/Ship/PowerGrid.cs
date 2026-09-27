@@ -13,6 +13,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private bool _logValidation = true;
 
         private PowerGraph _graph;
+        private readonly Dictionary<Vector3Int, GridNode> _byCell = new Dictionary<Vector3Int, GridNode>();
+        private readonly Dictionary<PowerNode, GridNode> _tileOf = new Dictionary<PowerNode, GridNode>();
+        private readonly List<PowerNode> _blown = new List<PowerNode>();
         private double _step;
         private double _carry;
 
@@ -24,8 +27,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _graph = new PowerGraph();
             _step = 1.0 / Mathf.Max(1f, _ticksPerSecond);
 
+            var layout = FindFirstObjectByType<ConduitLayout>();
+            if (layout != null) layout.Spawn();
             Build();
-            _graph.Popped += n => Report("Popped", n, "severed, carries nothing from now on");
+            _graph.Popped += n => Report("Popped", n, "severed, carries nothing until it is repaired");
+            _graph.Popped += n => _blown.Add(n);
             _graph.Damaged += n => Report("Damaged", n, $"condition {n.Integrity}");
             _graph.Lost += n => Report("Lost", n, "wrecked, still wired in and wasting what it gets");
 
@@ -43,6 +49,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private void Build()
         {
             var nodes = FindObjectsByType<GridNode>(FindObjectsSortMode.None);
+            _tileOf.Clear();
+            _blown.Clear();
             foreach (var placed in nodes)
             {
                 var behaviours = placed.GetComponents<BehaviourModule>();
@@ -59,15 +67,16 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     : _graph.AddNode(placed.name, sink);
                 if (placed.TryGetComponent<IntegrityModule>(out var integrity)) node.Integrity = integrity.Integrity;
                 placed.Bind(node);
+                _tileOf[node] = placed;
             }
 
             // Every cell of every footprint, so two things cannot be built through each other.
-            var byCell = new Dictionary<Vector3Int, GridNode>();
+            _byCell.Clear();
             foreach (var placed in nodes)
             {
                 foreach (var cell in placed.Cells)
                 {
-                    if (byCell.TryGetValue(cell, out var clash))
+                    if (_byCell.TryGetValue(cell, out var clash))
                     {
                         if (clash != placed)
                             Debug.LogWarning(
@@ -75,44 +84,75 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                                 placed);
                         continue;
                     }
-                    byCell.Add(cell, placed);
+                    _byCell.Add(cell, placed);
                 }
             }
 
-            // A face is a whole side of the footprint, so a run can meet a big machine anywhere
-            // along it. Two things touching over several cells are still one join, not several.
+            foreach (var placed in nodes) ConnectOutputs(placed, null, true);
+        }
+
+        /// Rewires one tile after its faces have changed: drops every conduit into and out of it, then joins
+        /// it to its neighbours again, and them to it, from the faces as they stand now.
+        public void Rewire(GridNode tile)
+        {
+            if (_graph == null || tile == null || tile.Node == null) return;
+
+            var node = tile.Node;
+            var edges = new List<PowerEdge>(node.OutgoingEdges);
+            edges.AddRange(node.IncomingEdges);
+            foreach (var edge in edges) _graph.Disconnect(edge);
+
+            ConnectOutputs(tile, null, false);
+            var neighbours = new HashSet<GridNode>();
+            foreach (var face in AllFaces)
+                foreach (var cell in tile.FaceCells(face))
+                    if (_byCell.TryGetValue(cell + face.Offset(), out var neighbour) && neighbour != tile)
+                        neighbours.Add(neighbour);
+            foreach (var neighbour in neighbours) ConnectOutputs(neighbour, tile, false);
+        }
+
+        private static readonly GridDirection[] AllFaces =
+        {
+            GridDirection.XPlus, GridDirection.XMinus,
+            GridDirection.YPlus, GridDirection.YMinus,
+            GridDirection.ZPlus, GridDirection.ZMinus,
+        };
+
+        /// Joins a tile's outputs to whatever accepts them across each face, or only to one tile when given.
+        /// A face is a whole side of the footprint, so a run can meet a big machine anywhere along it; two
+        /// things touching over several cells are still one join, not several.
+        private void ConnectOutputs(GridNode placed, GridNode onlyTo, bool warn)
+        {
+            if (placed.Node == null) return;
             var joined = new HashSet<GridNode>();
-            foreach (var placed in nodes)
+            foreach (var face in placed.Outputs)
             {
-                foreach (var face in placed.Outputs)
+                joined.Clear();
+                bool reachedAnything = false;
+                var socket = GridNode.Opposite(face);
+
+                foreach (var cell in placed.FaceCells(face))
                 {
-                    joined.Clear();
-                    bool reachedAnything = false;
-                    var socket = GridNode.Opposite(face);
+                    if (!_byCell.TryGetValue(cell + face.Offset(), out var neighbour)) continue;
+                    if (neighbour == placed) continue;
+                    reachedAnything = true;
 
-                    foreach (var cell in placed.FaceCells(face))
+                    if (onlyTo != null && neighbour != onlyTo) continue;
+                    if (!joined.Add(neighbour) || neighbour.Node == null) continue;
+
+                    if (neighbour.Edges == null || !neighbour.Edges.AcceptsFrom(socket))
                     {
-                        var target = cell + face.Offset();
-                        if (!byCell.TryGetValue(target, out var neighbour)) continue;
-                        if (neighbour == placed) continue;
-                        reachedAnything = true;
-
-                        if (!joined.Add(neighbour)) continue;
-                        if (neighbour.Node == null) continue;
-
-                        if (neighbour.Edges == null || !neighbour.Edges.AcceptsFrom(socket))
-                        {
+                        if (warn)
                             Debug.LogWarning(
                                 $"'{placed.name}' sends power {face} at '{neighbour.name}', which has no {socket} input",
                                 placed);
-                            continue;
-                        }
-                        _graph.Connect(placed.Node, neighbour.Node);
+                        continue;
                     }
-
-                    if (!reachedAnything)
-                        Debug.LogWarning($"'{placed.name}' sends power {face} at nothing", placed);
+                    _graph.Connect(placed.Node, neighbour.Node);
                 }
+
+                if (!reachedAnything && warn)
+                    Debug.LogWarning($"'{placed.name}' sends power {face} at nothing", placed);
             }
         }
 
@@ -133,8 +173,31 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             {
                 _graph.Tick(_step);
                 _carry -= _step;
+                ParkBlownOutputs();
             }
             if (guard >= 8) _carry = 0.0;
+        }
+
+        /// Parks every output segment of a conduit that has just blown, so it shows its inputs and nothing
+        /// leaving: the visible sign there is no connection downstream. Done between ticks, never during one.
+        private void ParkBlownOutputs()
+        {
+            if (_blown.Count == 0) return;
+            foreach (var node in _blown)
+            {
+                if (!_tileOf.TryGetValue(node, out var tile) || tile == null) continue;
+                if (!tile.TryGetComponent<ConduitBehaviourModule>(out _) || tile.Edges == null) continue;
+                var outputs = new List<GridDirection>(tile.Edges.Outputs);
+                foreach (var face in outputs) tile.Edges.SetFace(face, FlowDirection.None);
+                Rewire(tile);
+            }
+            _blown.Clear();
+        }
+
+        /// Mends a tile that has blown, so it carries power again once it has an output.
+        public void Repair(GridNode tile)
+        {
+            if (_graph != null && tile != null && tile.Node != null) _graph.Repair(tile.Node);
         }
     }
 }

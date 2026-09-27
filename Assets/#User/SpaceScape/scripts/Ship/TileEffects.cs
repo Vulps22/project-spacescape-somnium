@@ -49,7 +49,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// Puts an emitter at the centre of a tile's footprint, parented to it so it moves with it.
         private static ParticleSystem Spawn(ParticleSystem prefab, GridNode tile)
         {
-            var centre = (Vector3)(tile.Min + tile.Max) * 0.5f;
+            var centre = GridCell.Centre(tile.Min, tile.Max);
             var effect = Instantiate(prefab, centre, Quaternion.identity, tile.transform);
             effect.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             return effect;

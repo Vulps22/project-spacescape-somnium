@@ -1,0 +1,18 @@
+{
+    "name": "SpaceScape.Editor",
+    "rootNamespace": "SomniumSpace.Worlds.SpaceScape.EditorTools",
+    "references": [
+        "GUID:e3150363fd6488230a920a35dcdd8ab0"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

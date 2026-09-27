@@ -3,42 +3,38 @@ using UnityEngine;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
-    /// A rocker a hand presses. The raised pad follows the hand in, snaps over once pushed past the
-    /// snap point, and springs back if the hand leaves first. Faces this transform's forward.
+    /// A rocker a hand pushes. Each half of the paddle is a solid box the size of that half. Every physics
+    /// step, whatever part of the avatar is pushing into the raised half (fingers, palm, back of the hand,
+    /// a fist) rocks the paddle in by exactly as far as it has gone in, on a rigid pivot. Pushed past the
+    /// snap point it snaps over and throws the switch; let go first and it eases back. No joint and no
+    /// spring, so nothing bounces or flexes. Faces this transform's forward.
     [SelectionBase]
     public sealed class RockerSwitch : MonoBehaviour
     {
-        private const int MaxHands = 8;
+        private const int MaxOverlaps = 16;
 
-        [Tooltip("The switch tile this rocker throws. Found automatically when placed under it.")]
-        [SerializeField] private SwitchConduitBehaviourModule _switch;
-        [Tooltip("The part that tilts.")]
+        [Tooltip("The switch addon this rocker throws. Found automatically on this object or above it.")]
+        [SerializeField] private SwitchAddon _switch;
+        [Tooltip("The part that tilts, about its X axis. Carries the two pads.")]
         [SerializeField] private Transform _paddle;
+        [Tooltip("The solid box covering the top half of the paddle.")]
+        [SerializeField] private BoxCollider _topPad;
+        [Tooltip("The solid box covering the bottom half of the paddle.")]
+        [SerializeField] private BoxCollider _bottomPad;
         [Tooltip("Ticked: pressing the top pad in closes the switch. Unticked: the bottom pad does.")]
         [SerializeField] private bool _topInMeansClosed = true;
 
-        [Header("Shape")]
-        [Tooltip("Half the pad's width, in metres.")]
-        [SerializeField] private float _halfWidth = 0.05f;
-        [Tooltip("Distance from the pivot to one end of the pad, in metres.")]
-        [SerializeField] private float _halfHeight = 0.09f;
+        [Header("Feel")]
         [Tooltip("How far each end tips in or out at rest, in degrees.")]
         [SerializeField] private float _tiltDegrees = 12f;
-
-        [Header("Feel")]
         [Tooltip("How far through its travel a push must go before it snaps over. 0.5 is the midpoint; higher needs a deeper push.")]
         [SerializeField, Range(0.05f, 0.95f)] private float _snapAt = 0.5f;
-        [Tooltip("How big a hand is treated as, in metres. Bigger touches the pad sooner.")]
-        [SerializeField] private float _handRadius = 0.04f;
-        [Tooltip("How far behind the pad a hand still counts, in metres. Stops a hand deep in the wall pressing it.")]
-        [SerializeField] private float _reach = 0.08f;
-        [Tooltip("How fast it springs back when let go before snapping, in degrees per second.")]
+        [Tooltip("How fast it eases back when let go before snapping, in degrees per second.")]
         [SerializeField] private float _returnDegreesPerSecond = 120f;
+        [Tooltip("How square a push must be to count, 0 to 1: 1 is only straight into the face, 0 counts anything with any push inward at all. Kept low so a push at any natural angle works.")]
+        [SerializeField, Range(0f, 1f)] private float _squareness = 0.05f;
 
-        private readonly Vector3[] _hands = new Vector3[MaxHands];
-        private readonly bool[] _wasInFront = new bool[MaxHands];
-        private readonly bool[] _engaged = new bool[MaxHands];
-        private readonly bool[] _latched = new bool[MaxHands];
+        private readonly Collider[] _overlaps = new Collider[MaxOverlaps];
         private bool _topIn;
         private float _angle;
 
@@ -49,6 +45,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private float OtherRestAngle => _topIn ? _tiltDegrees : -_tiltDegrees;
 
+        /// The half that stands proud, and so the one that can be pushed.
+        private BoxCollider Raised => _topIn ? _bottomPad : _topPad;
+
         private void Start()
         {
             if (_switch != null) _topIn = _switch.Closed == _topInMeansClosed;
@@ -56,84 +55,74 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             Apply();
         }
 
-        private void Update()
+        private void FixedUpdate()
         {
-            int count = PlayerHands.Positions(_hands);
-            float push = 0f;
-            bool anyEngaged = false;
+            FollowSwitch();
+            float pushed = Push();
 
-            for (int i = 0; i < MaxHands; i++)
+            if (pushed > 0f)
             {
-                if (i >= count) { _wasInFront[i] = _engaged[i] = _latched[i] = false; continue; }
-                float progress = Press(i, transform.InverseTransformPoint(_hands[i]));
-                if (!_engaged[i]) continue;
-                anyEngaged = true;
-                if (progress > push) push = progress;
+                // Rock in by as far as the hand has gone in, never past the far stop.
+                float toward = Mathf.Sign(OtherRestAngle - RestAngle);
+                _angle = Mathf.Clamp(_angle + toward * pushed, -_tiltDegrees, _tiltDegrees);
+                if ((_angle - RestAngle) / (OtherRestAngle - RestAngle) >= _snapAt) Snap();
             }
-
-            if (push >= _snapAt) Snap();
-            else if (anyEngaged) _angle = Mathf.Lerp(RestAngle, OtherRestAngle, push);
-            else
-            {
-                FollowSwitch();
-                _angle = Mathf.MoveTowards(_angle, RestAngle, _returnDegreesPerSecond * Time.deltaTime);
-            }
+            else _angle = Mathf.MoveTowards(_angle, RestAngle, _returnDegreesPerSecond * Time.fixedDeltaTime);
 
             Apply();
         }
 
-        /// Works out whether one hand is pressing the raised pad, and how far through the travel it has pushed it.
-        private float Press(int i, Vector3 local)
+        /// How many degrees the avatar has pushed the raised half in by this step: the deepest push square
+        /// into its face, turned into an angle at the point it touches.
+        private float Push()
         {
-            float side = _topIn ? -1f : 1f;
-            float along = local.y * side;
-            bool overPad = Mathf.Abs(local.x) <= _halfWidth + _handRadius
-                && along >= _halfHeight * 0.15f && along <= _halfHeight + _handRadius
-                && local.z >= -_reach;
+            var pad = Raised;
+            if (pad == null) return 0f;
 
-            float surface = local.y * Mathf.Sin(_angle * Mathf.Deg2Rad);
-            bool inFront = local.z - _handRadius >= surface - 1e-4f;
-            bool wasInFront = _wasInFront[i];
-            _wasInFront[i] = overPad && inFront;
+            var t = pad.transform;
+            Vector3 centre = t.TransformPoint(pad.center);
+            Vector3 half = Vector3.Scale(pad.size, t.lossyScale) * 0.5f;
+            int count = Physics.OverlapBoxNonAlloc(centre, half, _overlaps, t.rotation, ~0, QueryTriggerInteraction.Ignore);
 
-            if (_latched[i])
+            float deepest = 0f;
+            Vector3 inward = -_paddle.forward;
+            for (int i = 0; i < count; i++)
             {
-                if (!overPad || inFront) _latched[i] = false;
-                _engaged[i] = false;
-                return 0f;
+                var other = _overlaps[i];
+                if (other == _topPad || other == _bottomPad) continue;
+                if (!PlayerHands.IsLocalPlayer(other)) continue;
+
+                if (!Physics.ComputePenetration(pad, t.position, t.rotation, other, other.transform.position,
+                        other.transform.rotation, out var direction, out var distance)) continue;
+
+                // The way the pad must move to get clear: in, for a push square into its face.
+                if (Vector3.Dot(direction, inward) < _squareness) continue;
+
+                Vector3 touch = _paddle.InverseTransformPoint(other.ClosestPoint(centre));
+                float arm = Mathf.Max(0.02f, Mathf.Abs(touch.y));
+                float degrees = Mathf.Atan2(distance, arm) * Mathf.Rad2Deg;
+                if (degrees > deepest) deepest = degrees;
             }
-
-            if (!overPad || (inFront && !_engaged[i])) { _engaged[i] = false; return 0f; }
-            if (!_engaged[i] && !wasInFront) return 0f;
-            _engaged[i] = true;
-
-            float sin = Mathf.Clamp((local.z - _handRadius) / local.y, -1f, 1f);
-            float handAngle = Mathf.Asin(sin) * Mathf.Rad2Deg;
-            float travel = OtherRestAngle - RestAngle;
-            float progress = (handAngle - RestAngle) / travel;
-            if (progress <= 0f) _engaged[i] = false;
-            return Mathf.Clamp01(progress);
+            return deepest;
         }
 
-        /// Throws the rocker to its other state and sets the switch, ignoring the pressing hands until they leave.
+        /// Snaps over and throws the switch. The other half is free to push straight away.
         private void Snap()
         {
             _topIn = !_topIn;
             _angle = RestAngle;
-            for (int i = 0; i < MaxHands; i++)
-            {
-                if (_engaged[i]) _latched[i] = true;
-                _engaged[i] = false;
-            }
+            Apply();
             if (_switch != null) _switch.Closed = _topIn == _topInMeansClosed;
         }
 
-        /// Takes the switch's state when something other than a hand changed it.
+        /// Takes the switch's state when something other than a push changed it.
         private void FollowSwitch()
         {
             if (_switch == null) return;
             bool wantTopIn = _switch.Closed == _topInMeansClosed;
-            if (wantTopIn != _topIn) _topIn = wantTopIn;
+            if (wantTopIn == _topIn) return;
+            _topIn = wantTopIn;
+            _angle = RestAngle;
         }
 
         private void Apply()
@@ -143,15 +132,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private void OnValidate()
         {
-            if (_switch == null) _switch = GetComponentInParent<SwitchConduitBehaviourModule>();
-        }
-
-        private void OnDrawGizmosSelected()
-        {
-            Gizmos.matrix = transform.localToWorldMatrix;
-            Gizmos.color = new Color(1f, 0.8f, 0.2f, 0.6f);
-            Gizmos.DrawWireCube(Vector3.zero, new Vector3(_halfWidth * 2f, _halfHeight * 2f, 0.001f));
-            Gizmos.DrawLine(Vector3.zero, Vector3.forward * _reach);
+            if (_switch == null) _switch = GetComponentInParent<SwitchAddon>();
         }
     }
 }

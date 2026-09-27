@@ -286,8 +286,8 @@ Switches and splitters are going to be parts a player **places on top of a condu
 seamlessly into the cable, and the part **takes over that conduit's behaviour**. How that works
 while the ship is running comes after something static has been uploaded to Somnium.
 
-Until then, the scene bakes them in. The switch is a `SwitchConduitBehaviourModule` on the conduit
-tile itself, and the splitter is an extra `Out` face on that tile's `NodeEdgeModule`. The
+Until then, the scene bakes them in. The switch is the rocker, named in that conduit's
+`AddonModule` and put on the cable when the world starts (see `todolist.md` → *Addons and upgrades*), and the splitter is an extra `Out` face on that tile's `NodeEdgeModule`. The
 `SwitchModule` and `SplitterModule` prefabs survive only as script-less markers that show where
 they are. Their names predate "module" meaning what it does now.
 
