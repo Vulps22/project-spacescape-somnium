@@ -1,7 +1,8 @@
 # To do
 
-Single-player work to finish before networking. Networking comes after these, on purpose: every one
-of them changes what there is to sync.
+**Networking is next (decided 2026-09-27):** the single-player build gets rave reviews but is isolated
+to one player. What follows is the rest of the single-player queue; much of it will now be built with
+networking in mind rather than before it.
 
 ## Open: an overproducing reactor bakes its own cables
 
