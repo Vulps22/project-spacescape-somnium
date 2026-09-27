@@ -154,6 +154,24 @@ reconnecting one tile and its neighbours, and `Disconnect` / `RemoveNode` in `Po
 not need to become local to the tile, since the hologram edits faces directly rather than rotating
 the tile.
 
+## Training room
+
+**The #1 player complaint is not understanding how to use the wiring system.** Phase 1 (2026-09-27,
+branch `training-room`): three free-standing, looping displays under `TrainingRoom` in the scene, each
+a conduit with ghost hands acting out one use, beside a board listing the steps with the current one
+lit:
+
+1. **Opening a conduit:** reach in, the hologram opens, take your hand out to close it.
+2. **Opening a switch:** pass a hand through the pulsing unlock cube, then reach in.
+3. **Rewiring, two hands:** one hand holds it open; the other swings a handle to another face (the
+   cable follows), then slides an arrow to flip the flow.
+
+`TutorialDisplay` builds each one from the real hologram and switch prefabs when the world starts and
+strips out every collider, interactable and script, so it only shows and the grid never sees it. The
+ghost hands are simple shapes in `GhostHand.mat`; there is no hand model in the project.
+
+Next: installing and removing an addon, repositioning a switch, and a room built around the displays.
+
 ## Interaction rework
 
 **Found 2026-09-27.** Most of what a hand does in the scene is driven by our own scripts rather than
