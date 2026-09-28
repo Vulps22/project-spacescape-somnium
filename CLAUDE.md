@@ -17,6 +17,7 @@ designing anything new.
 
 - `docs/README.md`: the project, how to run the sim tests, and Editor gotchas.
 - `docs/principles.md`: the design rules. Read first.
+- `docs/networking.md`: the networking plan: authority rules, steps, and notes as we go.
 - `docs/todolist.md`: what is queued, and what was tried and failed (so it is not retried).
 - Scene: `Assets/#User/SpaceScape/SpaceScape.unity`. Code: `Assets/#User/SpaceScape/scripts/`.
   Editor-only tools: `Packages/com.spacescape.editor` (never uploaded).

@@ -312,12 +312,26 @@ public sealed class GridSurface : MonoBehaviour
    conduits that are already there, but a 10x10x4 engine room alone is about 360 conduits. Sockets
    mean the crew carry conduits and fit them: more physical work (principle 1), far cheaper, but it
    changes live wiring, which assumes the conduit already exists.
-2. **What wiring does a new ship start with?** All parked, only the hand-placed runs, or a list of
-   runs between components.
+2. **What wiring does a new ship start with?** **Decided 2026-09-28:** the hand-painted runs; every
+   other conduit parked. The ship ships working but off (`networking.md` → *The ship's conduits*).
 3. **Cost at scale, not measured.** Every conduit runs `Fit`, `Tint` and `Rename` in `LateUpdate` each
    frame; every `GridNode` becomes a `PowerNode`; the ring check walks every live conduit each tick.
    Parked conduits may need to skip all of that. Time 1,000 unconnected nodes in the simtest harness
    before committing.
+
+## Climbing
+
+Players scale their avatars, and many like being small. A small player cannot reach a high conduit or
+control, so **walls and components must be climbable**: hand over hand up the wall to whatever is out
+of reach.
+
+**Flying is disabled** in the ship. Flying lets a head push through a wall and the body follows with
+no questions asked, which puts players inside walls and behind panels. Garden already does this:
+`PlayerBridge.SuppressSomniumLocomotion()` calls Somnium's `SetFlyModeDisableState(true)`, and
+`SetLocalGravityScale` is there too for holding a climber up.
+
+Open: what a hand grips (the conduits themselves, panel edges, rungs), and whether climbing is its
+own interactor or Somnium has one.
 
 ## Repairing
 
