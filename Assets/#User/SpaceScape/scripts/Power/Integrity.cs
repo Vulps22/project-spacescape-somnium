@@ -52,6 +52,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
             if (Current > Max) Current = Max;
         }
 
+        /// Sets the condition outright, for the network to bring a copy into line with the master's.
+        public void Correct(double current) => Current = current < 0.0 ? 0.0 : (current > Max ? Max : current);
+
         /// Rolls whether it fails to do its job this time. Certain once spent, impossible while sound.
         public bool FailsToWork()
         {

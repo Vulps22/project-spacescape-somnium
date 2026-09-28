@@ -107,6 +107,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
             }
         }
 
+        /// Sets whether it is working, for the network to bring a copy into line with the master's.
+        public void CorrectWorking(bool working) => Working = working;
+
         /// Spends the whole charge at once, for a gun going off.
         public void Discharge()
         {

@@ -1,3 +1,4 @@
+using System;
 using SomniumSpace.Worlds.SpaceScape.Power;
 using TMPro;
 using UnityEngine;
@@ -7,7 +8,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// A reactor. Its hold keeps the rod magnets gripping; the core tops it up before anything reaches
     /// the output, and the input fills it only when the core cannot, so cutting both drops the rods.
     [RequireComponent(typeof(CapacitorModule))]
-    public sealed class ReactorBehaviourModule : BehaviourModule
+    public sealed class ReactorBehaviourModule : BehaviourModule, INetworkedState
     {
         [Header("Core")]
         [Tooltip("Watts one core makes with the rods fully out.")]
@@ -94,6 +95,20 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             }
         }
 
+        /// Raised when a hand on this client turns the dial, for the network to pass on to the master.
+        public event Action<float> DialTurned;
+
+        /// True while a hand on this client holds the dial. The network leaves the dial alone meanwhile,
+        /// so an older value from the master cannot pull it out of the hand.
+        public bool DialHeld { get; set; }
+
+        /// Turns the dial by hand: takes effect here at once and is passed on to the master.
+        public void TurnDial(float withdrawal)
+        {
+            TargetWithdrawal = withdrawal;
+            DialTurned?.Invoke(_targetWithdrawal);
+        }
+
         /// How far in the rods actually are, from fully out (0) to fully in (1).
         public double RodInsertion => 1.0 - Reactor.Core.Withdrawal;
 
@@ -106,6 +121,32 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             _targetWithdrawal = 0f;
             Reactor.Core.Scram();
+        }
+
+        /// The dial, the rods, fuel, coolant, the flow and whether the magnets grip.
+        public int StateCount => 6;
+
+        public void WriteState(float[] to, int at)
+        {
+            var r = Reactor;
+            to[at] = _targetWithdrawal;
+            to[at + 1] = (float)r.Core.Withdrawal;
+            to[at + 2] = (float)r.Core.FuelSeconds;
+            to[at + 3] = (float)r.Coolant.Litres;
+            to[at + 4] = (float)_flow;
+            to[at + 5] = r.Control.Working ? 1f : 0f;
+        }
+
+        public void ReadState(float[] from, int at)
+        {
+            var r = Reactor;
+            if (!DialHeld) TargetWithdrawal = from[at];
+            r.Core.CorrectWithdrawal(from[at + 1]);
+            r.Core.FuelSeconds = from[at + 2];
+            r.Coolant.Litres = from[at + 3];
+            _flow = from[at + 4];
+            r.Coolant.Flow = _flow;
+            r.Control.CorrectWorking(from[at + 5] > 0.5f);
         }
 
         /// Hands the Inspector's values to the sim. Rods and flow are the two a crew actually touches.

@@ -1,8 +1,7 @@
 # To do
 
-**Networking is next (decided 2026-09-27):** the single-player build gets rave reviews but is isolated
-to one player. What follows is the rest of the single-player queue; much of it will now be built with
-networking in mind rather than before it.
+**Networking is provisionally done (2026-09-28):** see `networking.md`, untested with a second player.
+What follows is the rest of the queue; build it with networking in mind (`networking.md` → Rules).
 
 ## Open: an overproducing reactor bakes its own cables
 
@@ -231,14 +230,14 @@ numbers now mean half the distance.
 
 ### Drawn conduits (built 2026-09-27)
 
-Conduits are no longer placed. `ConduitLayout` (on SceneManager) holds them as one packed `long` each
+Conduits are no longer placed. `ConduitLayout` (on Grid) holds them as one packed `long` each
 (`ConduitCode`: faces, addon id, facing, turns, parked, and x/y/z in 13 bits each), shows them as gizmos
 while editing, and builds them from `Conduit.prefab` when the world starts, just before `PowerGrid`
 builds. A placed tile in a drawn cell wins. Its **Addons** list may only be added to: a conduit
 stores its addon by position in it.
 
 The drawing tool is `ConduitLayoutEditor`, in the local package `Packages/com.spacescape.editor`
-(Editor-only, never uploaded). Select SceneManager and pick a mode in the layout's Inspector:
+(Editor-only, never uploaded). Select Grid and pick a mode in the layout's Inspector:
 
 - **Draw:** drag to lay a run; power flows the way you drag. Start on a conduit to branch. Over a wall
   the cable goes in the cell behind it; over a placed tile, in the cell in front. Shift, or pointing

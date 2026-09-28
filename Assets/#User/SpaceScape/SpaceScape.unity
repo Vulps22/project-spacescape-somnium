@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &82753304
+--- !u!1 &63372045
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,84 +127,64 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 82753307}
-  - component: {fileID: 82753306}
-  - component: {fileID: 82753305}
-  - component: {fileID: 82753309}
-  - component: {fileID: 82753308}
-  - component: {fileID: 82753310}
-  - component: {fileID: 82753311}
-  - component: {fileID: 82753312}
+  - component: {fileID: 63372050}
+  - component: {fileID: 63372049}
+  - component: {fileID: 63372048}
+  - component: {fileID: 63372047}
+  - component: {fileID: 63372046}
   m_Layer: 0
-  m_Name: SceneManager
+  m_Name: Players
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &82753305
+--- !u!114 &63372046
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 82753304}
+  m_GameObject: {fileID: 63372045}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 820295f5c2d731a619e7c624de63d56f, type: 3}
+  m_Script: {fileID: 11500000, guid: e4b1afa250f0016508c563809d20358c, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.DebugVisuals
-  _useDebuggingVisuals: 1
---- !u!114 &82753306
+  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Player.PlayerManager
+--- !u!114 &63372047
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 82753304}
+  m_GameObject: {fileID: 63372045}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a124e3753299a21029ddf8daa167873b, type: 3}
+  m_Script: {fileID: 11500000, guid: c0b1338a49e43abb08873b17580b7cdb, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.PowerGrid
-  _ticksPerSecond: 20
-  _logValidation: 1
---- !u!4 &82753307
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 82753304}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &82753308
+  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Player.PlayerBridge
+  _players: {fileID: 63372049}
+--- !u!114 &63372048
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 82753304}
+  m_GameObject: {fileID: 63372045}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9b32295312f8ca30a841de56e11c68d6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Player.HandCollisionSpike
-  _players: {fileID: 82753309}
+  _players: {fileID: 63372049}
   _editorHands: []
---- !u!114 &82753309
+--- !u!114 &63372049
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 82753304}
+  m_GameObject: {fileID: 63372045}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: -1787964940, guid: 6af85501506cb7f4db5388060eadf518, type: 3}
@@ -219,91 +199,21 @@ MonoBehaviour:
   PlayerRemoved:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &82753310
-MonoBehaviour:
+--- !u!4 &63372050
+Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 82753304}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 623455afdbb37f844b954f67267f93c6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.TileEffects
-  _sparksPrefab: {fileID: 6443977256035573766, guid: 81cd665cf3e4ddd629b9ac65b9f7322a,
-    type: 3}
-  _smokePrefab: {fileID: 1365080250641598528, guid: 358d3fe4380ae1e69bca59bac0a04e06,
-    type: 3}
-  _minSmokePerSecond: 6
-  _maxSmokePerSecond: 12
---- !u!114 &82753311
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 82753304}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5bcd332b27ed2c6eb9301a072badaf60, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.ConduitHolograms
-  _segmentPrefab: {fileID: 7648696604499193844, guid: 750671a31253f705991a2ce4c50f67a4,
-    type: 3}
-  _addonHandlePrefab: {fileID: 8983550547630981185, guid: 57b777b49ad39783189223fd203d7287,
-    type: 3}
-  _centrePrefab: {fileID: 3373736794988376516, guid: d4f3e1587994bd2ce825ad931b32ad8a,
-    type: 3}
-  _addonSlotPrefab: {fileID: 6717468122083913618, guid: df775fe1e9f0077a487dfe0f50c1a72f,
-    type: 3}
-  _upgradeSlotPrefab: {fileID: 7093984209764970691, guid: af6359460f94893569f46a0ae3503c03,
-    type: 3}
-  _addonHeight: 0.15
-  _upgradeHeight: 0.15
-  _slotSpread: 0.07
-  _openSeconds: 0.4
-  _slotSpiralDegrees: 540
-  _slotSpiralRadius: 0.06
-  _slotStartScale: 0.1
-  _centreJitter: 0.015
-  _centreFlicker: 0.5
-  _ambience: {fileID: 8300000, guid: 2458ac7da1b2bb66d8adf1323a70a419, type: 3}
-  _ambienceVolume: 0.25
-  _ambienceMaxDistance: 3
-  _hoverGrow: 0.25
-  _hoverRadius: 0.05
-  _hoverSeconds: 0.12
-  _zoneDegrees: 15
-  _parkRadius: 0.12
-  _arrowSlide: 0.04
-  _buzzAmplitude: 0.3
-  _buzzSeconds: 0.05
-  _parkGrow: 1
-  _installRadius: 0.1
-  _addonItemFill: 0.85
-  _unlockPrefab: {fileID: 2682912508019896746, guid: fd66b83106b398740930af40256a3a03,
-    type: 3}
-  _unlockRadius: 0.06
-  _unlockPulseSeconds: 1.2
-  _unlockPulse: 0.2
---- !u!114 &82753312
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 82753304}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9cb8c2ff227a69498a171573f6b8eac6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.ConduitLayout
-  _conduitPrefab: {fileID: 1668457962673484642, guid: 40b3ce7b5588456649175b45c9c6130b,
-    type: 3}
-  _addons:
-  - {fileID: 6792261558567237011, guid: 71045a000ecdba2d498485af19c0d5f8, type: 3}
-  _cells: 090000e29f001480090000e09f001480090000de9f001480091028dc9f001480090000da9f001480090000d89f001480090000d69f001480010800d49f001480000900d49f000c80000900d49f000480000900d49f00fc7f000900d49f00f47f020100d49f00ec7f000600e09f00f47f000600e09f00fc7f020400e09f000480060000e29f000480060000e49f000480060200e69f000480000600e69f000c80080400e69f001480060000e89f000480060000ea9f000480060000ec9f000480060000ee9f000480040200f09f000480000600f09f000c80000600f09f001480000600f09f001c80000600f09f002480020400f09f002c80060000f29f002c80060000f69f002c80060000f89f002c80060000fa9f002c80060000fc9f002c80060000fe9f002c8026000000a0002c8006000002a0002c8006000004a0002c8006000006a0002c8006000008a0002c800600000aa0002c802400000ca0002c806000000ce0002c804002000c20012c8060000000e0002c806000000020012c806000000060012c8060000000a0012c8060000000e0012c804002000020022c80
+  m_GameObject: {fileID: 63372045}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &103790361 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 8109224630009500633, guid: ee67dac301e2bc263bf1d828523906b2,
@@ -417,6 +327,11 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 127934592234032142, guid: ee67dac301e2bc263bf1d828523906b2,
+        type: 3}
+      propertyPath: SortKey
+      value: 4122293097
+      objectReference: {fileID: 0}
     - target: {fileID: 683127601117633016, guid: ee67dac301e2bc263bf1d828523906b2,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -682,6 +597,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_ConstrainProportionsScale
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8652818633877038783, guid: 2a3951fca87f773b6bdfe833ba9eaca0,
+        type: 3}
+      propertyPath: SortKey
+      value: 847169453
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:
@@ -1036,6 +956,9 @@ GameObject:
   - component: {fileID: 216563060}
   - component: {fileID: 216563059}
   - component: {fileID: 216563058}
+  - component: {fileID: 216563063}
+  - component: {fileID: 216563061}
+  - component: {fileID: 216563064}
   m_Layer: 0
   m_Name: Bulb_Branch
   m_TagString: Untagged
@@ -1218,6 +1141,52 @@ MonoBehaviour:
   _yMinus: 1
   _zPlus: 1
   _zMinus: 1
+--- !u!114 &216563061
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 216563052}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 729586bed90a65e1ebb63f14251803b1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Networking.ComponentNetwork
+  _data: {fileID: 216563064}
+  _writesPerSecond: 4
+  _dialSendsPerSecond: 10
+--- !u!114 &216563063
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 216563052}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.NetworkObject
+  SortKey: 4048108459
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 216563064}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &216563064
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 216563052}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e67a5587f84aae342a807972a8e0f4d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SomniumSpace.Network::SomniumSpace.Network.Bridge.NetworkBridgeData6
 --- !u!1001 &217255734
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2174,6 +2143,9 @@ GameObject:
   - component: {fileID: 812570804}
   - component: {fileID: 812570803}
   - component: {fileID: 812570802}
+  - component: {fileID: 812570807}
+  - component: {fileID: 812570805}
+  - component: {fileID: 812570808}
   m_Layer: 0
   m_Name: Bulb
   m_TagString: Untagged
@@ -2356,6 +2328,52 @@ MonoBehaviour:
   _yMinus: 1
   _zPlus: 1
   _zMinus: 1
+--- !u!114 &812570805
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 812570796}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 729586bed90a65e1ebb63f14251803b1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Networking.ComponentNetwork
+  _data: {fileID: 812570808}
+  _writesPerSecond: 4
+  _dialSendsPerSecond: 10
+--- !u!114 &812570807
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 812570796}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.NetworkObject
+  SortKey: 762989796
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 812570808}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &812570808
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 812570796}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e67a5587f84aae342a807972a8e0f4d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SomniumSpace.Network::SomniumSpace.Network.Bridge.NetworkBridgeData6
 --- !u!4 &892106706 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 683127601117633016, guid: ee67dac301e2bc263bf1d828523906b2,
@@ -2464,6 +2482,12 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1171748453}
+  - component: {fileID: 1171748458}
+  - component: {fileID: 1171748457}
+  - component: {fileID: 1171748456}
+  - component: {fileID: 1171748455}
+  - component: {fileID: 1171748454}
+  - component: {fileID: 1171748459}
   m_Layer: 0
   m_Name: Grid
   m_TagString: Untagged
@@ -2489,6 +2513,138 @@ Transform:
   - {fileID: 216563053}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1171748454
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1171748452}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 820295f5c2d731a619e7c624de63d56f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.DebugVisuals
+  _useDebuggingVisuals: 1
+--- !u!114 &1171748455
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1171748452}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5bcd332b27ed2c6eb9301a072badaf60, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.ConduitHolograms
+  _segmentPrefab: {fileID: 7648696604499193844, guid: 750671a31253f705991a2ce4c50f67a4,
+    type: 3}
+  _addonHandlePrefab: {fileID: 8983550547630981185, guid: 57b777b49ad39783189223fd203d7287,
+    type: 3}
+  _centrePrefab: {fileID: 3373736794988376516, guid: d4f3e1587994bd2ce825ad931b32ad8a,
+    type: 3}
+  _addonSlotPrefab: {fileID: 6717468122083913618, guid: df775fe1e9f0077a487dfe0f50c1a72f,
+    type: 3}
+  _upgradeSlotPrefab: {fileID: 7093984209764970691, guid: af6359460f94893569f46a0ae3503c03,
+    type: 3}
+  _addonHeight: 0.15
+  _upgradeHeight: 0.15
+  _slotSpread: 0.07
+  _openSeconds: 0.4
+  _slotSpiralDegrees: 540
+  _slotSpiralRadius: 0.06
+  _slotStartScale: 0.1
+  _centreJitter: 0.015
+  _centreFlicker: 0.5
+  _ambience: {fileID: 8300000, guid: 2458ac7da1b2bb66d8adf1323a70a419, type: 3}
+  _ambienceVolume: 0.25
+  _ambienceMaxDistance: 3
+  _hoverGrow: 0.25
+  _hoverRadius: 0.05
+  _hoverSeconds: 0.12
+  _zoneDegrees: 15
+  _parkRadius: 0.12
+  _arrowSlide: 0.04
+  _buzzAmplitude: 0.3
+  _buzzSeconds: 0.05
+  _parkGrow: 1
+  _installRadius: 0.1
+  _addonItemFill: 0.85
+  _unlockPrefab: {fileID: 2682912508019896746, guid: fd66b83106b398740930af40256a3a03,
+    type: 3}
+  _unlockRadius: 0.06
+  _unlockPulseSeconds: 1.2
+  _unlockPulse: 0.2
+  _openElsewhereMaterial: {fileID: 2100000, guid: aaa9a403eae4006f8ab39ce9d28cfc79,
+    type: 2}
+  _openElsewherePadding: 0.01
+--- !u!114 &1171748456
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1171748452}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 623455afdbb37f844b954f67267f93c6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.TileEffects
+  _sparksPrefab: {fileID: 6443977256035573766, guid: 81cd665cf3e4ddd629b9ac65b9f7322a,
+    type: 3}
+  _smokePrefab: {fileID: 1365080250641598528, guid: 358d3fe4380ae1e69bca59bac0a04e06,
+    type: 3}
+  _minSmokePerSecond: 6
+  _maxSmokePerSecond: 12
+--- !u!114 &1171748457
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1171748452}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9cb8c2ff227a69498a171573f6b8eac6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.ConduitLayout
+  _conduitPrefab: {fileID: 1668457962673484642, guid: 40b3ce7b5588456649175b45c9c6130b,
+    type: 3}
+  _addons:
+  - {fileID: 6792261558567237011, guid: 71045a000ecdba2d498485af19c0d5f8, type: 3}
+  _cells: 090000e29f001480090000e09f001480090000de9f001480091028dc9f001480090000da9f001480090000d89f001480090000d69f001480010800d49f001480000900d49f000c80000900d49f000480000900d49f00fc7f000900d49f00f47f020100d49f00ec7f000600e09f00f47f000600e09f00fc7f020400e09f000480060000e29f000480060000e49f000480060200e69f000480000600e69f000c80080400e69f001480060000e89f000480060000ea9f000480060000ec9f000480060000ee9f000480040200f09f000480000600f09f000c80000600f09f001480000600f09f001c80000600f09f002480020400f09f002c80060000f29f002c80060000f69f002c80060000f89f002c80060000fa9f002c80060000fc9f002c80060000fe9f002c8026000000a0002c8006000002a0002c8006000004a0002c8006000006a0002c8006000008a0002c800600000aa0002c802400000ca0002c806000000ce0002c804002000c20012c8060000000e0002c806000000020012c806000000060012c8060000000a0012c8060000000e0012c804002000020022c80
+--- !u!114 &1171748458
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1171748452}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a124e3753299a21029ddf8daa167873b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.PowerGrid
+  _ticksPerSecond: 20
+  _logValidation: 1
+--- !u!114 &1171748459
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1171748452}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fb6500fd0306f0c78a9e8c76ac445875, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Networking.ConduitNetwork
+  _chunkPrefab: {fileID: 2890393490220647419, guid: 59c587d8a3ef92f34a5949a08909b5d8,
+    type: 3}
+  _addonPrefab: {fileID: 5376022120924140991, guid: 8ce99a26332d04e2383869b9567ed185,
+    type: 3}
+  _syncsPerSecond: 4
 --- !u!1 &1234730565
 GameObject:
   m_ObjectHideFlags: 0
@@ -3198,6 +3354,58 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1459456798}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1769002076
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1769002078}
+  - component: {fileID: 1769002077}
+  m_Layer: 0
+  m_Name: Networking
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1769002077
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1769002076}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24a32737524147759edfc732ce8b1212, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Community.SceneNetworking
+  _autoTransferObjectsAuthority: 1
+  _editorConnectPhotonNetwork: 0
+  _networkPrefabs:
+  - {fileID: 2890393490220647419, guid: 59c587d8a3ef92f34a5949a08909b5d8, type: 3}
+  - {fileID: 5376022120924140991, guid: 8ce99a26332d04e2383869b9567ed185, type: 3}
+  _networkPrefabsGuid:
+  - 0426e20d-a55d-4899-af51-097a81887292
+  - 75ea7f0e-006c-4058-85cd-adb11c1631ff
+--- !u!4 &1769002078
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1769002076}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1773818767
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3299,6 +3507,11 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1459456799}
     m_Modifications:
+    - target: {fileID: 127934592234032142, guid: ee67dac301e2bc263bf1d828523906b2,
+        type: 3}
+      propertyPath: SortKey
+      value: 1950085562
+      objectReference: {fileID: 0}
     - target: {fileID: 683127601117633016, guid: ee67dac301e2bc263bf1d828523906b2,
         type: 3}
       propertyPath: m_LocalScale.x
@@ -3551,6 +3764,84 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1816663610}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1819378521
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1819378525}
+  - component: {fileID: 1819378524}
+  - component: {fileID: 1819378523}
+  - component: {fileID: 1819378522}
+  m_Layer: 0
+  m_Name: ShipNetwork
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1819378522
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1819378521}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51e4dddaa32a3ea1e84575ee623ace08, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Networking.ShipNetwork
+  _messenger: {fileID: 1819378523}
+--- !u!114 &1819378523
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1819378521}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 12ca85844e05e05cd9d5ca69d97d9602, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Networking.NetworkMessenger
+--- !u!114 &1819378524
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1819378521}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.NetworkObject
+  SortKey: 3038054947
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 1819378523}
+  ForceRemoteRenderTimeframe: 0
+--- !u!4 &1819378525
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1819378521}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2036371368
 GameObject:
   m_ObjectHideFlags: 0
@@ -3715,7 +4006,7 @@ MonoBehaviour:
   AssetDescription: 'HEAVY WORK IN PROGRESS! DO NOT EXPECT MUCH                               '
   PreviewPicturePath: 
   PreviewTexture: {fileID: 2800000, guid: 750677d32b678c542867f18786dca16f, type: 3}
-  LastBuildSizeBytes: 1148944
+  LastBuildSizeBytes: 1146624
   BoundsIsDisplay: 0
   IsOpen360Preview: 0
   IsEditSpawnPos: 0
@@ -3743,7 +4034,7 @@ MonoBehaviour:
     Free:
       Count: 4
       MaxCount: 10
-      AvailableSize: 248876352
+      AvailableSize: 248878672
     Paid:
       Entries: []
   OwnedTokens: []
@@ -4034,6 +4325,11 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1171748453}
     m_Modifications:
+    - target: {fileID: 127934592234032142, guid: ee67dac301e2bc263bf1d828523906b2,
+        type: 3}
+      propertyPath: SortKey
+      value: 1120977832
+      objectReference: {fileID: 0}
     - target: {fileID: 683127601117633016, guid: ee67dac301e2bc263bf1d828523906b2,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -4330,6 +4626,11 @@ PrefabInstance:
       propertyPath: m_TextStyleHashCode
       value: -1183493901
       objectReference: {fileID: 0}
+    - target: {fileID: 8652818633877038783, guid: 2a3951fca87f773b6bdfe833ba9eaca0,
+        type: 3}
+      propertyPath: SortKey
+      value: 3706886277
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -4350,8 +4651,8 @@ SceneRoots:
   - {fileID: 2087805622}
   - {fileID: 215820390}
   - {fileID: 2036371372}
-  - {fileID: 82753307}
   - {fileID: 1171748453}
+  - {fileID: 63372050}
   - {fileID: 8969475711784370413}
   - {fileID: 160215562}
   - {fileID: 555375684}
@@ -4359,3 +4660,5 @@ SceneRoots:
   - {fileID: 610884323}
   - {fileID: 622494379}
   - {fileID: 1287736105}
+  - {fileID: 1769002078}
+  - {fileID: 1819378525}

@@ -6,7 +6,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// Anything that banks power to work: charge the hold full, work while draining it, stop at empty.
     /// Leave drain below zero to match the rated watts, or set it to zero to hold charge until fired.
     [RequireComponent(typeof(CapacitorModule))]
-    public class LoadBehaviourModule : BehaviourModule
+    public class LoadBehaviourModule : BehaviourModule, INetworkedState
     {
         [Tooltip("Watts it draws while filling its hold, and burns while working.")]
         [SerializeField] private double _ratedWatts = 100.0;
@@ -35,6 +35,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         /// How full it is, for anything that shows readiness or brightness.
         public double ChargeFraction => Load.ChargeFraction;
+
+        public int StateCount => 1;
+        public void WriteState(float[] to, int at) => to[at] = Load.Working ? 1f : 0f;
+        public void ReadState(float[] from, int at) => Load.CorrectWorking(from[at] > 0.5f);
 
         private double Drain => _drainWatts < 0.0 ? _ratedWatts : _drainWatts;
 

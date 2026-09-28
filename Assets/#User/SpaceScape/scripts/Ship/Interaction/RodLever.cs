@@ -65,11 +65,17 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             Apply();
         }
 
-        private void OnGrabbed(SelectEnterEventArgs args) => _grabber = args.interactorObject;
+        private void OnGrabbed(SelectEnterEventArgs args)
+        {
+            _grabber = args.interactorObject;
+            if (_reactor != null) _reactor.DialHeld = true;
+        }
 
         private void OnReleased(SelectExitEventArgs args)
         {
-            if (args.interactorObject == _grabber) _grabber = null;
+            if (args.interactorObject != _grabber) return;
+            _grabber = null;
+            if (_reactor != null) _reactor.DialHeld = false;
         }
 
         private void Update()
@@ -79,7 +85,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             Apply();
 
             if (_grabber == null) return;
-            if (_reactor != null) _reactor.TargetWithdrawal = Mathf.InverseLerp(_insertedAngle, _withdrawnAngle, _angle);
+            if (_reactor != null) _reactor.TurnDial(Mathf.InverseLerp(_insertedAngle, _withdrawnAngle, _angle));
             Buzz();
         }
 

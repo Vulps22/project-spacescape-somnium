@@ -23,6 +23,19 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         public override bool Conducts => _closed;
 
+        public override int NetworkState
+        {
+            get => _closed ? 1 : 0;
+            set => Closed = value != 0;
+        }
+
+        /// Sets it by hand: takes effect here at once and is passed on to the master.
+        public void Press(bool closed)
+        {
+            Closed = closed;
+            RaiseOperated();
+        }
+
         /// Flips it, for a hand or a test to call.
         public void Toggle() => Closed = !_closed;
 

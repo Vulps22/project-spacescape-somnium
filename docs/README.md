@@ -93,17 +93,6 @@ The `unity` CLI drives the running Editor. Two things that have cost real time:
 **The current scene, in VR, interactable.** The wiring stays fixed; what a hand can do is operate
 what is already there. Rewiring the ship by hand comes after (`modules.md` → Rewiring live).
 
-## The gate
-
-Do not prototype a ship. Prototype **one fault.**
-
-A source, a run of conduits, two consumers, and a way to break something. Two players, neither able
-to see the other's readout.
-
-> **Can they find it and fix it in under two minutes, by talking?**
-
-Programmer art. No flying, no combat, no galaxy. If that is fun for ten minutes the rest is content.
-
 ## Documents
 
 - `principles.md` — **read first.** The ten rules, including the ones learned by breaking them.

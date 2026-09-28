@@ -1,17 +1,12 @@
 # SpaceScape
 
-## Next up: networking
+## Networking
 
-**Networking is the next priority (decided 2026-09-27).** Players give the single-player build rave
-reviews, but everything is isolated to one player, so making it multiplayer comes next, ahead of the
-rest of `docs/todolist.md`.
-
-Before starting, read `docs/todolist.md` → *Interaction rework*: several interactions keep private
-state that nothing could sync, and the open questions there (how Somnium syncs an
-`XRGrabInteractable`, whether the rest needs Photon Fusion) come first. Grow a Garden
-(`~/Documents/project-garden`) already networks grabbables with Fusion (`NetworkObject`,
-`NetworkRigidbody3D`, its own `NetworkGrabbable` and `AuthorityController`); look there before
-designing anything new.
+**Provisionally done (2026-09-28), untested with a second player.** Components, conduits, addons and
+switches, hologram occupancy and conduit edits are networked; only the master rolls failures.
+`docs/networking.md` has the rules (who owns what, state over messages), what was built step by step,
+and what is left (grabbables, the interaction rework). Read it before touching anything that holds
+state.
 
 ## Where things are
 

@@ -36,6 +36,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             }
         }
 
+        /// The prefab installed, or null.
+        public ConduitAddon Installed => _installed;
+
         /// The addon while it is doing something: null when there is none or it is parked.
         public ConduitAddon Active => _parked ? null : Addon;
 

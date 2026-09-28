@@ -43,6 +43,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             public Func<Vector3Int, GridNode> TileAt;
             public Action<GridNode, IReadOnlyList<GridDirection>, IReadOnlyList<bool>> Commit;
             public Action<GridNode, GridDirection, int, bool> CommitAddon;
+            public Action<GridNode> Removed;
         }
 
         private enum Drag { None, Tip, Arrow, Addon }
@@ -332,7 +333,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
             item.transform.SetParent(null, true);
             item.transform.localScale = prefab.transform.localScale;
-            if (Tile != null && Tile.TryGetComponent<AddonModule>(out var module)) module.Remove();
+            if (Tile != null && Tile.TryGetComponent<AddonModule>(out var module) && module.Remove() != null)
+                _motion.Removed?.Invoke(Tile);
             Haptics.Pulse(args.interactorObject, _motion.BuzzAmplitude, _motion.BuzzSeconds);
             Refresh();
         }

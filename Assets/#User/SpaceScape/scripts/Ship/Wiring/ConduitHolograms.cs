@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using SomniumSpace.Worlds.SpaceScape.Player;
 using UnityEngine;
@@ -6,6 +7,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// Opens a conduit while a hand is inside its cell. The first hand in holds it open; the hologram
     /// closes when that hand leaves. The other hand is the one that configures it.
+    ///
+    /// A conduit another player has open is boxed in the handles' material and cannot be opened here.
+    /// Who has what open arrives from the network; this only draws it and keeps hands out.
     public sealed class ConduitHolograms : MonoBehaviour
     {
         private const int MaxHands = 8;
@@ -90,6 +94,26 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Tooltip("How much an unlock cube grows at the top of its pulse: 0.2 is 20%.")]
         [SerializeField] private float _unlockPulse = 0.2f;
 
+        [Header("Open elsewhere")]
+        [Tooltip("Material of the box drawn round a conduit another player has open: the handles' material.")]
+        [SerializeField] private Material _openElsewhereMaterial;
+        [Tooltip("How far the box stands off the conduit on every side, in metres.")]
+        [SerializeField] private float _openElsewherePadding = 0.01f;
+
+        /// Raised when this client's hologram opens on a conduit.
+        public event Action<GridNode> Opened;
+
+        /// Raised when this client's hologram closes on a conduit.
+        public event Action<GridNode> Closed;
+
+        /// Raised when a hand on this client has changed a conduit: rewired it, or installed, removed, moved,
+        /// twisted or parked its addon.
+        public event Action<GridNode> Edited;
+
+        private readonly Dictionary<GridNode, HashSet<string>> _openElsewhere = new Dictionary<GridNode, HashSet<string>>();
+        private readonly Dictionary<GridNode, Transform> _boxes = new Dictionary<GridNode, Transform>();
+        private GridNode _shown;
+
         private readonly Dictionary<Vector3Int, GridNode> _conduits = new Dictionary<Vector3Int, GridNode>();
         private readonly Dictionary<Vector3Int, GridNode> _tiles = new Dictionary<Vector3Int, GridNode>();
         private readonly Vector3[] _hands = new Vector3[MaxHands];
@@ -164,6 +188,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     TileAt = cell => _tiles.TryGetValue(cell, out var found) ? found : null,
                     Commit = Commit,
                     CommitAddon = CommitAddon,
+                    Removed = tile => Edited?.Invoke(tile),
                 });
         }
 
@@ -182,28 +207,101 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
             Destroy(item.gameObject);
             _hologram.Refresh();
+            Edited?.Invoke(tile);
         }
 
         private void Update()
         {
+            FitBoxes();
             if (_hologram == null) return;
             int count = PlayerHands.Positions(_hands);
             UpdateLocks(count);
 
-            if (_holder >= 0 && _holder < count && _hologram.IsOpen && ConduitAt(_hands[_holder]) == _hologram.Tile) return;
+            if (_holder >= 0 && _holder < count && _hologram.IsOpen && ConduitAt(_hands[_holder]) == _hologram.Tile
+                && !IsOpenElsewhere(_hologram.Tile)) return;
 
             _holder = -1;
             for (int i = 0; i < count; i++)
             {
                 var conduit = ConduitAt(_hands[i]);
-                if (conduit == null || (IsLocked(conduit) && conduit != _unlocked)) continue;
+                if (conduit == null || IsOpenElsewhere(conduit) || (IsLocked(conduit) && conduit != _unlocked)) continue;
                 _holder = i;
                 _hologram.Holder = i;
                 _hologram.Show(conduit);
+                Shown(conduit);
                 return;
             }
             _hologram.Holder = -1;
             _hologram.Close();
+            Shown(null);
+        }
+
+        /// Raises Closed and Opened as the conduit shown here changes.
+        private void Shown(GridNode tile)
+        {
+            if (tile == _shown) return;
+            var was = _shown;
+            _shown = tile;
+            if (was != null) Closed?.Invoke(was);
+            if (tile != null) Opened?.Invoke(tile);
+        }
+
+        /// True while another player has this conduit open.
+        public bool IsOpenElsewhere(GridNode tile) =>
+            tile != null && _openElsewhere.TryGetValue(tile, out var who) && who.Count > 0;
+
+        /// Records that a player has a conduit open, or has closed it, and boxes it while anyone has.
+        public void SetOpenElsewhere(GridNode tile, string player, bool open)
+        {
+            if (tile == null || string.IsNullOrEmpty(player)) return;
+            if (!_openElsewhere.TryGetValue(tile, out var who)) _openElsewhere[tile] = who = new HashSet<string>();
+            if (open) who.Add(player);
+            else who.Remove(player);
+            ShowBox(tile, who.Count > 0);
+        }
+
+        /// Forgets every conduit a player had open, for when they leave.
+        public void ClearOpenElsewhere(string player)
+        {
+            foreach (var pair in _openElsewhere)
+                if (pair.Value.Remove(player)) ShowBox(pair.Key, pair.Value.Count > 0);
+        }
+
+        private void ShowBox(GridNode tile, bool show)
+        {
+            if (!show)
+            {
+                if (_boxes.TryGetValue(tile, out var old) && old != null) Destroy(old.gameObject);
+                _boxes.Remove(tile);
+                return;
+            }
+            if (_boxes.ContainsKey(tile)) return;
+
+            var box = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            box.name = $"Open elsewhere ({tile.name})";
+            Destroy(box.GetComponent<Collider>());
+            if (_openElsewhereMaterial != null) box.GetComponent<Renderer>().sharedMaterial = _openElsewhereMaterial;
+            box.transform.SetParent(transform, false);
+            _boxes[tile] = box.transform;
+        }
+
+        /// Keeps each box tight round its conduit, which can change shape while someone works on it.
+        private void FitBoxes()
+        {
+            foreach (var pair in _boxes)
+            {
+                if (pair.Key == null || pair.Value == null) continue;
+                bool any = false;
+                var bounds = new Bounds(pair.Key.transform.position, Vector3.zero);
+                foreach (var r in pair.Key.GetComponentsInChildren<Renderer>())
+                {
+                    if (!r.enabled || r.GetComponent<TMPro.TMP_Text>() != null) continue;
+                    if (any) bounds.Encapsulate(r.bounds);
+                    else { bounds = r.bounds; any = true; }
+                }
+                pair.Value.SetPositionAndRotation(bounds.center, Quaternion.identity);
+                pair.Value.localScale = bounds.size + Vector3.one * (2f * _openElsewherePadding);
+            }
         }
 
         /// Matches a conduit's lock to the addon on it now: a lock for an addon that asks for one, none otherwise.
@@ -287,9 +385,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         /// Moves, twists, parks or unparks the addon on a conduit, as its hologram was left. Not rewiring: the
         /// conduit's faces stay as they were.
-        private static void CommitAddon(GridNode tile, GridDirection face, int turns, bool parked)
+        private void CommitAddon(GridNode tile, GridDirection face, int turns, bool parked)
         {
-            if (tile != null && tile.TryGetComponent<AddonModule>(out var module)) module.Arrange(face, turns, parked);
+            if (tile == null || !tile.TryGetComponent<AddonModule>(out var module)) return;
+            module.Arrange(face, turns, parked);
+            Edited?.Invoke(tile);
         }
 
         /// Gives a conduit the shape its hologram was left in: its segments' faces In or Out, every other face
@@ -309,6 +409,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (_grid == null) return;
             if (hasOutput && tile.Node != null && tile.Node.IsPopped) _grid.Repair(tile);
             _grid.Rewire(tile);
+            Edited?.Invoke(tile);
         }
 
         /// The conduit whose cell a point is in, or null.

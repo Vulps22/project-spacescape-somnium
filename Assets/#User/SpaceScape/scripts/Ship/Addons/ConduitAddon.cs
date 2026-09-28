@@ -23,6 +23,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// Raised when an answer below has changed and the conduit should ask again.
         public event Action Changed;
 
+        /// Raised when a hand on this client changes the addon's state, for the network to pass on.
+        public event Action<ConduitAddon> Operated;
+
+        /// The addon's own state as one number, for the network to carry: a switch's open or closed. 0 for
+        /// an addon with none.
+        public virtual int NetworkState { get => 0; set { } }
+
         /// The item this comes out as, or null when it cannot be removed.
         public AddonItem Item => _item;
 
@@ -47,5 +54,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         /// Tells the conduit to ask again.
         protected void RaiseChanged() => Changed?.Invoke();
+
+        /// Says a hand on this client changed it.
+        protected void RaiseOperated() => Operated?.Invoke(this);
     }
 }

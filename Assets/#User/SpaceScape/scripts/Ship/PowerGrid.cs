@@ -22,6 +22,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// The grid itself, for anything that needs to read the whole picture.
         public PowerGraph Graph => _graph;
 
+        /// While true the grid does not tick: for a client that has joined but not yet been told how the
+        /// ship stands, which cannot simulate any of it until it has all of it.
+        public bool Held { get; set; }
+
         private void Awake()
         {
             _graph = new PowerGraph();
@@ -166,6 +170,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 Awake();
                 if (_graph == null) return;
             }
+
+            if (Held) return;
 
             _carry += Time.deltaTime;
             int guard = 0;

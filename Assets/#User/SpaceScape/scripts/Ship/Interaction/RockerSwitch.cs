@@ -112,7 +112,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _topIn = !_topIn;
             _angle = RestAngle;
             Apply();
-            if (_switch != null) _switch.Closed = _topIn == _topInMeansClosed;
+            if (_switch != null) _switch.Press(_topIn == _topInMeansClosed);
         }
 
         /// Takes the switch's state when something other than a push changed it.

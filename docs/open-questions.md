@@ -118,10 +118,6 @@ into one assembly and the Unity layer can write `node.Drawn = 999` straight into
 around `scripts/Power/` would make `internal` mean "the graph only" and make a Unity type in the sim
 a compile error rather than a rule to remember.
 
-**The first prototype needs almost none of this.** The gate in `README.md` is a source, a run of
-conduits, two consumers and a way to break something. Everything else is downstream of that test
-passing.
-
 **The reactor's fail-safe has no failure mode.** Rods held by electromagnets drop on loss of power,
 so the reactor shuts itself down safely — which removes the runaway entirely and takes a game-over
 scenario with it. Needs something that can stop the rods falling. See `reactor.md` → Open.

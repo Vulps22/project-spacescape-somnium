@@ -4,7 +4,7 @@ using UnityEngine;
 namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// How much punishment a tile has left, and which model shows how damaged it is.
-    public sealed class IntegrityModule : Module
+    public sealed class IntegrityModule : Module, INetworkedState
     {
         [Tooltip("Condition when new. Each heat failure takes the grid's Pop Damage (25) off it; at 0 it is wrecked.")]
         [SerializeField] private double _max = 100.0;
@@ -38,6 +38,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 return _integrity;
             }
         }
+
+        public int StateCount => 1;
+        public void WriteState(float[] to, int at) => to[at] = (float)Integrity.Current;
+        public void ReadState(float[] from, int at) => Integrity.Correct(from[at]);
 
         private void Update() => ShowDamage();
 

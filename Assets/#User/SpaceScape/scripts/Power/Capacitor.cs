@@ -32,6 +32,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
             }
         }
 
+        /// Sets the charge outright, for the network to bring a copy into line with the master's.
+        public void Correct(double joules) => Charge = joules < 0.0 ? 0.0 : (joules > Capacity ? Capacity : joules);
+
         /// Banks joules and returns whatever did not fit.
         public double Fill(double joules)
         {

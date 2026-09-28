@@ -33,8 +33,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         /// Condition a component loses each time heat gets the better of it. Four hits ends one.
         public double PopDamage = 25.0;
 
-        /// Seeded so a run can be repeated, and so every client would agree.
+        /// Seeded so a run can be repeated.
         public int PopSeed = 20260917;
+
+        /// True where this grid decides its own failures: heat pops, the damage they do, and rings blowing.
+        /// False on a networked client that is told what failed by the master instead of rolling for it.
+        public bool DecidesFailures = true;
 
         private readonly List<PowerNode> _nodes = new List<PowerNode>();
         private readonly List<PowerEdge> _edges = new List<PowerEdge>();
@@ -229,8 +233,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
             }
 
             Conduct(seconds);
-            RollForPops(seconds);
-            BlowMergePoints();
+            if (DecidesFailures)
+            {
+                RollForPops(seconds);
+                BlowMergePoints();
+            }
 
             for (int i = 0; i < _nodes.Count; i++)
             {
@@ -351,6 +358,14 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
                 Lost?.Invoke(node);
                 if (node.ForwardsPower) Sever(node);
             }
+        }
+
+        /// Sets whether a tile is severed, for the network to bring a copy into line with the master's.
+        public void CorrectPopped(PowerNode node, bool popped)
+        {
+            if (node == null || node.IsPopped == popped) return;
+            if (popped) Sever(node);
+            else node.IsPopped = false;
         }
 
         /// Cuts a tile out of the grid for good.

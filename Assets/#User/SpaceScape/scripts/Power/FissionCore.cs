@@ -61,6 +61,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         /// Turns the dial to zero, for the crew's big red button.
         public void Scram() => TargetWithdrawal = 0.0;
 
+        /// Sets where the rods are, for the network to bring a copy into line with the master's.
+        public void CorrectWithdrawal(double withdrawal) => Withdrawal = Clamp(withdrawal);
+
         /// Burns fuel and lets the rods travel toward where they have been asked to be.
         public void ProducePower(double seconds)
         {
