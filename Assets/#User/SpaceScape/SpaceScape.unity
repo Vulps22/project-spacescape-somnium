@@ -4953,11 +4953,13 @@ MonoBehaviour:
   - {fileID: 5376022120924140991, guid: 8ce99a26332d04e2383869b9567ed185, type: 3}
   - {fileID: 8652818633877038783, guid: 2a3951fca87f773b6bdfe833ba9eaca0, type: 3}
   - {fileID: 127934592234032142, guid: ee67dac301e2bc263bf1d828523906b2, type: 3}
+  - {fileID: 644496486819664745, guid: b3444d1c21cf32db9903da057ae54054, type: 3}
   _networkPrefabsGuid:
   - 0426e20d-a55d-4899-af51-097a81887292
   - 75ea7f0e-006c-4058-85cd-adb11c1631ff
   - ff3a60cc-b984-4eca-bbc4-d2534c0bf51c
   - 818fff1b-302f-4dd8-9110-fda0870336f2
+  - f054453f-6c8d-4793-8cb8-45c162ef2a11
 --- !u!4 &1769002078
 Transform:
   m_ObjectHideFlags: 0
