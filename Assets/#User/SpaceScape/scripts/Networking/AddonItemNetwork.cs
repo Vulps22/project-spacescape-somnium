@@ -38,11 +38,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             if (holograms.SizesItem == SizesItem) holograms.SizesItem = null;
         }
 
-        /// The picture is never spawned, so its NetworkGrabbable would ask Fusion for authority over nothing
-        /// when grabbed, and throw.
+        /// The picture is never spawned, so its NetworkGrabbable is worse than useless: on hover, lacking
+        /// authority, it sets the rigidbody back to the non-kinematic it recorded in Awake (before Hold pinned
+        /// it), so the picture fell out of the slot as soon as a hand came near; and on grab it asks Fusion for
+        /// authority over nothing, and throws. Removed at once, before any hover can reach it.
         private static void OnItemShown(AddonItem item)
         {
-            if (item.TryGetComponent<NetworkGrabbable>(out var grabbable)) UnityEngine.Object.Destroy(grabbable);
+            if (item.TryGetComponent<NetworkGrabbable>(out var grabbable)) UnityEngine.Object.DestroyImmediate(grabbable);
         }
 
         private void OnItemTakenOut(AddonItem item, AddonItem prefab)

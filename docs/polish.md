@@ -10,12 +10,16 @@ state reaches other players (`networking.md` → Rules).
 **Written 2026-09-29, compiles clean, untested.** Needs Switch Addon added to `SceneNetworking`'s
 network prefabs (a scene change, made in Unity).
 
-- **Disappears when the hologram closes:** `XRGrabInteractable` put a let-go item back under the parent
-  it had when grabbed, and the item shown in the hologram's addon slot started under that slot. `AddonItem`
-  now turns Retain Transform Parent off.
-- **Drops to the floor when put into a slot:** it only installed within 0.1 m of the slot's centre, far
-  tighter than the conduit's cell it shrinks in. Let go anywhere in the open conduit's cell now installs.
-- **Offset from the slot when the hologram reopens:** the same re-parenting as above.
+- **Disappears when the hologram closes:** the fallen shown item is a child of the hologram's slot (see
+  Drops). Separately, `XRGrabInteractable` put any let-go item back under the parent it had when grabbed,
+  which for an item taken from the slot is that slot; `AddonItem` now turns Retain Transform Parent off.
+- **Drops to the floor when put into a slot** (it installs, then the item shown in the slot falls): that
+  shown item is made from the networked prefab but never spawned, and its `NetworkGrabbable` records the
+  rigidbody as non-kinematic in Awake, before `Hold()` pins it; on hover, lacking authority, it sets that
+  back, so the item fell as soon as the hand came near. `AddonItemNetwork` removes its `NetworkGrabbable`
+  the moment it is made. (The install check itself was fine and is unchanged.)
+- **Offset from the slot when the hologram reopens:** the fallen item is still the hologram slot's child,
+  so it keeps the offset it fell to.
 - **Shrinking is not networked:** the Switch Addon's `NetworkRigidbody3D` now syncs scale, and only
   whoever holds an item (or has its authority once it is let go) resizes it.
 - **Size: a fixed full size.** Full size is the prefab's own scale (0.25 for the Switch Addon), and the

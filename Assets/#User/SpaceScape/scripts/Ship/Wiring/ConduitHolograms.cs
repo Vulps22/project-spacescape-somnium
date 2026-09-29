@@ -79,7 +79,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private float _parkGrow = 1f;
 
         [Header("Addons")]
-        [Tooltip("An addon item let go inside the open conduit's cell installs, as it has shrunk to fit there; so does one let go this close to the addon slot's centre, in metres.")]
+        [Tooltip("How close to the addon slot's centre an addon item must be let go to install it, in metres.")]
         [SerializeField] private float _installRadius = 0.1f;
         [Tooltip("How much of the addon slot's frame an installed addon's item fills, 0 to 1. It is centred in the frame.")]
         [SerializeField, Range(0.1f, 1f)] private float _addonItemFill = 0.85f;
@@ -219,10 +219,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             if (_hologram == null || !_hologram.IsOpen || item == null || item.Installs == null) return;
             var slot = _hologram.AddonSlot;
+            if (slot == null || (item.transform.position - slot.position).sqrMagnitude > _installRadius * _installRadius) return;
             var tile = _hologram.Tile;
-            bool inside = tile.Occupies(GridCell.ToCell(item.transform.position));
-            bool near = slot != null && (item.transform.position - slot.position).sqrMagnitude <= _installRadius * _installRadius;
-            if (!inside && !near) return;
             if (!tile.TryGetComponent<AddonModule>(out var module) || !module.Install(item.Installs, FaceTowardPlayer(tile))) return;
 
             item.Retire();
