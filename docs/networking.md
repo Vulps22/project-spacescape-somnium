@@ -362,3 +362,21 @@ Dated, newest last. What we tried, what broke, what we learned.
   placed tiles; the conduits' network state will live there too. `SomniumPlayersContainer`,
   `PlayerHands`, `PlayerBridge` and `PlayerManager` moved to a new `Players` object. SceneManager is
   gone. Every moved component's settings checked against the last commit.
+- **2026-09-29** In-world, joining threw `Type ...NetworkMessenger has not been weaved` from
+  `RegisterSceneObjects`, and the whole scene registration stopped with it: scene network objects stayed
+  off on other clients (reactors only the master could see), and slot handles were dead. `NetworkMessenger`
+  inherited `NetworkBridgeEvents`, which makes it a Fusion type needing the weaver, and Somnium does not
+  weave world code. **Rule: nothing in our assembly may inherit a Fusion network type** (`NetworkBehaviour`,
+  `NetworkBridgeEvents`, `NetworkBridgeData`...). Hold Somnium's component beside ours and forward to it,
+  as `ComponentNetwork`, `ConduitChunk`, `AddonNetwork` and `SlotNetwork` already did. `NetworkMessenger` is
+  now a plain script over a `NetworkBridgeEvents` on the same object.
+- **2026-09-29** In-world, component ports did nothing (no markers, no connections, no warnings) while the
+  Editor was fine. `ComponentEdgeModule` kept them as `Port[]`, the only array of a custom serializable type
+  in the project; the plain `long[]` conduit layout survives upload, so ports are now plain `int[]` per face
+  (edited as ports by a custom Inspector) and each component logs "has N port(s)" at start to confirm.
+  Also: a slot's local fallback fired in-world because Somnium's runner appears a moment after start,
+  leaving everyone with unnetworked components (so the rod lever's dial never synced); it is now Editor-only.
+- **2026-09-29** Ports stood half a cell off in-world. Fusion instantiates a spawned prefab at its own
+  pose and runs Awake there; the position passed to `Spawn` (and `Place`) arrives after. **Rule: nothing on
+  a spawnable prefab may work out world positions in Awake**; place children in the object's own axes,
+  or wait until it is placed.

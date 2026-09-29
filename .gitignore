@@ -128,3 +128,6 @@ InitTestScene*.unity*
 !/docs/simtest/simtest.csproj
 /docs/simtest/bin/
 /docs/simtest/obj/
+
+# Somnium client logs kept for reference: they carry session tokens and player ids, so never public
+/docs/logs/

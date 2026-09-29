@@ -98,11 +98,13 @@ what is already there. Rewiring the ship by hand comes after (`modules.md` → R
 - `principles.md` — **read first.** The ten rules, including the ones learned by breaking them.
 - `power.md` — the built model, with measured numbers.
 - `reactor.md` — cores, rods, house load, the dial and coolant. Built.
+- `grid.md` — the grid, component slots (S1 to S5) and the rules for sizing and placing components.
 - `damage.md` — weapons, armour layers, and how the hull is built from a kit on the grid. Design only.
 - `the-loop.md` — galaxy, courier contracts, difficulty by depth, navigation. Design only.
 - `modules.md` — the module stack every tile is built from. Built.
 - `credits.md` — third-party work used, and the licence terms each needs; mirrored in-world on the Credits prefab.
 - `networking.md` — the networking plan: authority rules, steps, notes.
+- `2d.md` — the 2D (mouse and keyboard) interaction model. Draft.
 - `todolist.md` — single-player work queued before networking: live wiring, repairing, loading, coolant.
 - `open-questions.md` — what is undecided, what is parked, and what must not be re-proposed.
 

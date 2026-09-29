@@ -3,6 +3,46 @@
 **Networking is provisionally done (2026-09-28):** see `networking.md`, untested with a second player.
 What follows is the rest of the queue; build it with networking in mind (`networking.md` → Rules).
 
+## Next session (from the 2026-09-29 in-world test)
+
+Nothing from 2026-09-28/29 is committed: commit only once it is tested and working.
+
+- **Conduits did not pop** with the reactor at full power for a long time. **Not a networking bug; the
+  ship as wired never gets a conduit hot enough.** The master does roll (the 01:51 log has the reactor
+  `Damaged()`, which only a rolling grid does). The scene's layout rebuilt in the sim harness does the
+  same as the world: the reactor's 80 W splits 40/40 into the two batteries, each of which is
+  discharging 100 W and so takes it all; nothing is wasted on the ship except battery B's 100 W pushed
+  into the running reactor's input, which it refuses. That heat is on the reactor, conducts out, and
+  levels off with no conduit above 25 C, under the 50 C pop floor. The reactor takes a hit every few
+  minutes instead (sim: 174 s; world: about 4.5 min). To see a conduit pop, something on the ship must
+  waste power with current flowing past it (an overfed load, a full cell). Open: should a running
+  reactor's input keep taking a cell's full discharge as heat? `DiodeStopsControlPowerLeakingOut` is the
+  nearby case. One thing the sim does not match: in-world the log says the reactor was wasting 180 W
+  (its own 80 W too), where the sim wastes 100 W; worth a look if the reactor ever seems to have no
+  outlet.
+- **Ports sat at a cell's corner and stuck out of the slot: in-world only. Fixed, untested.** Fusion makes
+  a spawned component at the prefab's own pose and Awake ran there, placing the Port models from grid
+  cells worked out at that pose (the prefab's centre is a cell centre, a slot's is a corner, so half a
+  cell off every way). They are now placed from the component's own axes. The grid was never affected:
+  it re-reads ports from the seated pose.
+- **Reminder for Vulps: restore the debug text on the batteries.**
+- **Addon item did not shrink in an open cell or grow back once taken out: fixed, untested.** Its
+  `XRGrabInteractable` tracked scale, so XRI rewrote the grab-time size every frame it was held.
+  `AddonItem` now turns `trackScale` off and owns its size. Watch for: the item shown in an open slot is a
+  local `Instantiate` of the networked Switch Addon prefab, never spawned, so its `NetworkGrabbable` may
+  throw on grab (as the bar's did) and stop it being taken out. It also means a taken-out item is not
+  networked yet.
+- **Slot handle bar: networking taken off for now, to be redone (low priority after swapping components).**
+  Its nested `NetworkObject` never came alive in-world (`.Object` null), so `NetworkGrabbable.OnGrabbed`
+  threw inside XRI's select-enter and the bar never followed the hand. The bar's `NetworkObject`,
+  `NetworkRigidbody3D` and `NetworkGrabbable` are removed; the lock is still networked (`SlotNetwork`).
+  The bar's motion **must** be networked again so others see it pulled; candidate: the reactor dial
+  pattern through the slot's `NetworkBridgeData`. The handle's back now sits flush with the slot's front.
+- **Slot handles:** the changes made no difference. Only the reactor's handle, which Vulps altered by hand
+  before those changes, can be grabbed; grabbing it shows the laser, and lifting the hand leaves the laser
+  arcing between hand and handle. The same bug was seen and fixed in Grow a Garden; Vulps is recalling
+  the fix.
+
 ## Open: an overproducing reactor bakes its own cables
 
 Since power only goes where a receiver can be reached (`power.md`), a reactor with nowhere to send its
@@ -318,6 +358,12 @@ public sealed class GridSurface : MonoBehaviour
    Parked conduits may need to skip all of that. Time 1,000 unconnected nodes in the simtest harness
    before committing.
 
+## Weight and carrying together
+
+Components have a configurable weight, and every player can lift up to 500 kg. Each hand on a component
+takes its share, so the weight each carries drops until it can be lifted: a 2,000 kg reactor needs four
+players. Logged 2026-09-28; for now one player can pick up anything (`grid.md` → Moving a component).
+
 ## Climbing
 
 Players scale their avatars, and many like being small. A small player cannot reach a high conduit or
@@ -372,3 +418,21 @@ accumulate along that branch.
   consumption, above)
 - open: where the coolant comes from (the reactor's drum, a separate tank, both), and whether flow
   follows the power's direction or just any adjacent coolant module
+
+## Felix (future, logged 2026-09-29)
+
+**Felix, the ship's cat.** He darts around the ship being cute and mascot-y, and can be picked up and
+petted.
+
+**The inertia drive:** an S4 engine upgrade that switches off the ship's inertia, making it absurdly
+agile. **Secret, never documented in-world:** Felix fits an S4 slot. Plug him into the drive and it
+works, but it makes sad cat noises the whole time so the crew feel terrible.
+
+**The mark of shame:** whoever puts Felix in the slot gets a cat hat on their avatar in SpaceScape,
+**forever**. What kind of psychopath plugs a cat into a high-voltage component bay?
+
+Not ready to build until networking is settled (`CLAUDE.md`). Open questions:
+- Felix's wandering: the master runs him and everyone sees the same cat; grabbing him follows the
+  grabbable rules.
+- "Forever" needs per-player data that outlives a session. Find out what Somnium offers for that before
+  promising it.
