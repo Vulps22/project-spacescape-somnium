@@ -382,3 +382,13 @@ Dated, newest last. What we tried, what broke, what we learned.
   pose and runs Awake there; the position passed to `Spawn` (and `Place`) arrives after. **Rule: nothing on
   a spawnable prefab may work out world positions in Awake**; place children in the object's own axes,
   or wait until it is placed.
+- **2026-09-29** First test with many players: components, slots, carrying and the handle all worked.
+  The component prefabs had "Destroy When State Authority Leaves" on, so a component vanished when the
+  player holding its authority left. **Rule: every NetworkObject is `V1 | AllowStateAuthorityOverride`
+  (Flags 524289): Allow State Authority Override on, Master Client Object off, Destroy When State Authority
+  Leaves off** (what the template's `SceneNetworking.NETWORK_OBJECT_DEFAULT_FLAGS` says, though nothing
+  applies it). Vulps set it on Reactor, Battery and Switch Addon; the Slot, ConduitChunk and AddonState
+  prefabs and the scene's ShipNetwork, Bulb and Bulb_Branch still had the destroy flag (262145) and were
+  changed to match. With it on, a slot's NetworkObject was torn down when its authority left, and
+  `SceneNetworking.ReassignNullObjectsAuthority` threw on it, stopping the reassignment of everything after
+  it in the list.
