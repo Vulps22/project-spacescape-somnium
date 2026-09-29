@@ -31,10 +31,23 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (_slot == null) _slot = GetComponentInParent<ComponentSlot>();
             if (_bar != null) _slide = _bar.GetComponent<SlideGrabTransformer>();
             Show(_slot != null && _slot.Unlocked);
+            // TODO(todolist.md, slot handle): diagnostic logging for the bar that will not move in-world; remove once found.
+            Debug.Log($"[SlotHandle] '{(_slot != null ? _slot.name : name)}' awake: slot {(_slot != null)}, bar {(_bar != null)}, " +
+                $"slide transformer {(_slide != null)}", this);
         }
+
+        private bool _loggedSelected;
 
         private void Update()
         {
+            if (_bar != null && _bar.isSelected != _loggedSelected)
+            {
+                _loggedSelected = _bar.isSelected;
+                Debug.Log($"[SlotHandle] '{(_slot != null ? _slot.name : name)}' bar {(_loggedSelected ? "grabbed" : "let go")}: " +
+                    $"{_bar.singleGrabTransformersCount} single transformer(s), movement {_bar.movementType}, " +
+                    $"track position {_bar.trackPosition}, bar at {_bar.transform.localPosition:F3}", this);
+            }
+
             if (_slot == null || _bar == null || _slide == null) return;
 
             if (_bar.isSelected)

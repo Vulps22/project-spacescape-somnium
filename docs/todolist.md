@@ -25,7 +25,6 @@ Nothing from 2026-09-28/29 is committed: commit only once it is tested and worki
   cells worked out at that pose (the prefab's centre is a cell centre, a slot's is a corner, so half a
   cell off every way). They are now placed from the component's own axes. The grid was never affected:
   it re-reads ports from the seated pose.
-- **Reminder for Vulps: restore the debug text on the batteries.**
 - **Addon item did not shrink in an open cell or grow back once taken out: fixed, untested.** Its
   `XRGrabInteractable` tracked scale, so XRI rewrote the grab-time size every frame it was held.
   `AddonItem` now turns `trackScale` off and owns its size. Watch for: the item shown in an open slot is a
@@ -38,10 +37,13 @@ Nothing from 2026-09-28/29 is committed: commit only once it is tested and worki
   `NetworkRigidbody3D` and `NetworkGrabbable` are removed; the lock is still networked (`SlotNetwork`).
   The bar's motion **must** be networked again so others see it pulled; candidate: the reactor dial
   pattern through the slot's `NetworkBridgeData`. The handle's back now sits flush with the slot's front.
-- **Slot handles:** the changes made no difference. Only the reactor's handle, which Vulps altered by hand
-  before those changes, can be grabbed; grabbing it shows the laser, and lifting the hand leaves the laser
-  arcing between hand and handle. The same bug was seen and fixed in Grow a Garden; Vulps is recalling
-  the fix.
+- **Slot handle bar grabbed but never moved: cause found (2026-09-29), fixed, untested.** `XRGrabInteractable`
+  unparents whatever it grabs (`SetParent(null)`) until it is let go; "Retain Transform Parent" only puts it
+  back afterwards. `SlideGrabTransformer` worked in `transform.parent`'s space, found none while held, and
+  set no target, so XRI held the bar still (the in-world log: "Process skipped: parent False" every frame).
+  It now keeps its track from Awake. Diagnostic `[SlideGrab]`/`[SlotHandle]` logging is still in; remove it
+  once the bar moves. **Likely the same for addon items:** a held item is unparented, and on release XRI
+  re-parents the one taken from the hologram's addon slot back under that scaled slot.
 
 ## Open: an overproducing reactor bakes its own cables
 
