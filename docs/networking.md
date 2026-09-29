@@ -232,6 +232,8 @@ What exists, and who decides it. **All proposed.** This table is the thing to ar
 | Switch on/off | fact | master, on the presser's request | the switch's own data, optimistic on the presser |
 | Reactor rod lever / dial | fact | master, on the holder's request | a value, streamed while held? |
 | An addon item's pose | simulation | whoever holds it | `NetworkRigidbody3D` + `NetworkGrabbable` |
+| A component's pose while carried | simulation | whoever holds it | `NetworkRigidbody3D` + `NetworkGrabbable` |
+| Which component a slot holds | fact | master, on the hand's request | the slot's `NetworkBridgeData` (occupant id, -1 once emptied) |
 | A loose addon item existing (taken out / put in) | fact | master | spawn / despawn via `WorldBridge` |
 | A component's charge, heat, integrity, fuel, coolant, dial | fact (correction) | master | a `NetworkBridgeData` on the component |
 | Conduit heat | fact (correction) | master | its 16 bits in the heat array, a few times a second |

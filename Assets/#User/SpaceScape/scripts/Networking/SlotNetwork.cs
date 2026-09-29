@@ -1,3 +1,4 @@
+using System;
 using Fusion;
 using SomniumSpace.Network.Bridge;
 using SomniumSpace.Worlds.SpaceScape.Ship;
@@ -8,7 +9,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
     /// A slot's lock and occupant, the same for every player. The master (the slot's state authority)
     /// decides both: it spawns the slot's starting component through Fusion, installs it, and writes its
     /// network id; everyone else finds that object and installs it in the same slot. A pull on another
-    /// client is sent to the master, which unlocks the slot for everyone.
+    /// client is sent to the master, which unlocks the slot for everyone. So is a hand taking the component
+    /// out or putting one in: that client does it at once, and keeps its own occupant for a moment while the
+    /// master catches up, so the correction does not undo it.
     ///
     /// With no network at all (only ever the Editor without Photon) the slot makes its component locally.
     [RequireComponent(typeof(ComponentSlot))]
@@ -18,19 +21,24 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         private enum SlotMessageType : byte
         {
             Pull = 0,
+            TakeOut = 1,   // the component's network id
+            PutIn = 2,     // the component's network id
         }
 
         private const int LockInt = 0;
         private const int OccupantInt = 1;
+        private const int Emptied = -1;   // the occupant after a hand took the component out: never spawn again
         private const float SpawnRetrySeconds = 5f;
         private const float OfflineAfterSeconds = 1f;
+        private const float KeepLocalSeconds = 2f;
 
-        [Tooltip("Where the lock and occupant are replicated: two ints (0 locked / 1 unlocked, and the component's network id).")]
+        [Tooltip("Where the lock and occupant are replicated: two ints (0 locked / 1 unlocked, and the component's network id, or -1 once a hand has emptied it).")]
         [SerializeField] private NetworkBridgeData _data;
 
         private ComponentSlot _slot;
         private float _spawnAskedAt = float.MinValue;
         private bool _local;
+        private float _keepLocalUntil = float.MinValue;
 
         private bool Live => _data != null && _data.Object != null && _data.Object.IsValid;
 
@@ -38,6 +46,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         {
             _slot = GetComponent<ComponentSlot>();
             _slot.PullRequested += OnPullRequested;
+            _slot.TakenOut += OnTakenOut;
+            _slot.PutIn += OnPutIn;
             if (_data != null) _data.OnMessageToController += OnMessageToController;
             if (_data != null && _data.IntCount < 2)
                 Debug.LogError($"SlotNetwork: '{name}' needs two ints but its NetworkBridgeData holds {_data.IntCount}", this);
@@ -45,7 +55,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
 
         private void OnDestroy()
         {
-            if (_slot != null) _slot.PullRequested -= OnPullRequested;
+            if (_slot != null)
+            {
+                _slot.PullRequested -= OnPullRequested;
+                _slot.TakenOut -= OnTakenOut;
+                _slot.PutIn -= OnPutIn;
+            }
             if (_data != null) _data.OnMessageToController -= OnMessageToController;
         }
 
@@ -82,14 +97,19 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
                 _spawnAskedAt = Time.time;
                 SpawnStartingComponent();
             }
-            else if (_slot.Component == null && ints[OccupantInt] != 0)
+            else if (_slot.Component == null && ints[OccupantInt] > 0)
             {
                 // Became master of a slot whose component was already spawned: take it up.
                 InstallById(ints[OccupantInt]);
             }
 
-            SetIfChanged(ints, OccupantInt, IdOf(_slot.Component));
+            SetIfChanged(ints, OccupantInt, OccupantValue(ints[OccupantInt]));
         }
+
+        /// The occupant to write: the component's id, 0 while the starting component has yet to be made, or
+        /// Emptied once the slot has held one and been emptied.
+        private int OccupantValue(int written) =>
+            _slot.Component != null ? IdOf(_slot.Component) : written == 0 ? 0 : Emptied;
 
         private void Follow()
         {
@@ -97,8 +117,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             if ((ints[LockInt] != 0) != _slot.Unlocked) _slot.SetUnlocked(ints[LockInt] != 0);
 
             int occupant = ints[OccupantInt];
-            if (occupant == IdOf(_slot.Component)) return;
-            if (occupant == 0) { _slot.Remove(); return; }
+            if (occupant == IdOf(_slot.Component) || Time.time < _keepLocalUntil) return;
+            if (occupant <= 0) { _slot.Remove(); return; }
             InstallById(occupant);
         }
 
@@ -144,12 +164,52 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             if (Live) _data.RPC_SendMessageToController(MessageFrame.Pack((byte)SlotMessageType.Pull, null));
         }
 
+        /// A hand here took the component out: the master records it now; anyone else tells the master.
+        private void OnTakenOut(GridNode component) => Tell(SlotMessageType.TakeOut, component);
+
+        /// A hand here put a component in: the master records it now; anyone else tells the master.
+        private void OnPutIn(GridNode component) => Tell(SlotMessageType.PutIn, component);
+
+        private void Tell(SlotMessageType type, GridNode component)
+        {
+            if (!Live) return;
+            if (_slot.Decides) { WriteOccupant(); return; }
+            _keepLocalUntil = Time.time + KeepLocalSeconds;
+            _data.RPC_SendMessageToController(MessageFrame.Pack((byte)type, BitConverter.GetBytes(IdOf(component))));
+        }
+
+        private void WriteOccupant()
+        {
+            var ints = _data.IntArray;
+            SetIfChanged(ints, OccupantInt, OccupantValue(ints[OccupantInt]));
+            SetIfChanged(ints, LockInt, _slot.Unlocked ? 1 : 0);
+        }
+
         private void OnMessageToController(byte[] framed)
         {
             if (!Live || !_data.Object.HasStateAuthority) return;
-            if (!MessageFrame.Unpack(framed, out byte id, out _)) return;
-            if ((SlotMessageType)id == SlotMessageType.Pull) _slot.Unlock();
-            else Debug.LogWarning($"SlotNetwork: '{name}' got unknown message {id}", this);
+            if (!MessageFrame.Unpack(framed, out byte id, out byte[] payload)) return;
+            int component = payload != null && payload.Length >= 4 ? BitConverter.ToInt32(payload, 0) : 0;
+            switch ((SlotMessageType)id)
+            {
+                case SlotMessageType.Pull:
+                    _slot.Unlock();
+                    break;
+                case SlotMessageType.TakeOut:
+                    if (component != 0 && IdOf(_slot.Component) == component) _slot.Remove();
+                    WriteOccupant();
+                    break;
+                case SlotMessageType.PutIn:
+                    var found = WorldManager.Find((uint)component);
+                    if (_slot.Component == null && found != null && found.TryGetComponent<GridNode>(out var put)
+                        && _slot.Install(put))
+                        _slot.SetUnlocked(false);
+                    WriteOccupant();
+                    break;
+                default:
+                    Debug.LogWarning($"SlotNetwork: '{name}' got unknown message {id}", this);
+                    break;
+            }
         }
 
         private void OnValidate()

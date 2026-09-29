@@ -96,7 +96,7 @@ the component.
    `SlotHandleLocked.mat`; `SlotHandleUnlocked.mat` is the green) sits on the middle of the front bottom
    edge.
 2. **The handle (written 2026-09-28, compiles clean, untested).** The bar is a stock `XRGrabInteractable`
-   (position only, no throw) kept on a 10 cm track out of the front by `SlideGrabTransformer`, with
+   (position only, no throw) kept on a 10 cm track straight up by `SlideGrabTransformer` (it slid out of the front until 2026-09-29), with
    `IgnoresPlayerBody`. Pulled 80% of the way, `SlotHandle` calls `ComponentSlot.Pull()`; let go, it slides
    home. The slot unlocks for 10 seconds, then relocks (for now unconditionally; build order 4 makes it
    check). `SlotNetwork` (a `NetworkBridgeData1` on the slot) carries the lock: the master decides and
@@ -118,10 +118,19 @@ the component.
    and installs it in the same slot, so `ComponentNetwork` is live again. With no network runner (the
    Editor without Photon) the slot makes it locally. Grid wiring checks wait until slots are filled.
    Offline Play checked: all three slots filled and connected, both bulbs lit, no warnings. Untested
-   networked. **Still to do in this phase:**
-   **Components as spawnable network prefabs,** held by slots (the occupant in the slot's data); grabbed
-   and carried with `NetworkGrabbable`; locked in when they pass the alignment, position and size checks,
-   which is also what the handle's relock checks.
+   networked.
+   **Carrying (written 2026-09-29, compiles clean, untested).** Reactor and Battery have it; for a new
+   component, `SpaceScape → Make Slotted Components Carriable` gives every slotted component prefab the
+   same. The tutorial stand's display copies have all of it switched off, as they do the rest. Each gets a
+   box collider filling its size, a Rigidbody (kinematic
+   from the start, so it cannot fall before it is installed), a stock `XRGrabInteractable` (dynamic
+   attach, no throw, only its own box as collider), `NetworkRigidbody3D` + `NetworkGrabbable` as the addon
+   items have, `IgnoresPlayerBody`, and `CarriedComponent`. A component can be grabbed only while it is
+   loose or its slot is unlocked; grabbing it takes it out of the slot. Let go where a slot accepts it
+   (empty, its size, centre within 0.5 m, within 30° of square) it is seated and the slot locks; anywhere
+   else it falls. The client whose hand did it acts at once and tells the master through the slot's
+   messages (`TakeOut`, `PutIn`), keeping its own occupant for 2 seconds while the master catches up. A
+   slot emptied by a hand writes occupant -1, so the master never spawns a new starting component into it.
 5. **Pulled out live, 10% of maximum integrity lost.**
 
 ## Components

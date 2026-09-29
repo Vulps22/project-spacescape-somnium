@@ -17,6 +17,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// The size of slot this component fits.
         public SlotSize Size => _size;
 
+        /// The slot it is installed in, or null while it is loose. Set by the slot.
+        public ComponentSlot Slot { get; internal set; }
+
         /// The component's front, in its own axes.
         public GridDirection Front => _front;
 

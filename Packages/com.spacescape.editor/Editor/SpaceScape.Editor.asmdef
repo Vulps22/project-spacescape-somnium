@@ -2,7 +2,8 @@
     "name": "SpaceScape.Editor",
     "rootNamespace": "SomniumSpace.Worlds.SpaceScape.EditorTools",
     "references": [
-        "GUID:e3150363fd6488230a920a35dcdd8ab0"
+        "GUID:e3150363fd6488230a920a35dcdd8ab0",
+        "GUID:fe685ec1767f73d42b749ea8045bfe43"
     ],
     "includePlatforms": [
         "Editor"

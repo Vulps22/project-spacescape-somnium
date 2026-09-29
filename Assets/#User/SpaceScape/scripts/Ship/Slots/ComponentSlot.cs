@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using SomniumSpace.Worlds.SpaceScape.Power;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -36,6 +37,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private GridNode _startsWith;
         [Tooltip("Seconds a pulled handle leaves the component free to take out, before the slot tries to lock again.")]
         [SerializeField] private float _unlockSeconds = 10f;
+        [Tooltip("How far a let-go component's centre may be from the slot's centre and still go in, in metres.")]
+        [SerializeField] private float _seatDistance = 0.5f;
+        [Tooltip("How far a let-go component may be turned from sitting square in the slot and still go in, in degrees.")]
+        [SerializeField] private float _seatAngle = 30f;
+
+        private static readonly List<ComponentSlot> Slots = new List<ComponentSlot>();
+
+        /// Every slot in the world.
+        public static IReadOnlyList<ComponentSlot> All => Slots;
 
         private float _relockAt;
         private PowerNode _node;
@@ -76,7 +86,14 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             if (component == null || _component != null || !Fits(component)) return false;
             _component = component;
-            if (_node == null) return true;
+            if (component.TryGetComponent<SlottedComponent>(out var slotted)) slotted.Slot = this;
+            if (component.TryGetComponent<Rigidbody>(out var body) && !body.isKinematic)
+            {
+                body.linearVelocity = Vector3.zero;
+                body.angularVelocity = Vector3.zero;
+                body.isKinematic = true;
+            }
+            if (_node == null) { Seat(component); return true; }
             Plug();
             _grid.Rewire(GetComponent<GridNode>());
             return true;
@@ -89,6 +106,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             var component = _component;
             if (component == null) return null;
             _component = null;
+            if (component.TryGetComponent<SlottedComponent>(out var slotted) && slotted.Slot == this) slotted.Slot = null;
             if (_node == null) return component;
 
             component.HeldCelsius = _node.Celsius;
@@ -170,6 +188,41 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         /// Takes the lock as the one who decides has it.
         public void SetUnlocked(bool unlocked) => Unlocked = unlocked;
+
+        /// Raised when a hand here takes the component out, for the network to tell whoever decides.
+        public event Action<GridNode> TakenOut;
+
+        /// Raised when a hand here puts a component in, for the network to tell whoever decides.
+        public event Action<GridNode> PutIn;
+
+        /// A hand here lifted the component out of the unlocked slot. Takes it out now; the network tells
+        /// whoever decides.
+        public void TakeOut(GridNode component)
+        {
+            if (component == null || component != _component || !Unlocked) return;
+            Remove();
+            TakenOut?.Invoke(component);
+        }
+
+        /// True when a let-go component can go in here: the slot is empty, it is the slot's size, its centre
+        /// is near the slot's, and it is turned near enough to sit square.
+        public bool Accepts(GridNode component) =>
+            _component == null && Fits(component)
+            && (component.transform.position - transform.position).sqrMagnitude <= _seatDistance * _seatDistance
+            && Quaternion.Angle(component.transform.rotation, SeatFor(component)) <= _seatAngle;
+
+        /// How far a component's centre is from this slot's, for picking the nearest of several.
+        public float DistanceTo(GridNode component) => Vector3.Distance(component.transform.position, transform.position);
+
+        /// A hand here let a component go where this slot accepts it. Puts it in and locks it; the network
+        /// tells whoever decides.
+        public bool PutInFromHand(GridNode component)
+        {
+            if (!Accepts(component) || !Install(component)) return false;
+            if (Decides) Unlocked = false;
+            PutIn?.Invoke(component);
+            return true;
+        }
 
         /// Which size of component this slot takes.
         public SlotSize Size => _size;
@@ -257,10 +310,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private void OnEnable()
         {
+            if (!Slots.Contains(this)) Slots.Add(this);
             if (!Application.isPlaying) RenderPipelineManager.beginCameraRendering += DrawPreview;
         }
 
-        private void OnDisable() => RenderPipelineManager.beginCameraRendering -= DrawPreview;
+        private void OnDisable()
+        {
+            Slots.Remove(this);
+            RenderPipelineManager.beginCameraRendering -= DrawPreview;
+        }
 
         /// While editing, draws the starting component's meshes where it will sit. Drawn only: nothing is
         /// made in the scene.
@@ -341,8 +399,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             if (Application.isPlaying)
             {
-                // TODO(grid.md, build order 4): relock only if the component is still in place; otherwise
-                // listen for one arriving and check its alignment, position and size.
+                // A component still in place locks back in; a slot emptied by a hand just locks. A component
+                // let go here later is checked and locked in by PutInFromHand.
                 if (Decides && Unlocked && Time.time >= _relockAt) Unlocked = false;
                 return;
             }
