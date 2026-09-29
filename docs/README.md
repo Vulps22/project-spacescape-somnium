@@ -73,6 +73,9 @@ a reboot took the first copy with it.
 
 The `unity` CLI drives the running Editor. Two things that have cost real time:
 
+- **Never edit `SpaceScape.unity` on disk while it is open in Unity.** Unity keeps its own copy in memory
+  and the next save writes over the edit (2026-09-29: the tutorial copies' overrides were lost that way).
+  Prefabs not open in prefab mode are reimported from disk and are safe to edit.
 - **Never recompile while Play mode is running.** A domain reload wipes `PowerGrid._graph` and every
   tile's binding, `Awake` does not run again, and the sim silently stops with every readout frozen
   mid-value. It looks exactly like a logic bug. `PowerGrid` now detects and rebuilds, but check
