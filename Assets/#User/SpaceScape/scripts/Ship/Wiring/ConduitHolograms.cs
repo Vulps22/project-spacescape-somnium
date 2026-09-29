@@ -79,7 +79,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private float _parkGrow = 1f;
 
         [Header("Addons")]
-        [Tooltip("How close to the addon slot's centre an addon item must be let go to install it, in metres.")]
+        [Tooltip("An addon item let go inside the open conduit's cell installs, as it has shrunk to fit there; so does one let go this close to the addon slot's centre, in metres.")]
         [SerializeField] private float _installRadius = 0.1f;
         [Tooltip("How much of the addon slot's frame an installed addon's item fills, 0 to 1. It is centred in the frame.")]
         [SerializeField, Range(0.1f, 1f)] private float _addonItemFill = 0.85f;
@@ -109,6 +109,22 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// Raised when a hand on this client has changed a conduit: rewired it, or installed, removed, moved,
         /// twisted or parked its addon.
         public event Action<GridNode> Edited;
+
+        /// Raised when the hologram puts an installed addon's item in its addon slot: a local picture of the
+        /// item, never on the network, for the network to strip of its networking.
+        public event Action<AddonItem> ItemShown;
+
+        /// Raised when a hand lifts the item out of the addon slot: that local item, still in the hand, and
+        /// the prefab it was made from, for the network to swap it for one everyone has.
+        public event Action<AddonItem, AddonItem> ItemTakenOut;
+
+        /// Takes an installed item out of the world. Set by the network, which despawns it for everyone and
+        /// returns true; left unset, or returning false, the item is destroyed here.
+        public Func<AddonItem, bool> RemoveItem;
+
+        /// True when this client decides an item's size: whoever holds it. Set by the network; left unset,
+        /// this client decides every item's.
+        public Func<AddonItem, bool> SizesItem;
 
         private readonly Dictionary<GridNode, HashSet<string>> _openElsewhere = new Dictionary<GridNode, HashSet<string>>();
         private readonly Dictionary<GridNode, Transform> _boxes = new Dictionary<GridNode, Transform>();
@@ -189,6 +205,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     Commit = Commit,
                     CommitAddon = CommitAddon,
                     Removed = tile => Edited?.Invoke(tile),
+                    ItemShown = item => ItemShown?.Invoke(item),
+                    ItemTakenOut = (item, prefab) => ItemTakenOut?.Invoke(item, prefab),
                 });
         }
 
@@ -201,11 +219,14 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             if (_hologram == null || !_hologram.IsOpen || item == null || item.Installs == null) return;
             var slot = _hologram.AddonSlot;
-            if (slot == null || (item.transform.position - slot.position).sqrMagnitude > _installRadius * _installRadius) return;
             var tile = _hologram.Tile;
+            bool inside = tile.Occupies(GridCell.ToCell(item.transform.position));
+            bool near = slot != null && (item.transform.position - slot.position).sqrMagnitude <= _installRadius * _installRadius;
+            if (!inside && !near) return;
             if (!tile.TryGetComponent<AddonModule>(out var module) || !module.Install(item.Installs, FaceTowardPlayer(tile))) return;
 
-            Destroy(item.gameObject);
+            item.Retire();
+            if (RemoveItem == null || !RemoveItem(item)) Destroy(item.gameObject);
             _hologram.Refresh();
             Edited?.Invoke(tile);
         }
@@ -238,12 +259,18 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         }
 
         /// A held addon item shrinks to fit the addon slot while it is inside the open conduit's cell, and grows
-        /// back to full size once it leaves, easing rather than snapping.
+        /// back to full size once it leaves, easing rather than snapping. One let go anywhere but a slot grows
+        /// back too. Only whoever decides an item's size resizes it; everyone else is sent its size.
         private void ResizeHeldItems()
         {
             foreach (var item in AddonItem.All)
             {
-                if (item == null || !item.Grab.isSelected) continue;
+                if (item == null || (SizesItem != null && !SizesItem(item))) continue;
+                if (!item.Grab.isSelected)
+                {
+                    if (!item.Displayed && item.transform.localScale != item.FullScale) item.ResizeTo(item.FullScale);
+                    continue;
+                }
                 var open = _hologram != null && _hologram.IsOpen ? _hologram.Tile : null;
                 bool inside = open != null && open.Occupies(GridCell.ToCell(item.transform.position));
                 if (!inside) { item.ResizeTo(item.FullScale); continue; }

@@ -20,6 +20,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private static readonly List<AddonItem> Items = new List<AddonItem>();
         private Vector3 _fullScale;
         private Vector3? _targetScale;
+        private bool _displayed;
+        private bool _retired;
 
         /// Every addon item in the world.
         public static IReadOnlyList<AddonItem> All => Items;
@@ -52,12 +54,23 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// Eases to a size over the resize time rather than snapping to it.
         public void ResizeTo(Vector3 scale) => _targetScale = scale;
 
+        /// True while it sits in a hologram's addon slot as the installed addon's item, until a hand takes it.
+        public bool Displayed => _displayed;
+
+        /// Stops it answering to hands, for an item about to be replaced or removed: letting go of it offers it
+        /// to no slot.
+        public void Retire() => _retired = true;
+
         private void Awake()
         {
             _fullScale = transform.localScale;
             // Its size is this script's alone. Tracking scale, XRI writes back the size it was grabbed at every
             // frame it is held, undoing any resize depending on which runs last.
             Grab.trackScale = false;
+            // XRI puts a let-go object back under the parent it had when grabbed. The item shown in a hologram's
+            // addon slot started under that slot, and went back under it: gone with the hologram, and sized
+            // against the slot's scale.
+            Grab.retainTransformParent = false;
         }
 
         private void Update()
@@ -84,6 +97,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// Pins it where it is, for sitting in a slot until it is taken.
         public void Hold()
         {
+            _displayed = true;
             if (_body == null) _body = GetComponent<Rigidbody>();
             _body.isKinematic = true;
         }
@@ -103,7 +117,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// Lets it fall once a hand has had it, then offers it to any slot it was dropped in.
         private void OnLetGo(SelectExitEventArgs args)
         {
-            if (Grab.isSelected) return;
+            if (Grab.isSelected || _retired) return;
+            _displayed = false;
             if (_body == null) _body = GetComponent<Rigidbody>();
             _body.isKinematic = false;
             Released?.Invoke(this);

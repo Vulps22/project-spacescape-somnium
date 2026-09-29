@@ -17,6 +17,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
     ///
     /// Conduit edits: a hand on a non-master client that changes a conduit sends the conduit as it now
     /// stands to the master, which makes its own copy match; the conduit chunks carry it to everyone.
+    ///
+    /// Addon items: spawned when taken out of a conduit, despawned when put in (AddonItemNetwork).
     [RequireComponent(typeof(NetworkMessenger))]
     public sealed class ShipNetwork : MonoBehaviour
     {
@@ -32,6 +34,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         [SerializeField] private NetworkMessenger _messenger;
 
         private ConduitHolograms _holograms;
+        private AddonItemNetwork _addonItems;
 
         private void Awake()
         {
@@ -50,6 +53,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
                 _holograms.Opened += OnHologramOpened;
                 _holograms.Closed += OnHologramClosed;
                 _holograms.Edited += OnConduitEdited;
+                _addonItems = new AddonItemNetwork(this, _holograms);
             }
         }
 
@@ -69,6 +73,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
                 _holograms.Opened -= OnHologramOpened;
                 _holograms.Closed -= OnHologramClosed;
                 _holograms.Edited -= OnConduitEdited;
+                _addonItems?.Detach(_holograms);
             }
         }
 

@@ -44,6 +44,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             public Action<GridNode, IReadOnlyList<GridDirection>, IReadOnlyList<bool>> Commit;
             public Action<GridNode, GridDirection, int, bool> CommitAddon;
             public Action<GridNode> Removed;
+            public Action<AddonItem> ItemShown;
+            public Action<AddonItem, AddonItem> ItemTakenOut;
         }
 
         private enum Drag { None, Tip, Arrow, Addon }
@@ -294,6 +296,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             var frame = LocalBounds(slot, slot.GetComponentsInChildren<Renderer>());
             _display = Instantiate(_displayPrefab, slot, false);
             _display.Hold();
+            _motion.ItemShown?.Invoke(_display);
             var t = _display.transform;
             t.localPosition = Vector3.zero;
             t.localRotation = Quaternion.Euler(0f, 180f, 0f);     // its face toward the player, as the slot faces them
@@ -352,6 +355,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 _motion.Removed?.Invoke(Tile);
             Haptics.Pulse(args.interactorObject, _motion.BuzzAmplitude, _motion.BuzzSeconds);
             Refresh();
+            _motion.ItemTakenOut?.Invoke(item, prefab);
         }
 
         /// Clears the item out of the slot, unless a hand has already taken it.

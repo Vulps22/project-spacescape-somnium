@@ -7,21 +7,25 @@ state reaches other players (`networking.md` → Rules).
 
 ## Addons
 
-What is known behind most of these: `XRGrabInteractable` unparents whatever it grabs and, with Retain
-Transform Parent on, puts it back under its old parent on release. The item shown in the hologram's
-addon slot starts as a child of that scaled slot, so on release it goes back under it: that fits
-disappearing with the hologram, the fixed offset, and sizes coming out wrong (`AddonItem` writes local
-scale). The same item is a local copy of a networked prefab that is never spawned, so its
-`NetworkGrabbable` throws on grab (5 times in the 2026-09-29 log) and nobody else sees it held.
+**Written 2026-09-29, compiles clean, untested.** Needs Switch Addon added to `SceneNetworking`'s
+network prefabs (a scene change, made in Unity).
 
-- **Disappears when the hologram closes,** after dropping to the floor from a slot.
-- **Drops to the floor when put into a slot.** It should install.
-- **Offset from the slot when the hologram reopens,** shown fixed rather than in the slot.
-- **Shrinking is not networked.** Others see it at full size while the holder sees it shrink. Its size
-  must reach them.
-- **Size: grow to a fixed size of 1** and shrink from that to the slot's size, instead of from whatever
-  scale the item had in `Awake`.
-- **Taken out of the slot, it neither grows back nor falls.**
+- **Disappears when the hologram closes:** `XRGrabInteractable` put a let-go item back under the parent
+  it had when grabbed, and the item shown in the hologram's addon slot started under that slot. `AddonItem`
+  now turns Retain Transform Parent off.
+- **Drops to the floor when put into a slot:** it only installed within 0.1 m of the slot's centre, far
+  tighter than the conduit's cell it shrinks in. Let go anywhere in the open conduit's cell now installs.
+- **Offset from the slot when the hologram reopens:** the same re-parenting as above.
+- **Shrinking is not networked:** the Switch Addon's `NetworkRigidbody3D` now syncs scale, and only
+  whoever holds an item (or has its authority once it is let go) resizes it.
+- **Size: a fixed full size.** Full size is the prefab's own scale (0.25 for the Switch Addon), and the
+  item shrinks from that to the slot's size. The shown item no longer measures itself against the slot.
+- **Taken out of the slot, it neither grows back nor falls:** the item shown in the slot is a local
+  picture that was never on the network. When a hand lifts it out, it is swapped the next frame for a
+  spawned item of the same prefab, at the same place and size, in the same hand (`AddonItemNetwork`); an
+  item let go anywhere but a slot grows back to full size. An installed item is despawned for everyone
+  instead of destroyed on one client. The picture has its `NetworkGrabbable` removed, which ends the grab
+  errors in the log.
 
 ## Clean-up and debug
 
@@ -68,7 +72,7 @@ scale). The same item is a local copy of a networked prefab that is never spawne
 
 ## Networking left over
 
-- **Addon item taken out** (see Addons): spawned, like a component, so it exists for everyone.
+- **Addon item taken out:** done with Addons.
 - **Slot handle bar motion.** The unlock is networked; the bar moving is not, so others do not see it
   pulled (visible motion is networked). Planned: the reactor dial pattern through the slot's data.
 
