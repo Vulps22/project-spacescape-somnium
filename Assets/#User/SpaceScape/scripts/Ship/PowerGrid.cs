@@ -136,6 +136,34 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             foreach (var placed in nodes) ConnectOutputs(placed, null, true);
         }
 
+        /// Gives a component taken out of its slot a node of its own with no conduits, so it goes on running as
+        /// a component with nothing connected: a running reactor keeps producing, has nowhere to send it, and
+        /// heats up. It starts at the heat it carried out of the slot.
+        public void Loosen(GridNode component)
+        {
+            if (_graph == null || component == null || component.Node != null) return;
+            var behaviour = component.GetComponent<BehaviourModule>();
+            var source = behaviour != null ? behaviour.Source : null;
+            var sink = behaviour != null ? behaviour.Sink : null;
+            var node = source != null ? _graph.AddSource(component.name, source, sink) : _graph.AddNode(component.name, sink);
+            if (component.TryGetComponent<IntegrityModule>(out var integrity)) node.Integrity = integrity.Integrity;
+            node.Celsius = component.HeldCelsius;
+            component.DrivesNode = true;
+            component.Bind(node);
+            _tileOf[node] = component;
+        }
+
+        /// Takes a loose component's own node out of the grid, for it going into a slot. It keeps its heat.
+        public void Unloosen(GridNode component)
+        {
+            var node = component != null ? component.Node : null;
+            if (_graph == null || node == null) return;
+            component.HeldCelsius = node.Celsius;
+            component.Unbind();
+            _tileOf.Remove(node);
+            _graph.RemoveNode(node);
+        }
+
         /// Rewires one tile after its faces have changed: drops every conduit into and out of it, then joins
         /// it to its neighbours again, and them to it, from the faces as they stand now.
         public void Rewire(GridNode tile)

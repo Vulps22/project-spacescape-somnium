@@ -93,6 +93,16 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
             return edge;
         }
 
+        /// Takes a node out of the grid, with every conduit into and out of it. The nodes after it are
+        /// renumbered, so a node is never left pointing past the end of the per-tick arrays.
+        public void RemoveNode(PowerNode node)
+        {
+            if (node == null || !_nodes.Remove(node)) return;
+            foreach (var edge in new List<PowerEdge>(node.Incoming)) Disconnect(edge);
+            foreach (var edge in new List<PowerEdge>(node.Outgoing)) Disconnect(edge);
+            for (int i = 0; i < _nodes.Count; i++) _nodes[i].Index = i;
+        }
+
         /// Mends a tile that has blown, so it carries power again. It keeps the heat it blew with.
         public void Repair(PowerNode node)
         {

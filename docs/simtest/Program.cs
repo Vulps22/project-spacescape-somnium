@@ -94,6 +94,8 @@ static class Program
         LosingASiblingKillsTheSource();
         ComponentsTakeDamageNotPops();
         WornComponentsMisfire();
+        RemovedNodeLeavesTheRestWorking();
+        LooseReactorKeepsRunning();
 
         Console.WriteLine();
         Console.WriteLine($"=== {_pass} passed, {_fail} failed ===");
@@ -1613,5 +1615,50 @@ static class Program
         }
         int settleTicks = new PowerGraph() is var _ ? g.Settle() : 0;
         CheckTrue($"settles quickly once filled ({settleTicks} tick(s))", settleTicks <= 2);
+    }
+
+    // A component taken out of its slot gets a node of its own and gives it back when it goes in again,
+    // so the grid has to survive losing a node: its conduits go, the rest are renumbered and keep ticking.
+    static void RemovedNodeLeavesTheRestWorking()
+    {
+        Console.WriteLine("a node can be taken out of the grid");
+        var g = new PowerGraph();
+        var src = g.AddSource("source", 100);
+        var mid = g.AddNode("mid");
+        var load = g.AddNode("load", new LoadBehaviour(100, 1e9));
+        g.Connect(src, mid);
+        g.Connect(mid, load);
+        g.Settle();
+        Check("before: the load is fed", load.Inflow, 100);
+
+        g.RemoveNode(mid);
+        Check("its conduits go with it", g.Edges.Count, 0);
+        Check("two nodes are left", g.Nodes.Count, 2);
+        CheckTrue("renumbered in order", src.Index == 0 && load.Index == 1);
+        for (int t = 0; t < 40; t++) g.Tick(0.05);
+        Check("and the load, cut off, goes dark", load.Inflow, 0);
+    }
+
+    // A reactor taken out of its slot keeps running with nothing connected (polish.md): it still answers
+    // its rods, still produces, and with nowhere to send it, wastes the lot as heat on itself.
+    static void LooseReactorKeepsRunning()
+    {
+        Console.WriteLine("a loose reactor keeps running");
+        var core = new FissionCore { OutputPerCore = 100, Cores = 1, HeatRatio = 2.0, WorkingCelsius = 400 };
+        core.TargetWithdrawal = 1.0;
+        var g = new PowerGraph { PopSeed = 3 };
+        var reactor = g.AddSource("reactor", new ReactorBehaviour(core, null));
+        reactor.Integrity = new Integrity(100);
+
+        for (int t = 0; t < 1200; t++) g.Tick(0.05);   // 60 s: rods take 20 s to come up
+        Check("its rods still come up", core.Withdrawal, 1.0);
+        CheckTrue($"it still produces ({core.WattsProduced:0} W)", core.WattsProduced > 0);
+        CheckTrue($"with nowhere to send it, it wastes it ({reactor.Dumped:0} W)", reactor.Dumped > 0);
+        CheckTrue($"and heats up ({reactor.Celsius:0} C)", reactor.Celsius > PowerGraph.AmbientCelsius + 10);
+
+        core.TargetWithdrawal = 0.0;
+        for (int t = 0; t < 1200; t++) g.Tick(0.05);
+        Check("shut down, its rods drop", core.Withdrawal, 0);
+        Check("and it stops producing", core.WattsProduced, 0);
     }
 }

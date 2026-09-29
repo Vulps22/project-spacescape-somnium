@@ -65,16 +65,18 @@ network prefabs (a scene change, made in Unity).
 
 ## Component simulation
 
-- **A loose component keeps running (decided 2026-09-29).** It behaves as a component with nothing
-  connected: a reactor taken out while running keeps producing, has nowhere to send it, and heats up, so
-  the crew have to shut it down before pulling it. Its controls stay live the whole time. Seen: a pulled
-  reactor's lamp kept spinning and its readout kept its wattage, but the temperature did not rise and the
-  rods did not answer the lever. Why: `PowerGrid` leaves every unslotted component out of the grid, so
-  nothing ticks its source; the lamp and readout show the last values, and the lever moves rods on a
-  core that is no longer simulated. Fix: a loose component gets a node of its own with no edges, so it
-  goes on simulating; `Remove` stops unbinding it. Networking: nothing new; its state already travels
-  in its own `ComponentNetwork` data, and every client simulates it.
-- **Pulled out live, 10% of maximum integrity lost** (`grid.md` build order 5). Not built.
+**Written 2026-09-29, compiles clean, sim tests pass (278), untested in-world.**
+
+- **A loose component keeps running (decided 2026-09-29).** Taken out of its slot, a component gets a node
+  of its own with no conduits (`PowerGrid.Loosen`), starting at the heat it carried out, and gives it back
+  when it goes into a slot (`Unloosen`, keeping its heat; the grid gained `PowerGraph.RemoveNode`). Its
+  controls stay live: a running reactor keeps its rods up, keeps producing, has nowhere to send it and
+  heats up (sim: 100 W wasted, 271 C after a minute), and shuts down when its rods go in. Every client does
+  this, as everyone simulates the grid; the component's own data corrects it.
+- **Pulled out live, 10% of maximum integrity lost** (`grid.md` build order 5). A hand taking a component
+  out while power is flowing through it (arriving, produced or drawn) costs it 10% of its maximum
+  (`ComponentSlot`, tunable). Only where the lock is decided (the master), for a hand there or on another
+  client, so it is taken once; the component's data carries the new condition to everyone.
 
 ## Networking left over
 

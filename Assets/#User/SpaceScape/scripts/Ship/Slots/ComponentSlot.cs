@@ -41,6 +41,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private float _seatDistance = 0.5f;
         [Tooltip("How far a let-go component may be turned from sitting square in the slot and still go in, in degrees.")]
         [SerializeField] private float _seatAngle = 30f;
+        [Tooltip("Share of its maximum integrity a component loses when a hand pulls it out while power is flowing through it, 0 to 1.")]
+        [SerializeField, Range(0f, 1f)] private float _liveRemovalDamage = 0.1f;
 
         [Header("Placement guide")]
         [Tooltip("The guide box while a held component inside the slot is neither positioned nor aligned.")]
@@ -102,13 +104,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 body.isKinematic = true;
             }
             if (_node == null) { Seat(component); return true; }
+            _grid.Unloosen(component);   // its own node, if it was loose, goes; it keeps the heat
             Plug();
             _grid.Rewire(GetComponent<GridNode>());
             return true;
         }
 
-        /// Takes the component out: it keeps its heat, lets go of the node, and the slot goes inert and is
-        /// rewired. Returns the component, or null when the slot was empty.
+        /// Takes the component out: it keeps its heat, lets go of the node, and goes on running on a node of its
+        /// own with nothing connected (docs/polish.md, a loose component keeps running). The slot goes inert
+        /// and is rewired. Returns the component, or null when the slot was empty.
         public GridNode Remove()
         {
             var component = _component;
@@ -121,6 +125,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             component.Unbind();
             Plug();
             _grid.Rewire(GetComponent<GridNode>());
+            _grid.Loosen(component);
             return component;
         }
 
@@ -208,8 +213,29 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         public void TakeOut(GridNode component)
         {
             if (component == null || component != _component || !Unlocked) return;
+            if (Decides) DamageIfLive(component);
             Remove();
             TakenOut?.Invoke(component);
+        }
+
+        /// A hand on another client took the component out, and this client decides: it loses integrity if
+        /// it was live, as it would for a hand here, and comes out.
+        public void TakenOutElsewhere(GridNode component)
+        {
+            if (component == null || component != _component) return;
+            DamageIfLive(component);
+            Remove();
+        }
+
+        /// Pulled out while power was flowing through it, a component loses a share of its maximum integrity.
+        /// Only where the lock is decided, so it is taken once; the component's own data carries the new
+        /// condition to everyone.
+        private void DamageIfLive(GridNode component)
+        {
+            if (_node == null || !component.TryGetComponent<IntegrityModule>(out var module)) return;
+            const double Flowing = 1e-6;
+            bool live = _node.Inflow > Flowing || _node.Offered > Flowing || _node.Drawn > Flowing;
+            if (live) module.Integrity.TakeDamage(module.Integrity.Max * _liveRemovalDamage);
         }
 
         /// True when a let-go component can go in here: the slot is empty, it is the slot's size, its centre

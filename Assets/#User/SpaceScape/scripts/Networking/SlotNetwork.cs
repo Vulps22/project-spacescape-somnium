@@ -196,7 +196,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
                     _slot.Unlock();
                     break;
                 case SlotMessageType.TakeOut:
-                    if (component != 0 && IdOf(_slot.Component) == component) _slot.Remove();
+                    if (component != 0 && IdOf(_slot.Component) == component) _slot.TakenOutElsewhere(_slot.Component);
                     WriteOccupant();
                     break;
                 case SlotMessageType.PutIn:

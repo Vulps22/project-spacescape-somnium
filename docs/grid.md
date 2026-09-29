@@ -131,7 +131,7 @@ the component.
    else it falls. The client whose hand did it acts at once and tells the master through the slot's
    messages (`TakeOut`, `PutIn`), keeping its own occupant for 2 seconds while the master catches up. A
    slot emptied by a hand writes occupant -1, so the master never spawns a new starting component into it.
-5. **Pulled out live, 10% of maximum integrity lost.**
+5. **Pulled out live, 10% of maximum integrity lost (written 2026-09-29, untested).** See `polish.md`.
 
 ## Components
 
