@@ -4,7 +4,8 @@ using UnityEngine;
 namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// Shows what the grid is doing to its tiles: sparks from every tile that has blown, smoke from every
-    /// tile with integrity once it is damaged. Spawns the emitters itself, so no tile needs wiring.
+    /// tile with integrity once it is damaged. Spawns the emitters itself, so no tile needs wiring, and looks
+    /// for new tiles once a second, since components are spawned over the network after the world starts.
     public sealed class TileEffects : MonoBehaviour
     {
         [Tooltip("Emitter shown on any tile that has blown: severed, or wrecked with no integrity left.")]
@@ -18,11 +19,16 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private readonly List<(GridNode tile, ParticleSystem sparks)> _sparks = new List<(GridNode, ParticleSystem)>();
         private readonly List<(IntegrityModule integrity, ParticleSystem smoke)> _smoke = new List<(IntegrityModule, ParticleSystem)>();
+        private readonly HashSet<GridNode> _seen = new HashSet<GridNode>();
+        private const float RescanSeconds = 1f;
+        private float _nextScan;
 
-        private void Start()
+        /// Gives every tile not seen yet its emitters.
+        private void Scan()
         {
             foreach (var tile in FindObjectsByType<GridNode>(FindObjectsSortMode.None))
             {
+                if (!_seen.Add(tile)) continue;
                 if (_sparksPrefab != null) _sparks.Add((tile, Spawn(_sparksPrefab, tile)));
                 if (_smokePrefab != null && tile.TryGetComponent<IntegrityModule>(out var integrity))
                     _smoke.Add((integrity, Spawn(_smokePrefab, tile)));
@@ -31,6 +37,16 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private void Update()
         {
+            if (Time.time >= _nextScan)
+            {
+                _nextScan = Time.time + RescanSeconds;
+                // A destroyed tile takes its emitters with it.
+                _seen.RemoveWhere(tile => tile == null);
+                _sparks.RemoveAll(pair => pair.tile == null || pair.sparks == null);
+                _smoke.RemoveAll(pair => pair.integrity == null || pair.smoke == null);
+                Scan();
+            }
+
             foreach (var (tile, sparks) in _sparks)
             {
                 var node = tile != null ? tile.Node : null;
