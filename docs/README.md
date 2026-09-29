@@ -105,6 +105,7 @@ what is already there. Rewiring the ship by hand comes after (`modules.md` → R
 - `credits.md` — third-party work used, and the licence terms each needs; mirrored in-world on the Credits prefab.
 - `networking.md` — the networking plan: authority rules, steps, notes.
 - `2d.md` — the 2D (mouse and keyboard) interaction model. Draft.
+- `polish.md` — the current focus: fixes and feel from the first many-player test.
 - `todolist.md` — single-player work queued before networking: live wiring, repairing, loading, coolant.
 - `open-questions.md` — what is undecided, what is parked, and what must not be re-proposed.
 

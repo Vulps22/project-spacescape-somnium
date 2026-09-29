@@ -20,6 +20,7 @@ A feature that works for one player and has not had that conversation is not rea
 - `docs/grid.md`: slot sizes and the rules for sizing and placing components on the grid.
 - `docs/networking.md`: the networking plan: authority rules, steps, and notes as we go.
 - `docs/2d.md`: how a mouse-and-keyboard player does everything a VR player does. Draft.
+- `docs/polish.md`: **the current focus**: what the first many-player test turned up, and why.
 - `docs/todolist.md`: what is queued, and what was tried and failed (so it is not retried).
 - Scene: `Assets/#User/SpaceScape/SpaceScape.unity`. Code: `Assets/#User/SpaceScape/scripts/`.
   Editor-only tools: `Packages/com.spacescape.editor` (never uploaded).
