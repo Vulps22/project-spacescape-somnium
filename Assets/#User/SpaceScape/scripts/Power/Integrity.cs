@@ -55,14 +55,25 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         /// Sets the condition outright, for the network to bring a copy into line with the master's.
         public void Correct(double current) => Current = current < 0.0 ? 0.0 : (current > Max ? Max : current);
 
+        /// The chance each try that it fails to do its job: 1 once destroyed, 0 while sound, rising from 0 at
+        /// the worn line to Failure Chance When Spent at 0 condition.
+        public double FailureChance
+        {
+            get
+            {
+                if (IsDestroyed) return 1.0;
+                if (!IsWorn) return 0.0;
+                double howWorn = 1.0 - Fraction / WornBelowFraction;   // 0 at the worn line, 1 at spent
+                return FailureChanceWhenSpent * howWorn;
+            }
+        }
+
         /// Rolls whether it fails to do its job this time. Certain once spent, impossible while sound.
         public bool FailsToWork()
         {
             if (IsDestroyed) return true;
             if (!IsWorn) return false;
-
-            double howWorn = 1.0 - Fraction / WornBelowFraction;   // 0 at the worn line, 1 at spent
-            return _rng.NextDouble() < FailureChanceWhenSpent * howWorn;
+            return _rng.NextDouble() < FailureChance;
         }
 
         public override string ToString() =>

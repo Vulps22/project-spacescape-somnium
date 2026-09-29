@@ -20,6 +20,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// The tile's condition, or null when it has none.
         protected Integrity Integrity => TryGetComponent<IntegrityModule>(out var i) ? i.Integrity : null;
 
+        /// The tile's integrity module's debug lines on a line of their own, or nothing when it has none.
+        protected string IntegrityText =>
+            TryGetComponent<IntegrityModule>(out var integrity) ? "\n" + integrity.DebugText : "";
+
         protected virtual void OnEnable() => Tile.On = true;
 
         protected virtual void OnDisable() => Tile.On = false;

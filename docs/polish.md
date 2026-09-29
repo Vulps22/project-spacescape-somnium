@@ -33,9 +33,13 @@ network prefabs (a scene change, made in Unity).
 
 ## Clean-up and debug
 
-- **Diagnostic logging:** remove `[SlideGrab]` / `[SlotHandle]` now that the handle works.
-- **Integrity module debug text:** a readout on `IntegrityModule`, like the battery's, showing what it
-  knows (condition, maximum, damage taken).
+**Written 2026-09-29, compiles clean, sim tests pass, untested in-world.**
+
+- **Diagnostic logging:** the `[SlideGrab]` / `[SlotHandle]` logging is gone.
+- **Integrity module debug text:** the battery and reactor readouts end with two lines from their
+  `IntegrityModule`: condition out of maximum with its share and state (sound, WORN, WRECKED), then the
+  worn line and the chance it misfires right now (`Integrity.FailureChance`, which `FailsToWork` now
+  rolls against).
 
 ## Component handling
 

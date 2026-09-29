@@ -39,6 +39,19 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             }
         }
 
+        /// What it knows, for a component's debug readout: condition, the worn line, and the chance it
+        /// misfires now.
+        public string DebugText
+        {
+            get
+            {
+                var integrity = Integrity;
+                string state = integrity.IsDestroyed ? "WRECKED" : integrity.IsWorn ? "WORN" : "sound";
+                return $"integrity {integrity.Current:0}/{integrity.Max:0} ({integrity.Fraction:P0}) {state}\n" +
+                       $"worn below {integrity.WornBelowFraction:P0}, misfire {integrity.FailureChance:P0}";
+            }
+        }
+
         public int StateCount => 1;
         public void WriteState(float[] to, int at) => to[at] = (float)Integrity.Current;
         public void ReadState(float[] from, int at) => Integrity.Correct(from[at]);

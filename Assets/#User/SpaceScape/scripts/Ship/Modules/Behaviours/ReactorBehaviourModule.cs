@@ -178,7 +178,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 $"rods {r.Core.Withdrawal:P0} of {_targetWithdrawal:P0}{(r.RodsHeld ? "" : "  NO GRIP")}\n" +
                 $"{celsius:0} / {r.Core.BaselineCelsius:0} C\n" +
                 $"fuel {r.Core.FuelSeconds:0} s\n" +
-                $"{r.Coolant.Litres:0} L @ {r.Coolant.ActualFlow:0.#}/s{(r.Coolant.AtCeiling ? " MAX" : "")}");
+                $"{r.Coolant.Litres:0} L @ {r.Coolant.ActualFlow:0.#}/s{(r.Coolant.AtCeiling ? " MAX" : "")}{IntegrityText}");
         }
 
         private void OnValidate()
