@@ -109,6 +109,11 @@ network prefabs (a scene change, made in Unity).
   let go and it snaps in and locks. It should show the placement guide once that exists. Networking:
   none; like the other tutorial displays it runs the same on every client and holds no state.
 
+## For Vulps
+
+- **Revisit the existing wall** (2026-09-29). A battery intersects it and cannot be put back once it is
+  unlocked. Fix: build a slot into the wall; Vulps is doing it.
+
 ## Done
 
 - 2026-09-29: battery debug text restored (Vulps). Conduits pop.
