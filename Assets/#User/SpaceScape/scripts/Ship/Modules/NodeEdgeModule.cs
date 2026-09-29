@@ -5,7 +5,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// Which faces of a tile power enters and leaves by. One value per face, so inputs and outputs
     /// cannot disagree. Faces are world directions until live rewiring makes them turn with the tile.
-    public sealed class NodeEdgeModule : Module
+    /// A whole face is In or Out here; ComponentEdgeModule narrows that to single cells of a face.
+    public class NodeEdgeModule : Module
     {
         [Tooltip("The +X face (world): In takes power from a neighbour's Out, Out sends to a neighbour's In, None is sealed.")]
         [SerializeField] private FlowDirection _xPlus = FlowDirection.In;
@@ -28,7 +29,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         };
 
         /// Which way power may cross a face.
-        public FlowDirection GetFace(GridDirection face)
+        public virtual FlowDirection GetFace(GridDirection face)
         {
             switch (face)
             {
@@ -56,14 +57,20 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             }
         }
 
-        /// Every face power leaves by.
-        public IEnumerable<GridDirection> Outputs => FacesSetTo(FlowDirection.Out);
+        /// Every face power leaves by, anywhere along it.
+        public virtual IEnumerable<GridDirection> Outputs => FacesSetTo(FlowDirection.Out);
 
-        /// Every face power may arrive by.
-        public IEnumerable<GridDirection> Inputs => FacesSetTo(FlowDirection.In);
+        /// Every face power may arrive by, anywhere along it.
+        public virtual IEnumerable<GridDirection> Inputs => FacesSetTo(FlowDirection.In);
 
         /// Whether power may enter by a given face.
         public bool AcceptsFrom(GridDirection face) => GetFace(face) == FlowDirection.In;
+
+        /// Whether power leaves by one cell of a face. Here, any cell of an Out face.
+        public virtual bool SendsAt(GridDirection face, Vector3Int cell) => GetFace(face) == FlowDirection.Out;
+
+        /// Whether power may enter by one cell of a face. Here, any cell of an In face.
+        public virtual bool AcceptsAt(GridDirection face, Vector3Int cell) => GetFace(face) == FlowDirection.In;
 
         /// Every face set to one direction.
         private IEnumerable<GridDirection> FacesSetTo(FlowDirection flow)

@@ -14,6 +14,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         /// How long to wait for Fusion to hand over state authority before giving up.
         public const float AuthorityTimeout = 2f;
 
+        /// Whether Fusion is running here at all. False in the Editor without Photon.
+        public static bool HasRunner => SceneNetworking.NetworkRunnerRef != null || NetworkRunner.Instances.Count > 0;
+
         /// The local peer has joined and the scene's network objects are registered.
         public static bool IsNetworkReady => SceneNetworking.IsNetworkReady;
 

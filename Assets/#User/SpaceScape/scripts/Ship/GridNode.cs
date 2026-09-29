@@ -10,7 +10,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     [SelectionBase]
     public sealed class GridNode : MonoBehaviour
     {
-        [Tooltip("How many cells this occupies (x, y, z). A cable is 1,1,1. A face covers a whole side.")]
+        [Tooltip("How many cells this occupies (x, y, z). A cable is 1,1,1. A face covers a whole side. Ignored on a slot (its volume) and on a component (its size class).")]
         [SerializeField] private Vector3Int _size = Vector3Int.one;
         [Tooltip("Part of the grid while ticked. Behaviours and switches set this; off means nothing enters or leaves.")]
         [SerializeField] private bool _on = true;
@@ -176,9 +176,20 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// The cell this tile is anchored in. See GridCell for how big a cell is.
         public Vector3Int Coordinate => GridCell.ToCell(transform.position);
 
-        /// How many cells this thing occupies. A cable is one; a reactor is not.
-        public Vector3Int Size => new Vector3Int(
-            Mathf.Max(1, _size.x), Mathf.Max(1, _size.y), Mathf.Max(1, _size.z));
+        /// The slot on this tile, or null. A slot's footprint is its own volume.
+        private ComponentSlot Slot => TryGetComponent<ComponentSlot>(out var slot) ? slot : null;
+
+        /// How many cells this thing occupies. A cable is one; a reactor is not. A slot's is its volume.
+        public Vector3Int Size
+        {
+            get
+            {
+                var slot = Slot;
+                if (slot != null) return slot.WorldMax - slot.WorldMin + Vector3Int.one;
+                if (TryGetComponent<SlottedComponent>(out var component)) return component.LocalCells;
+                return new Vector3Int(Mathf.Max(1, _size.x), Mathf.Max(1, _size.y), Mathf.Max(1, _size.z));
+            }
+        }
 
         /// The low corner of the footprint. An odd size centres on the anchor; an even one leans
         /// toward the high side, because a box of four has no middle cell to sit on.
@@ -186,13 +197,30 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             get
             {
+                var slot = Slot;
+                if (slot != null) return slot.WorldMin;
                 var size = Size;
                 return Coordinate - new Vector3Int((size.x - 1) / 2, (size.y - 1) / 2, (size.z - 1) / 2);
             }
         }
 
         /// The high corner of the footprint.
-        public Vector3Int Max => Min + Size - Vector3Int.one;
+        public Vector3Int Max
+        {
+            get
+            {
+                var slot = Slot;
+                return slot != null ? slot.WorldMax : Min + Size - Vector3Int.one;
+            }
+        }
+
+        /// False while something else decides whether the node is on: a slot holding a component, where the
+        /// component's own tile does. Only one tile writes a node's On.
+        public bool DrivesNode { get; set; } = true;
+
+        /// This component's heat while it is in no slot, carried with it and handed back to a slot's node
+        /// when it goes in.
+        public double HeldCelsius { get; set; } = PowerGraph.AmbientCelsius;
 
         /// Every cell this thing stands in, so two things cannot be built through each other.
         public IEnumerable<Vector3Int> Cells
@@ -247,7 +275,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         public bool On
         {
             get => _on;
-            set { _on = value; if (Node != null) Node.On = value; }
+            set { _on = value; if (Node != null && DrivesNode) Node.On = value; }
         }
 
         private float _nextReadout;
@@ -256,14 +284,17 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         public void Bind(PowerNode node)
         {
             Node = node;
-            node.On = _on;
+            if (DrivesNode) node.On = _on;
         }
+
+        /// Lets go of the node, for a component leaving its slot.
+        public void Unbind() => Node = null;
 
         private void Update()
         {
             // Unity writes the serialized field directly, so the property setter never fires when
             // the checkbox is clicked. Push it across every frame instead; it only writes on change.
-            if (Node != null && Node.On != _on) Node.On = _on;
+            if (Node != null && DrivesNode && Node.On != _on) Node.On = _on;
 
             if (Node == null || _readout == null || !_readout.enabled) return;
             if (Time.time < _nextReadout) return;
@@ -276,7 +307,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private void OnValidate()
         {
-            if (Node != null) Node.On = _on;
+            if (Node != null && DrivesNode) Node.On = _on;
         }
 
         private void OnDrawGizmos()

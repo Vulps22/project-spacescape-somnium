@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using SomniumSpace.Worlds.SpaceScape.Power;
 using UnityEngine;
@@ -39,7 +40,26 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _graph.Damaged += n => Report("Damaged", n, $"condition {n.Integrity}");
             _graph.Lost += n => Report("Lost", n, "wrecked, still wired in and wasting what it gets");
 
-            if (!_logValidation) return;
+            if (_logValidation) StartCoroutine(ValidateOnceSlotsAreFilled());
+        }
+
+        /// Logs wiring problems once every slot that starts with a component has it. Slots fill after the
+        /// grid is built (locally a second later, networked when the master's spawn arrives), and checked
+        /// before then every port looks unwired.
+        private IEnumerator ValidateOnceSlotsAreFilled()
+        {
+            const float giveUpAfter = 10f;
+            float started = Time.time;
+            var slots = FindObjectsByType<ComponentSlot>(FindObjectsSortMode.None);
+            while (Time.time - started < giveUpAfter)
+            {
+                bool filled = true;
+                foreach (var slot in slots)
+                    if (slot != null && slot.StartsWith != null && slot.Component == null) { filled = false; break; }
+                if (filled) break;
+                yield return null;
+            }
+            if (_graph == null) yield break;
             foreach (var problem in _graph.Validate())
                 Debug.LogWarning($"PowerGrid: {problem}", this);
         }
@@ -52,11 +72,28 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// Turns every GridNode and Conduit in the scene into the sim's nodes and edges.
         private void Build()
         {
-            var nodes = FindObjectsByType<GridNode>(FindObjectsSortMode.None);
+            // A component in a slot is not a tile: its slot is, and answers for it.
+            var slots = FindObjectsByType<ComponentSlot>(FindObjectsSortMode.None);
+            var held = new HashSet<GridNode>();
+            foreach (var slot in slots)
+                if (slot.Component != null) held.Add(slot.Component);
+            var nodes = new List<GridNode>();
+            // A component in no slot is in no grid: inert until it is slotted.
+            foreach (var tile in FindObjectsByType<GridNode>(FindObjectsSortMode.None))
+                if (!held.Contains(tile) && !tile.TryGetComponent<ComponentEdgeModule>(out _)) nodes.Add(tile);
+
             _tileOf.Clear();
             _blown.Clear();
             foreach (var placed in nodes)
             {
+                if (placed.TryGetComponent<ComponentSlot>(out _))
+                {
+                    var slotNode = _graph.AddNode(placed.name, InertSink.Instance);
+                    placed.Bind(slotNode);
+                    _tileOf[slotNode] = placed;
+                    continue;
+                }
+
                 var behaviours = placed.GetComponents<BehaviourModule>();
                 if (behaviours.Length == 0)
                     Debug.LogWarning($"'{placed.name}' has no behaviour module, so it acts as bare cable", placed);
@@ -91,6 +128,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     _byCell.Add(cell, placed);
                 }
             }
+
+            // Each slot puts its component on its node before anything is joined, so its ports count.
+            foreach (var slot in slots)
+                if (slot.TryGetComponent<GridNode>(out var tile) && tile.Node != null) slot.Attach(tile.Node, this);
 
             foreach (var placed in nodes) ConnectOutputs(placed, null, true);
         }
@@ -137,6 +178,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
                 foreach (var cell in placed.FaceCells(face))
                 {
+                    if (placed.Edges != null && !placed.Edges.SendsAt(face, cell)) continue;
                     if (!_byCell.TryGetValue(cell + face.Offset(), out var neighbour)) continue;
                     if (neighbour == placed) continue;
                     reachedAnything = true;
@@ -144,9 +186,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     if (onlyTo != null && neighbour != onlyTo) continue;
                     if (!joined.Add(neighbour) || neighbour.Node == null) continue;
 
-                    if (neighbour.Edges == null || !neighbour.Edges.AcceptsFrom(socket))
+                    if (neighbour.Edges == null || !neighbour.Edges.AcceptsAt(socket, cell + face.Offset()))
                     {
-                        if (warn)
+                        // An empty slot has no ports; a cable aimed at it is waiting for its component.
+                        bool emptySlot = neighbour.TryGetComponent<ComponentSlot>(out var slot) && slot.Component == null;
+                        if (warn && !emptySlot)
                             Debug.LogWarning(
                                 $"'{placed.name}' sends power {face} at '{neighbour.name}', which has no {socket} input",
                                 placed);

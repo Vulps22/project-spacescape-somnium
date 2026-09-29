@@ -10,6 +10,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
     public static class WorldManager
     {
         public static bool IsNetworkReady => WorldBridge.IsNetworkReady;
+        public static bool HasRunner => WorldBridge.HasRunner;
         public static bool CanSpawn => WorldBridge.CanSpawn;
 
         public static event Action NetworkReady
