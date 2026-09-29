@@ -49,8 +49,12 @@ network prefabs (a scene change, made in Unity).
   reactor's side, and the box gets in the way of grabbing the rod lever. Likely why: the fit leaves out
   meshes under an object with its own hand interaction, but the lever's interactable is only on
   `RodLever/Pivot/Handle`; `RodLever/Pivot/Arm` is outside it, so the box stretches out over the lever.
-  Fix: leave out the whole of anything that moves or is handled on its own (the `RodLever` and what is
-  under it), and never let the box grow past the slot's volume, which the model fills by rule.
+  Fix: see the next item; the box goes.
+- **Components use their mesh colliders, not a box (Vulps, 2026-09-29).** The grab and the physics use
+  colliders on the model's own meshes, so what you touch and bump into is the shape you see. Leave out
+  the lever and anything else handled on its own; the grab interactable's collider list is these mesh
+  colliders. Unity only lets a moving (non-kinematic) Rigidbody use convex mesh colliders, so each mesh
+  collider is convex; a shape a single convex hull misrepresents is split into convex parts.
 - **Grab points:** `CarriedComponent` fits the grab box to the model's own meshes at start, leaving out
   text, particles and anything with a hand interaction of its own (the reactor's lever), instead of the
   slot's whole volume.
