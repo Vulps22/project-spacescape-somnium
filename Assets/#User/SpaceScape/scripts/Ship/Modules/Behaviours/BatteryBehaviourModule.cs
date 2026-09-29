@@ -56,7 +56,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _nextReadout = Time.time + _readoutInterval;
 
             double celsius = Tile.Node != null ? Tile.Node.Celsius : 0.0;
-            _readout.SetText($"{Label}\n{Battery.Charge:0} J\n{Battery.ChargeFraction:P0}{Extra}\n{celsius:0.0} C");
+            _readout.SetText($"Type: {Label}\nCharge: {Battery.Charge:0} J\nAvailable: {Battery.ChargeFraction:P0}{Extra}");
         }
 
         /// A line of its own for the readout, for a cell with something more to say.
