@@ -645,6 +645,9 @@ GameObject:
   - component: {fileID: 8887690312098368238}
   - component: {fileID: 6866405796999081489}
   - component: {fileID: 7901899128754884639}
+  - component: {fileID: 1442734351888900180}
+  - component: {fileID: 4412176366701724299}
+  - component: {fileID: 644496486819664745}
   m_Layer: 0
   m_Name: Switch Addon
   m_TagString: Untagged
@@ -697,10 +700,10 @@ Rigidbody:
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
   m_UseGravity: 1
-  m_IsKinematic: 1
+  m_IsKinematic: 0
   m_Interpolate: 1
   m_Constraints: 0
-  m_CollisionDetection: 0
+  m_CollisionDetection: 3
 --- !u!114 &2906283449490811464
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -715,6 +718,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.AddonItem
   _installs: {fileID: 6792261558567237011, guid: 71045a000ecdba2d498485af19c0d5f8,
     type: 3}
+  _resizeSeconds: 1
 --- !u!65 &8887690312098368238
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -878,6 +882,63 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Player.IgnoresPlayerBody
   _reapplySeconds: 0.25
+--- !u!114 &1442734351888900180
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7408833936795596243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5f672146560456f812bfe33ab6a2f9c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Community.NetworkGrabbable
+  _grabInteracable: {fileID: 6866405796999081489}
+  _networkRigidbody: {fileID: 4412176366701724299}
+  _rigidbody: {fileID: 3659421476051061527}
+--- !u!114 &4412176366701724299
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7408833936795596243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a591d221a634417e9827eb58e17de84, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Addons.Physics::Fusion.Addons.Physics.NetworkRigidbody3D
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 1
+  _interpolationTarget: {fileID: 0}
+  UsePreciseRotation: 0
+  UseRenderSleepThresholds: 1
+  RenderThresholds:
+    UseEnergy: 1
+    Position: 0.01
+    Rotation: 0.01
+    Scale: 0.01
+--- !u!114 &644496486819664745
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7408833936795596243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.NetworkObject
+  SortKey: 4184270554
+  ObjectInterest: 1
+  Flags: 524289
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 4412176366701724299}
+  ForceRemoteRenderTimeframe: 0
 --- !u!1 &8184707026643725076
 GameObject:
   m_ObjectHideFlags: 0

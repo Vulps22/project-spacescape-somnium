@@ -267,6 +267,22 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _addonHandle.Tip.rotation = Quaternion.LookRotation(face.Vector(), AddonModule.UpFor(face, turns));
         }
 
+        /// The addon slot's frame, in metres across its face: what an item is fitted to.
+        public Vector2 AddonSlotSize
+        {
+            get
+            {
+                var slot = AddonSlot;
+                if (slot == null) return Vector2.zero;
+                var frame = LocalBounds(slot, slot.GetComponentsInChildren<Renderer>());
+                var scale = slot.lossyScale;
+                return new Vector2(frame.size.x * Mathf.Abs(scale.x), frame.size.y * Mathf.Abs(scale.y));
+            }
+        }
+
+        /// The share of the addon slot's frame an item fills.
+        public float AddonItemFill => _motion.AddonItemFill;
+
         /// Puts the installed addon's item in the addon slot, small enough to fit, for a hand to take out.
         private void ShowAddon(ConduitAddon addon)
         {
@@ -331,8 +347,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _display = null;
             _displayPrefab = null;
 
-            item.transform.SetParent(null, true);
-            item.transform.localScale = prefab.transform.localScale;
+            item.transform.SetParent(null, true);   // keeps its slot size; it grows once out of the cell
             if (Tile != null && Tile.TryGetComponent<AddonModule>(out var module) && module.Remove() != null)
                 _motion.Removed?.Invoke(Tile);
             Haptics.Pulse(args.interactorObject, _motion.BuzzAmplitude, _motion.BuzzSeconds);

@@ -213,6 +213,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private void Update()
         {
             FitBoxes();
+            ResizeHeldItems();
             if (_hologram == null) return;
             int count = PlayerHands.Positions(_hands);
             UpdateLocks(count);
@@ -234,6 +235,24 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _hologram.Holder = -1;
             _hologram.Close();
             Shown(null);
+        }
+
+        /// A held addon item shrinks to fit the addon slot while it is inside the open conduit's cell, and grows
+        /// back to full size once it leaves, easing rather than snapping.
+        private void ResizeHeldItems()
+        {
+            foreach (var item in AddonItem.All)
+            {
+                if (item == null || !item.Grab.isSelected) continue;
+                var open = _hologram != null && _hologram.IsOpen ? _hologram.Tile : null;
+                bool inside = open != null && open.Occupies(GridCell.ToCell(item.transform.position));
+                if (!inside) { item.ResizeTo(item.FullScale); continue; }
+
+                var frame = _hologram.AddonSlotSize;
+                float across = item.UnitAcross;
+                if (across <= 1e-6f || frame.x <= 0f) continue;
+                item.ResizeTo(Vector3.one * (_hologram.AddonItemFill * Mathf.Min(frame.x, frame.y) / across));
+            }
         }
 
         /// Raises Closed and Opened as the conduit shown here changes.
@@ -291,14 +310,19 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             foreach (var pair in _boxes)
             {
                 if (pair.Key == null || pair.Value == null) continue;
+                // Solid meshes only (particles, trails and text can reach metres away), and never past the
+                // conduit's own cell, which a conduit does not leave.
+                var cell = new Bounds(GridCell.ToWorld(pair.Key.Coordinate), Vector3.one * GridCell.Size);
                 bool any = false;
-                var bounds = new Bounds(pair.Key.transform.position, Vector3.zero);
-                foreach (var r in pair.Key.GetComponentsInChildren<Renderer>())
+                var bounds = new Bounds(cell.center, Vector3.zero);
+                foreach (var r in pair.Key.GetComponentsInChildren<MeshRenderer>())
                 {
                     if (!r.enabled || r.GetComponent<TMPro.TMP_Text>() != null) continue;
                     if (any) bounds.Encapsulate(r.bounds);
                     else { bounds = r.bounds; any = true; }
                 }
+                if (!any) bounds = cell;
+                bounds.SetMinMax(Vector3.Max(bounds.min, cell.min), Vector3.Min(bounds.max, cell.max));
                 pair.Value.SetPositionAndRotation(bounds.center, Quaternion.identity);
                 pair.Value.localScale = bounds.size + Vector3.one * (2f * _openElsewherePadding);
             }

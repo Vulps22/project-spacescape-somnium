@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
@@ -13,6 +14,60 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     {
         [Tooltip("The addon prefab this installs on a conduit: the part that goes on the cable, like the rocker.")]
         [SerializeField] private ConduitAddon _installs;
+        [Tooltip("Seconds it takes to shrink to fit an open addon slot, or grow back to full size.")]
+        [SerializeField] private float _resizeSeconds = 1f;
+
+        private static readonly List<AddonItem> Items = new List<AddonItem>();
+        private Vector3 _fullScale;
+        private Vector3? _targetScale;
+
+        /// Every addon item in the world.
+        public static IReadOnlyList<AddonItem> All => Items;
+
+        /// Its size when it is not in a slot: the prefab's.
+        public Vector3 FullScale => _fullScale;
+
+        /// How wide or tall its solid parts are at a scale of 1, whichever is larger, for fitting it to a slot.
+        public float UnitAcross
+        {
+            get
+            {
+                var bounds = new Bounds(); bool any = false;
+                foreach (var r in GetComponentsInChildren<Renderer>())
+                {
+                    if (r.GetComponent<TMPro.TMP_Text>() != null) continue;
+                    var local = r.localBounds;
+                    for (int i = 0; i < 8; i++)
+                    {
+                        var corner = local.center + Vector3.Scale(local.extents, new Vector3((i & 1) == 0 ? -1f : 1f, (i & 2) == 0 ? -1f : 1f, (i & 4) == 0 ? -1f : 1f));
+                        var point = Vector3.Scale(transform.InverseTransformPoint(r.transform.TransformPoint(corner)), Vector3.one);
+                        if (!any) { bounds = new Bounds(point, Vector3.zero); any = true; }
+                        else bounds.Encapsulate(point);
+                    }
+                }
+                return any ? Mathf.Max(bounds.size.x, bounds.size.y) : 0f;
+            }
+        }
+
+        /// Eases to a size over the resize time rather than snapping to it.
+        public void ResizeTo(Vector3 scale) => _targetScale = scale;
+
+        private void Awake()
+        {
+            _fullScale = transform.localScale;
+            // Its size is this script's alone. Tracking scale, XRI writes back the size it was grabbed at every
+            // frame it is held, undoing any resize depending on which runs last.
+            Grab.trackScale = false;
+        }
+
+        private void Update()
+        {
+            if (_targetScale == null) return;
+            var target = _targetScale.Value;
+            float rate = Mathf.Max(_fullScale.magnitude, 1e-4f) / Mathf.Max(0.01f, _resizeSeconds);
+            transform.localScale = Vector3.MoveTowards(transform.localScale, target, rate * Time.deltaTime);
+            if (transform.localScale == target) _targetScale = null;
+        }
 
         private XRGrabInteractable _grab;
         private Rigidbody _body;
@@ -33,9 +88,17 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _body.isKinematic = true;
         }
 
-        private void OnEnable() => Grab.selectExited.AddListener(OnLetGo);
+        private void OnEnable()
+        {
+            Items.Add(this);
+            Grab.selectExited.AddListener(OnLetGo);
+        }
 
-        private void OnDisable() => Grab.selectExited.RemoveListener(OnLetGo);
+        private void OnDisable()
+        {
+            Items.Remove(this);
+            Grab.selectExited.RemoveListener(OnLetGo);
+        }
 
         /// Lets it fall once a hand has had it, then offers it to any slot it was dropped in.
         private void OnLetGo(SelectExitEventArgs args)
