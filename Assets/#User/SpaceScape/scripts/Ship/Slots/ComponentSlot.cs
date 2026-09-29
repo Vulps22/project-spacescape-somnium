@@ -42,6 +42,14 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Tooltip("How far a let-go component may be turned from sitting square in the slot and still go in, in degrees.")]
         [SerializeField] private float _seatAngle = 30f;
 
+        [Header("Placement guide")]
+        [Tooltip("The guide box while a held component inside the slot is neither positioned nor aligned.")]
+        [SerializeField] private Material _guideNeither;
+        [Tooltip("The guide box while it is positioned or aligned, but not both.")]
+        [SerializeField] private Material _guideOneOf;
+        [Tooltip("The guide box while it is both, so letting go snaps it in.")]
+        [SerializeField] private Material _guideBoth;
+
         private static readonly List<ComponentSlot> Slots = new List<ComponentSlot>();
 
         /// Every slot in the world.
@@ -207,9 +215,58 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// True when a let-go component can go in here: the slot is empty, it is the slot's size, its centre
         /// is near the slot's, and it is turned near enough to sit square.
         public bool Accepts(GridNode component) =>
-            _component == null && Fits(component)
-            && (component.transform.position - transform.position).sqrMagnitude <= _seatDistance * _seatDistance
-            && Quaternion.Angle(component.transform.rotation, SeatFor(component)) <= _seatAngle;
+            _component == null && Fits(component) && IsPositioned(component) && IsAligned(component);
+
+        /// True when a component's centre is near enough the slot's to go in.
+        public bool IsPositioned(GridNode component) =>
+            (component.transform.position - transform.position).sqrMagnitude <= _seatDistance * _seatDistance;
+
+        /// True when a component is turned near enough square to go in.
+        public bool IsAligned(GridNode component) =>
+            Quaternion.Angle(component.transform.rotation, SeatFor(component)) <= _seatAngle;
+
+        /// True when a point in the world is inside the slot's volume.
+        public bool Contains(Vector3 world)
+        {
+            var local = Quaternion.Inverse(Facing) * (world - transform.position);
+            var half = Extent * 0.5f;
+            return Mathf.Abs(local.x) <= half.x && Mathf.Abs(local.y) <= half.y && Mathf.Abs(local.z) <= half.z;
+        }
+
+        /// What the placement guide shows.
+        public enum Guide { Hidden, Neither, OneOf, Both }
+
+        private MeshRenderer _guide;
+
+        /// Shows the slot's volume as a transparent box coloured by how a held component sits in it, or hides
+        /// it. For the hand doing the placing only: nothing about it is networked.
+        public void ShowGuide(Guide guide)
+        {
+            if (guide == Guide.Hidden)
+            {
+                if (_guide != null && _guide.enabled) _guide.enabled = false;
+                return;
+            }
+            if (_guide == null) _guide = MakeGuide();
+            _guide.enabled = true;
+            var material = guide == Guide.Both ? _guideBoth : guide == Guide.OneOf ? _guideOneOf : _guideNeither;
+            if (material != null && _guide.sharedMaterial != material) _guide.sharedMaterial = material;
+        }
+
+        private MeshRenderer MakeGuide()
+        {
+            var box = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            DestroyImmediate(box.GetComponent<Collider>());   // shows the volume, never blocks anything
+            box.name = "Placement Guide";
+            box.transform.SetParent(transform, false);
+            box.transform.localPosition = Vector3.zero;
+            box.transform.localRotation = Quaternion.identity;
+            box.transform.localScale = Extent;
+            var renderer = box.GetComponent<MeshRenderer>();
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            return renderer;
+        }
 
         /// How far a component's centre is from this slot's, for picking the nearest of several.
         public float DistanceTo(GridNode component) => Vector3.Distance(component.transform.position, transform.position);

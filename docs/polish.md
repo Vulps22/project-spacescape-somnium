@@ -43,27 +43,25 @@ network prefabs (a scene change, made in Unity).
 
 ## Component handling
 
-- **Grab points do not line up with what you see.** Players have to get very close; on the S5 reactor
-  so close the laser starts inside it. Likely why: the box collider fills the slot's whole volume (5 m
-  for S5) while the model is smaller, so the box's surface floats outside the model. Size the collider
-  from the model's renderers instead.
-- **Placement guide.** While a held component is inside a slot's volume, the slot shows a transparent
-  box: red, neither aligned nor positioned; orange, one of the two; green, both, and letting go snaps it
-  in. A short vibration on the holding hand when it turns green. The checks are the ones
-  `ComponentSlot.Accepts` already makes (centre within 0.5 m, within 30° of square). Networking: local to
-  the holder; it is feedback for the hand doing the placing, not state.
-- **Solid, and pushing each other.** A component not being carried should stop a player; a heavier one
-  should shove a lighter one (a reactor swung into a battery sends it flying). Why they are not:
-  `IgnoresPlayerBody` is on all the time; it should apply only while a hand holds it. Mass drives the
-  shoving once set (see Weight). Networking, to settle with Vulps before building: each loose
-  component's physics runs on whoever has its state authority, so two components owned by different
-  players only push each other properly on one side. Suggested: a held component takes authority over
-  whatever it hits.
-- **Weight.** Not heavy enough to need several players yet (that is `todolist.md` → Weight), but
-  sluggish: it lags the hand and sags a little when held. Each component gets a mass, a battery lighter
-  than a reactor. It is weightless now because the grab is XRI's Instantaneous movement, which ignores
-  mass; velocity tracking with damping, or smoothing plus a downward offset scaled by mass, gives lag and
-  sag.
+**Written 2026-09-29, compiles clean, untested.**
+
+- **Grab points:** `CarriedComponent` fits the grab box to the model's own meshes at start, leaving out
+  text, particles and anything with a hand interaction of its own (the reactor's lever), instead of the
+  slot's whole volume.
+- **Placement guide:** while a held component's centre is inside an empty slot of its size, the slot shows
+  its volume as a transparent box: red (neither), orange (positioned or aligned), green (both: letting go
+  snaps it in), with a buzz on the holding hand as it turns green. The checks are
+  `ComponentSlot.IsPositioned` and `IsAligned` (centre within 0.5 m, within 30° of square), the same ones
+  `Accepts` makes. Materials `SlotGuideRed/Orange/Green`, copies of `HoloUpgrade`. Local to the holder.
+- **Solid, and pushing each other:** `IgnoresPlayerBody` is on only while a hand holds the component, and
+  now lets its pairs collide again when switched off, so a component on the floor stops a player. When a
+  held component hits a loose one, this client asks for the loose one's authority through its
+  `NetworkGrabbable`, so the shove plays out on the holder's client (the suggestion from the list, built
+  as proposed; Vulps to confirm after testing).
+- **Weight:** the grab is velocity tracking, so a held component is physical: it follows the hand by a share
+  of the gap each step (1 at no mass, 0.15 at 2000 kg) and hangs up to 0.25 m below the hold
+  (`HeftGrabTransformer`, since XRI turns gravity off while held). Masses: Reactor 2000 kg (the figure in
+  `todolist.md` → Weight), Battery 400 kg. All tunable on `CarriedComponent` and each prefab's Rigidbody.
 
 ## Component simulation
 

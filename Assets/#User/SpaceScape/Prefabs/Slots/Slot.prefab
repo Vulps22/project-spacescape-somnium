@@ -146,6 +146,11 @@ MonoBehaviour:
   _handle: {fileID: 9104044007011110125}
   _startsWith: {fileID: 0}
   _unlockSeconds: 10
+  _seatDistance: 0.5
+  _seatAngle: 30
+  _guideNeither: {fileID: 2100000, guid: 1d1dbac3f48f46ca9ebdcc4bbcffabde, type: 2}
+  _guideOneOf: {fileID: 2100000, guid: 522287949f3247eab27937fe4561fdad, type: 2}
+  _guideBoth: {fileID: 2100000, guid: 8396e08d89764c3098594e44967bb1a4, type: 2}
 --- !u!114 &4507788057995711628
 MonoBehaviour:
   m_ObjectHideFlags: 0

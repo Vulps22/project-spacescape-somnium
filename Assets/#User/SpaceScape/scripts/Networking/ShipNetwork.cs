@@ -19,6 +19,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
     /// stands to the master, which makes its own copy match; the conduit chunks carry it to everyone.
     ///
     /// Addon items: spawned when taken out of a conduit, despawned when put in (AddonItemNetwork).
+    ///
+    /// Components shoving each other: a loose component's physics runs on whoever has its authority, so when
+    /// this client's hand swings a component into a loose one, this client asks for the loose one's
+    /// authority (as NetworkGrabbable would on a grab) and the shove plays out here, where the holder is.
     [RequireComponent(typeof(NetworkMessenger))]
     public sealed class ShipNetwork : MonoBehaviour
     {
@@ -48,6 +52,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             PlayerManager.LocalPlayerJoined += OnLocalPlayerJoined;
             PlayerManager.OtherPlayerJoined += SayHello;
             PlayerManager.PlayerLeft += OnPlayerLeft;
+            CarriedComponent.Bumped += OnComponentBumped;
             if (_holograms != null)
             {
                 _holograms.Opened += OnHologramOpened;
@@ -68,6 +73,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             PlayerManager.LocalPlayerJoined -= OnLocalPlayerJoined;
             PlayerManager.OtherPlayerJoined -= SayHello;
             PlayerManager.PlayerLeft -= OnPlayerLeft;
+            CarriedComponent.Bumped -= OnComponentBumped;
             if (_holograms != null)
             {
                 _holograms.Opened -= OnHologramOpened;
@@ -78,6 +84,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         }
 
         private void OnLocalPlayerJoined(PlayerIdentity _) => SayHello();
+
+        private static void OnComponentBumped(CarriedComponent component)
+        {
+            if (component.TryGetComponent<Community.NetworkGrabbable>(out var grabbable)) grabbable.RequestControl();
+        }
 
         // Called from whichever of the messenger spawning and the local player arriving comes last;
         // the other call finds one of them missing and does nothing.
