@@ -64,6 +64,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             var spawned = WorldManager.Spawn(prefab, t.position, t.rotation, $"addon item '{prefab.name}' taken out");
             if (spawned == null || !spawned.TryGetComponent<AddonItem>(out var item)) yield break;
             item.transform.localScale = t.lossyScale;   // it grows from the slot's size once out of the cell
+            item.State = picture.State;                  // a junction's count; spawned here, so written from here
 
             var grab = picture.Grab;
             var manager = grab.interactionManager;

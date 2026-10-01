@@ -243,6 +243,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         public bool Accepts(GridNode component) =>
             _component == null && Fits(component) && IsPositioned(component) && IsAligned(component);
 
+        /// How far a let-go component's centre may be from the slot's centre and still go in, in metres.
+        public float SeatDistance => _seatDistance;
+
+        /// How far a let-go component may be turned from sitting square and still go in, in degrees.
+        public float SeatAngle => _seatAngle;
+
+        /// Seconds a pulled handle leaves the slot unlocked.
+        public float UnlockSeconds => _unlockSeconds;
+
         /// True when a component's centre is near enough the slot's to go in.
         public bool IsPositioned(GridNode component) =>
             (component.transform.position - transform.position).sqrMagnitude <= _seatDistance * _seatDistance;
@@ -275,9 +284,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             }
             if (_guide == null) _guide = MakeGuide();
             _guide.enabled = true;
-            var material = guide == Guide.Both ? _guideBoth : guide == Guide.OneOf ? _guideOneOf : _guideNeither;
+            var material = GuideMaterial(guide);
             if (material != null && _guide.sharedMaterial != material) _guide.sharedMaterial = material;
         }
+
+        /// The placement guide's material for how a held component sits, or null when hidden.
+        public Material GuideMaterial(Guide guide) =>
+            guide == Guide.Both ? _guideBoth : guide == Guide.OneOf ? _guideOneOf : guide == Guide.Neither ? _guideNeither : null;
 
         private MeshRenderer MakeGuide()
         {

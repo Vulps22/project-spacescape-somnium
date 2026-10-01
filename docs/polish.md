@@ -31,6 +31,31 @@ network prefabs (a scene change, made in Unity).
   instead of destroyed on one client. The picture has its `NetworkGrabbable` removed, which ends the grab
   errors in the log.
 
+### Junction addon (written 2026-09-30, compiles clean, untested)
+
+One prefab, `Prefabs/Junction.prefab` (a small box in the middle of the cable, `JunctionAddon`), carried as
+`Conduit Addons/Junction Addon.prefab`. Its **Extra Segments** (+1 to +4) is the junction's `NetworkState`,
+so an installed junction's count reaches everyone through `AddonNetwork`, and a non-master's hand sends it
+with the edit. Taken out, the item keeps the count (`AddonItem.State`, shown on its screen as "+N") and
+gives it to the junction it installs. The item syncs it through `AddonItemStateNetwork` (a
+`NetworkBridgeData1`, written by whoever has the item's authority). An item's own **State** in the Inspector
+sets the count for an item placed in the scene; -1 takes the junction prefab's. Only addons that say so
+(`StateTravelsWithItem`) carry state on their item, so a switch still goes in as its prefab has it.
+
+- **Drawn junctions start at the prefab's count.** A drawn conduit's code has no room left for a count.
+- **First test, 2026-09-30 (fixed, untested):**
+  - *New handles could not be seen:* they spawned parked, in the middle, inside the junction's box. Every
+    addon's model now hides while its conduit's hologram is open, here or for another player
+    (`AddonModule.Hidden`, set from `ConduitHolograms`' own and networked occupancy), so nobody works a switch
+    mid-configure either.
+  - *A third extra segment "moved" an original:* the conduit had 4 cable stubs, so a fifth face went undrawn
+    and outputs, drawn first, pushed an input off the end. `Conduit` now adds stubs in Play mode as needed.
+  - *Could not use Y+:* a new addon faces the free side nearest the head, and the hologram kept segments off
+    the addon's face. Only an addon with a capsule handle (a switch) now holds its face.
+- **Taking a junction out parks every segment (decided 2026-09-30).** Nothing says which faces were the
+  extra segments', so all of them park and the conduit is rewired from nothing, through the hologram's
+  `Commit`, which also sends the edit to the master.
+
 ## Clean-up and debug
 
 **Written 2026-09-29, compiles clean, sim tests pass, untested in-world.**
@@ -96,23 +121,31 @@ network prefabs (a scene change, made in Unity).
 
 ## Tutorials
 
-- **Pedestal copies must be totally inert.** Seen: they can be grabbed, the reactor copy's lever works,
-  and their ports render wrongly at the shrunk size. Why: each copy switches its working parts off one
-  override at a time, so anything added to the prefab later arrives switched on (`PortVisual` never was
-  off). The overrides written for the carrying parts were lost: the scene file was edited on disk while
-  it was open in Unity, and Unity saved its own copy over it. Fix: one "display copy" script on each copy
-  that, on Awake, switches off every behaviour, collider and interactable under it except what draws it,
-  so new parts can never leak through again.
-- **Slots tutorial (new):** taking a component out of a slot and putting one in, in the style of the
-  existing tutorials (a looping display with ghost hands, or a static board of steps): pull the handle up
-  until the bar turns green, take the component, carry it, line it up with an empty slot of its size,
-  let go and it snaps in and locks. It should show the placement guide once that exists. Networking:
-  none; like the other tutorial displays it runs the same on every client and holds no state.
+- **Pedestal copies must be totally inert.** Done by hand in the scene (Vulps, 2026-09-30). Note for
+  later: each copy is switched off one override at a time, so anything added to the component prefabs
+  later arrives switched on in the copies; check them after changing a prefab.
+- **Changing a component (written 2026-09-30, compiles clean, untested).** `SlotTutorialDisplay`: two
+  shrunk copies of a real slot prefab side by side, one holding a real component. A ghost hand pulls the
+  bar up until it turns green, takes the component out, carries it to the empty slot and lets go once the
+  placement guide turns green. The guide is coloured by the slot's own rules (`SeatDistance`, `SeatAngle`)
+  as the component moves. Next loop it goes back. Built and stripped the same way as `TutorialDisplay`, which
+  now shares `TutorialParts` (the strip, easing, `GhostHand`) with it. Networking: none; it holds no state.
+  Placed as `Tutorial - Changing a Component`, front row after Moving a Switch.
+- **Slots pedestal (placed 2026-09-30, untested):** `Tutorial - Slots`, back row after Batteries: a Slot S1
+  with a battery seated, and a board. Its copies have every script, collider, rigidbody and `NetworkObject`
+  deleted, not switched off.
+- **Switched-off copies are still found (seen 2026-09-30).** `PowerGrid.Build` finds switched-off
+  `GridNode`s and `ComponentSlot`s, and `SceneNetworking` registers every `NetworkObject`, even switched-off
+  or inactive ones. So the Batteries and Reactors pedestal copies register on the network. Rebuild them the
+  way the Slots pedestal's copies were made.
 
 ## For Vulps
 
 - **Revisit the existing wall** (2026-09-29). A battery intersects it and cannot be put back once it is
   unlocked. Fix: build a slot into the wall; Vulps is doing it.
+- **A tutorial is in the wrong place** (seen 2026-10-01). Vulps is moving it.
+- **Some tutorial models are grabbable** (seen 2026-10-01). Pedestal copies must be totally inert
+  (Tutorials); Vulps is clearing them by hand.
 
 ## Done
 

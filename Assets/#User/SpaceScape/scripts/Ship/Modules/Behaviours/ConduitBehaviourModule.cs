@@ -24,7 +24,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             get
             {
                 var addon = Addon;
-                return Mathf.Min(MaxSegments, _segments + (addon != null ? addon.ExtraSegments : 0));
+                return Mathf.Min(MaxSegments, _segments + (addon != null ? addon.GetExtraSegments() : 0));
             }
         }
 

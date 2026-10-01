@@ -22,6 +22,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Tooltip("Seconds the bar takes to slide home once let go.")]
         [SerializeField] private float _returnSeconds = 0.15f;
 
+        /// The bar a hand grabs, or null.
+        public Transform Bar => _bar != null ? _bar.transform : null;
+
+        /// The bar's renderer, coloured by the slot's lock.
+        public Renderer BarRenderer => _barRenderer;
+
+        /// The bar's material while the slot is locked, or unlocked.
+        public Material MaterialFor(bool unlocked) => unlocked ? _unlockedMaterial : _lockedMaterial;
+
         private SlideGrabTransformer _slide;
         private bool _pulledThisGrab;
         private bool _shownUnlocked;

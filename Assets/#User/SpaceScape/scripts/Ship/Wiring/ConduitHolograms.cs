@@ -222,6 +222,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (slot == null || (item.transform.position - slot.position).sqrMagnitude > _installRadius * _installRadius) return;
             var tile = _hologram.Tile;
             if (!tile.TryGetComponent<AddonModule>(out var module) || !module.Install(item.Installs, FaceTowardPlayer(tile))) return;
+            if (item.CarriesState && module.Addon != null) module.Addon.NetworkState = item.State;   // before the edit is described
 
             item.Retire();
             if (RemoveItem == null || !RemoveItem(item)) Destroy(item.gameObject);
@@ -286,8 +287,18 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (tile == _shown) return;
             var was = _shown;
             _shown = tile;
+            HideAddon(was);
+            HideAddon(tile);
             if (was != null) Closed?.Invoke(was);
             if (tile != null) Opened?.Invoke(tile);
+        }
+
+        /// Hides a conduit's addon while its hologram is open, here or for another player, so the hologram's
+        /// handles are not buried in it and nobody works the addon while the conduit is being configured.
+        private void HideAddon(GridNode tile)
+        {
+            if (tile != null && tile.TryGetComponent<AddonModule>(out var module))
+                module.Hidden = tile == _shown || IsOpenElsewhere(tile);
         }
 
         /// True while another player has this conduit open.
@@ -302,13 +313,18 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (open) who.Add(player);
             else who.Remove(player);
             ShowBox(tile, who.Count > 0);
+            HideAddon(tile);
         }
 
         /// Forgets every conduit a player had open, for when they leave.
         public void ClearOpenElsewhere(string player)
         {
             foreach (var pair in _openElsewhere)
-                if (pair.Value.Remove(player)) ShowBox(pair.Key, pair.Value.Count > 0);
+                if (pair.Value.Remove(player))
+                {
+                    ShowBox(pair.Key, pair.Value.Count > 0);
+                    HideAddon(pair.Key);
+                }
         }
 
         private void ShowBox(GridNode tile, bool show)

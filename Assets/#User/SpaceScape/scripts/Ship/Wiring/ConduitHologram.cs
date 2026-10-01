@@ -296,6 +296,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             var frame = LocalBounds(slot, slot.GetComponentsInChildren<Renderer>());
             _display = Instantiate(_displayPrefab, slot, false);
             _display.Hold();
+            if (addon.StateTravelsWithItem) _display.State = addon.NetworkState;   // a junction's count comes out with it
             _motion.ItemShown?.Invoke(_display);
             var t = _display.transform;
             t.localPosition = Vector3.zero;
@@ -351,8 +352,17 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _displayPrefab = null;
 
             item.transform.SetParent(null, true);   // keeps its slot size; it grows once out of the cell
-            if (Tile != null && Tile.TryGetComponent<AddonModule>(out var module) && module.Remove() != null)
-                _motion.Removed?.Invoke(Tile);
+            if (Tile != null && Tile.TryGetComponent<AddonModule>(out var module))
+            {
+                // A junction's extra segments go with it, and nothing says which faces were theirs: every
+                // segment parks, and the conduit is rewired from nothing. The commit tells the network.
+                bool hadExtra = module.Addon != null && module.Addon.GetExtraSegments() > 0;
+                if (module.Remove() != null)
+                {
+                    if (hadExtra) _motion.Commit?.Invoke(Tile, Array.Empty<GridDirection>(), Array.Empty<bool>());
+                    else _motion.Removed?.Invoke(Tile);
+                }
+            }
             Haptics.Pulse(args.interactorObject, _motion.BuzzAmplitude, _motion.BuzzSeconds);
             Refresh();
             _motion.ItemTakenOut?.Invoke(item, prefab);
@@ -580,12 +590,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             Haptics.Pulse(_dragger, _motion.BuzzAmplitude, _motion.BuzzSeconds);
         }
 
-        /// True when no other segment, and no working addon, is on a face.
+        /// True when no other segment, and no working addon with a handle, is on a face. An addon without one,
+        /// like a junction's box in the middle of the cable, holds no face.
         private bool IsFree(GridDirection face, int exceptSegment, bool exceptAddon = false)
         {
             for (int i = 0; i < _segmentCount; i++)
                 if (i != exceptSegment && _faceOf[i] == face) return false;
-            return exceptAddon || !_addonPresent || _addonParked || _addonFace != face;
+            return exceptAddon || !_hasHandle || _addonParked || _addonFace != face;
         }
 
         /// The flow a segment pulled out onto a face should have: whatever meets the neighbour on that side,

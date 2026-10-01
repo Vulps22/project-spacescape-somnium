@@ -30,6 +30,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// an addon with none.
         public virtual int NetworkState { get => 0; set { } }
 
+        /// True when the item this comes out as keeps its state and hands it to the addon it installs: a
+        /// junction's count. False, as for a switch, and a newly installed one starts as its prefab does.
+        public virtual bool StateTravelsWithItem => false;
+
         /// The item this comes out as, or null when it cannot be removed.
         public AddonItem Item => _item;
 
@@ -50,7 +54,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         public virtual bool Conducts => true;
 
         /// Segments this addon adds to the conduit's own.
-        public virtual int ExtraSegments => 0;
+        protected virtual int ExtraSegments => 0;
+
+        public int GetExtraSegments() => ExtraSegments;
 
         /// Tells the conduit to ask again.
         protected void RaiseChanged() => Changed?.Invoke();

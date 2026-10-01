@@ -72,6 +72,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private void Fit()
         {
             if (_stubs == null || _stubs.Length == 0) return;
+            GrowStubs();
 
             int used = 0;
             float half = GridCell.Half;
@@ -105,6 +106,25 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             for (int i = used; i < _stubs.Length; i++)
                 if (_stubs[i] != null && _stubs[i].gameObject.activeSelf)
                     _stubs[i].gameObject.SetActive(false);
+        }
+
+        /// Adds stubs, copies of the first, while the tile uses more faces than were authored: a junction's
+        /// extra segments. Without them the faces past the last stub went undrawn, and since outputs are drawn
+        /// first, a new output pushed an input off the end. Play mode only, so nothing is added while editing.
+        private void GrowStubs()
+        {
+            if (!Application.isPlaying || Tile == null || _stubs[0] == null) return;
+            int faces = 0;
+            foreach (var _ in Tile.UsedFaces) faces++;
+            if (faces <= _stubs.Length) return;
+
+            int had = _stubs.Length;
+            System.Array.Resize(ref _stubs, faces);
+            for (int i = had; i < faces; i++)
+            {
+                _stubs[i] = Instantiate(_stubs[0], _stubs[0].parent, false);
+                _stubs[i].name = $"{_stubs[0].name} {i}";
+            }
         }
 
         private static readonly GridDirection[] NoFaces = new GridDirection[0];

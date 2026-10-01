@@ -114,6 +114,22 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             return item;
         }
 
+        private bool _hidden;
+
+        /// True while the addon is hidden and out of reach because its conduit's hologram is open, here or for
+        /// another player. Set on each client from its own view of who has the hologram open; parking and
+        /// installing keep to it.
+        public bool Hidden
+        {
+            get => _hidden;
+            set
+            {
+                if (_hidden == value) return;
+                _hidden = value;
+                Pose();
+            }
+        }
+
         /// Moves, twists, parks or unparks the addon.
         public void Arrange(GridDirection facing, int turns, bool parked)
         {
@@ -135,7 +151,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             float outward = _addon != null ? _addon.Outward * GridCell.Half : 0f;
             _mount.SetPositionAndRotation(transform.position + forward * outward,
                 Quaternion.LookRotation(forward, UpFor(_facing, _turns)));
-            if (_addon != null && _addon.gameObject.activeSelf == _parked) _addon.gameObject.SetActive(!_parked);
+            bool shown = !_parked && !_hidden;
+            if (_addon != null && _addon.gameObject.activeSelf != shown) _addon.gameObject.SetActive(shown);
         }
 
         /// Which way is up for an addon facing a side, after some quarter turns about that side.

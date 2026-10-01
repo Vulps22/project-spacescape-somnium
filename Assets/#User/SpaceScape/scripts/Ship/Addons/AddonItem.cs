@@ -16,6 +16,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private ConduitAddon _installs;
         [Tooltip("Seconds it takes to shrink to fit an open addon slot, or grow back to full size.")]
         [SerializeField] private float _resizeSeconds = 1f;
+        [Tooltip("The state the addon it installs is given, for an addon whose state travels with its item (a junction's extra segments). -1: the addon prefab's own.")]
+        [SerializeField] private int _state = -1;
+        [Tooltip("Optional text showing the state, as '+2' for a junction.")]
+        [SerializeField] private TMPro.TMP_Text _stateLabel;
+        [Tooltip("How the label shows the state; {0} is the number.")]
+        [SerializeField] private string _stateFormat = "+{0}";
 
         private static readonly List<AddonItem> Items = new List<AddonItem>();
         private Vector3 _fullScale;
@@ -90,6 +96,28 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         /// The addon prefab this installs.
         public ConduitAddon Installs => _installs;
+
+        /// True when the addon this installs takes its state from the item.
+        public bool CarriesState => _installs != null && _installs.StateTravelsWithItem;
+
+        /// The state the addon it installs is given: its own when set, else the addon prefab's.
+        public int State
+        {
+            get => _state >= 0 || _installs == null ? _state : _installs.NetworkState;
+            set
+            {
+                if (_state == value) return;
+                _state = value;
+                ShowState();
+            }
+        }
+
+        private void ShowState()
+        {
+            if (_stateLabel != null && CarriesState) _stateLabel.SetText(string.Format(_stateFormat, State));
+        }
+
+        private void Start() => ShowState();
 
         /// What a hand grabs.
         public XRGrabInteractable Grab => _grab != null ? _grab : _grab = GetComponent<XRGrabInteractable>();
