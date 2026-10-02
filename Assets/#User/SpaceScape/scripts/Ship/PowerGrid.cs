@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using SomniumSpace.Worlds.SpaceScape.Power;
@@ -23,12 +24,21 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// The grid itself, for anything that needs to read the whole picture.
         public PowerGraph Graph => _graph;
 
+        /// The grid in the world, or null before it wakes.
+        public static PowerGrid Current { get; private set; }
+
+        /// Raised once a frame in which the grid ticked, after its ticks, for anything that shows what the grid
+        /// is doing (a cable's colour, a readout) to look again. Nothing that only shows the grid needs to run
+        /// any more often than this.
+        public event Action Ticked;
+
         /// While true the grid does not tick: for a client that has joined but not yet been told how the
         /// ship stands, which cannot simulate any of it until it has all of it.
         public bool Held { get; set; }
 
         private void Awake()
         {
+            Current = this;
             _graph = new PowerGraph();
             _step = 1.0 / Mathf.Max(1f, _ticksPerSecond);
 
@@ -41,6 +51,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _graph.Lost += n => Report("Lost", n, "wrecked, still wired in and wasting what it gets");
 
             if (_logValidation) StartCoroutine(ValidateOnceSlotsAreFilled());
+        }
+
+        private void OnDestroy()
+        {
+            if (Current == this) Current = null;
         }
 
         /// Logs wiring problems once every slot that starts with a component has it. Slots fill after the
@@ -254,6 +269,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 ParkBlownOutputs();
             }
             if (guard >= 8) _carry = 0.0;
+            if (guard > 0) Ticked?.Invoke();
         }
 
         /// Parks every output segment of a conduit that has just blown, so it shows its inputs and nothing

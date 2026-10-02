@@ -6,9 +6,14 @@ using UnityEngine;
 namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// The panel in front of a conduit container. A hand passed through any of its sockets (pulsing cubes,
-    /// like a switch's lock; a pillar has one on each face) opens it: the panel smokes away to nothing, and the conduits behind it can be reached.
-    /// It stays open until nobody is left in its trigger box (anything on the Player layer), then smokes back
-    /// in. While it is shut, the conduits it covers cannot be opened.
+    /// like a switch's lock; a pillar has one on each face) opens it: the panel smokes away to nothing, and
+    /// the conduits behind it can be reached. While it is shut, the conduits it covers cannot be opened, but a
+    /// switch on one, facing it, sits out at its surface (Depth) and can be worked.
+    ///
+    /// It stays open until nobody is left in its trigger box (anything on the Occupant Layers: Somnium gives
+    /// each player a PlayerTrigger on its Triggers layer), then smokes back in. The box is asked of physics
+    /// directly (an overlap test, a few times a second while open), not left to trigger events, which only
+    /// fire when one side has a Rigidbody.
     ///
     /// Whoever decides (the master, or anyone with no network) opens and shuts it; everyone else asks
     /// (OpenRequested) and follows (SetOpen). The smoke plays on every client from that one state.
@@ -48,11 +53,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Header("Closing")]
         [Tooltip("Seconds it stays open at least, so it does not shut on someone who opened it from just outside the box.")]
         [SerializeField] private float _minimumOpenSeconds = 3f;
+        [Tooltip("What counts as someone in the box. Somnium puts each player's PlayerTrigger on the Triggers layer; nothing of the avatar is on Player.")]
+        [SerializeField] private LayerMask _occupantLayers = 1 << 15;   // Triggers
+        [Tooltip("Seconds between checks of who is in the box while it is open.")]
+        [SerializeField] private float _checkSeconds = 0.25f;
 
         private static readonly List<AccessPanel> Panels = new List<AccessPanel>();
         private static readonly int DissolveId = Shader.PropertyToID("_Dissolve");
 
-        private readonly HashSet<Collider> _inside = new HashSet<Collider>();
+        private static readonly Collider[] Found = new Collider[32];
         private readonly HashSet<Vector3Int> _covers = new HashSet<Vector3Int>();
         private readonly Vector3[] _hands = new Vector3[MaxHands];
         private Renderer[] _renderers = new Renderer[0];
@@ -61,10 +70,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private Collider[] _colliders = new Collider[0];
         private readonly List<Transform> _cubes = new List<Transform>();
         private Vector3 _cubeScale;
-        private int _playerLayer;
+        private BoxCollider _box;
+        private float _nextCheck;
+        private bool _occupied;
         private float _openedAt;
         private float _gone;
         private bool _wearingSmoke;
+        private bool _measured;
+        private GridDirection _side = GridDirection.None;
+        private float _surface;
 
         /// Every panel in the world.
         public static IReadOnlyList<AccessPanel> All => Panels;
@@ -82,16 +96,65 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         public static bool Blocks(Vector3Int cell)
         {
             foreach (var panel in Panels)
-                if (panel != null && !panel.Open && panel._covers.Contains(cell)) return true;
+            {
+                if (panel == null || panel.Open) continue;
+                panel.Measure();
+                if (panel._covers.Contains(cell)) return true;
+            }
             return false;
+        }
+
+        /// How far past a cell's face, in metres, the room-side surface of the panel covering it is, when the
+        /// face is the one toward that panel; 0 otherwise. A flush addon (a switch) sits out by this much.
+        public static float Depth(Vector3Int cell, GridDirection face)
+        {
+            foreach (var panel in Panels)
+            {
+                if (panel == null) continue;
+                panel.Measure();
+                if (panel._side != face || !panel._covers.Contains(cell)) continue;
+                float cellFace = Vector3.Dot(GridCell.ToWorld(cell), face.Vector()) + GridCell.Half;
+                return Mathf.Max(0f, panel._surface - cellFace);
+            }
+            return 0f;
+        }
+
+        /// Works out, once, which cells it covers, which side of them it stands on, and where its room-side
+        /// surface is along that side. Asked for, not done at Start, because conduits place their switches
+        /// while the world is still waking.
+        private void Measure()
+        {
+            if (_measured) return;
+            _measured = true;
+            if (!TryGetComponent<ConduitLayoutDefinition>(out var definition)) return;
+            foreach (var cell in definition.WorldCells) _covers.Add(cell);
+            if (_panel == null) return;
+
+            bool any = false;
+            var bounds = new Bounds();
+            foreach (var r in _panel.GetComponentsInChildren<Renderer>(true))
+            {
+                if (any) bounds.Encapsulate(r.bounds);
+                else { bounds = r.bounds; any = true; }
+            }
+            if (!any) return;
+
+            // The side is the axis the panel is furthest off the cells along; its surface is its far edge there.
+            Vector3 offset = bounds.center - definition.Origin.position;
+            Vector3 abs = new Vector3(Mathf.Abs(offset.x), Mathf.Abs(offset.y), Mathf.Abs(offset.z));
+            if (abs.x >= abs.y && abs.x >= abs.z) _side = offset.x >= 0f ? GridDirection.XPlus : GridDirection.XMinus;
+            else if (abs.y >= abs.z) _side = offset.y >= 0f ? GridDirection.YPlus : GridDirection.YMinus;
+            else _side = offset.z >= 0f ? GridDirection.ZPlus : GridDirection.ZMinus;
+            Vector3 along = _side.Vector();
+            var axis = new Vector3(Mathf.Abs(along.x), Mathf.Abs(along.y), Mathf.Abs(along.z));
+            _surface = Vector3.Dot(bounds.center, along) + Vector3.Dot(bounds.extents, axis);
         }
 
         private void Awake()
         {
             if (!Application.isPlaying) return;
-            _playerLayer = LayerMask.NameToLayer("Player");
-            var box = GetComponent<BoxCollider>();
-            if (!box.isTrigger) box.isTrigger = true;
+            _box = GetComponent<BoxCollider>();
+            if (!_box.isTrigger) _box.isTrigger = true;
 
             if (_panel != null)
             {
@@ -106,8 +169,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private void Start()
         {
             if (!Application.isPlaying) return;
-            if (TryGetComponent<ConduitLayoutDefinition>(out var definition))
-                foreach (var cell in definition.WorldCells) _covers.Add(cell);
+            Measure();
         }
 
         private void OnEnable()
@@ -180,22 +242,33 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 foreach (var material in set) Destroy(material);
         }
 
-        private void OnTriggerEnter(Collider other)
+        /// True when anything on the Occupant Layers is inside the box now.
+        public bool Occupied => Overlapping(_occupantLayers) > 0;
+
+        /// How many colliders in the given layers are inside the box, into Found.
+        private int Overlapping(int mask)
         {
-            if (other.gameObject.layer == _playerLayer) _inside.Add(other);
+            if (_box == null || mask == 0) return 0;
+            var t = _box.transform;
+            Vector3 centre = t.TransformPoint(_box.center);
+            Vector3 half = Vector3.Scale(_box.size * 0.5f, t.lossyScale);
+            half = new Vector3(Mathf.Abs(half.x), Mathf.Abs(half.y), Mathf.Abs(half.z));
+            return Physics.OverlapBoxNonAlloc(centre, half, Found, t.rotation, mask, QueryTriggerInteraction.Collide);
         }
 
-        private void OnTriggerExit(Collider other) => _inside.Remove(other);
-
-        /// True while anything on the Player layer is inside the box. A collider switched off or destroyed
-        /// inside it never says it left, so those are dropped here.
-        public bool Occupied
+        /// Logs everything in the box, every layer, once when it opens: if a player is not on the Occupant
+        /// Layers, this says what they are on.
+        private void LogWhoIsInside()
         {
-            get
+            int count = Overlapping(~0);
+            var said = new System.Text.StringBuilder();
+            for (int i = 0; i < count; i++)
             {
-                _inside.RemoveWhere(c => c == null || !c.enabled || !c.gameObject.activeInHierarchy);
-                return _inside.Count > 0;
+                var c = Found[i];
+                if (c == null || c == _box || c.transform.IsChildOf(transform)) continue;
+                said.Append($"{c.name} ({LayerMask.LayerToName(c.gameObject.layer)}) ");
             }
+            Debug.Log($"[SpaceScape] AccessPanel '{name}' opened; in its box: {(said.Length > 0 ? said.ToString() : "nothing")}", this);
         }
 
         private void Update()
@@ -211,7 +284,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 if (Decides) SetOpen(true);
                 else OpenRequested?.Invoke();
             }
-            if (Decides && Open && Time.time >= _openedAt + _minimumOpenSeconds && !Occupied) SetOpen(false);
+            if (Decides && Open && Time.time >= _openedAt + _minimumOpenSeconds && Time.time >= _nextCheck)
+            {
+                _nextCheck = Time.time + _checkSeconds;
+                if (!Occupied) SetOpen(false);
+            }
             Animate();
         }
 
@@ -220,7 +297,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             if (open == Open) return;
             Open = open;
-            if (open) _openedAt = Time.time;
+            if (open)
+            {
+                _openedAt = Time.time;
+                if (Decides) LogWhoIsInside();
+            }
             if (_smoke != null) _smoke.Play();
             // Hands can reach in as soon as it starts to go; it is solid again only once it is all back.
             if (open) SetColliders(false);

@@ -290,13 +290,21 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// Lets go of the node, for a component leaving its slot.
         public void Unbind() => Node = null;
 
-        private void Update()
+        // Only a tile with a readout listens to the grid; a conduit's has none. Nothing here runs per frame:
+        // the On checkbox reaches the node through OnValidate, which Unity calls when it is clicked.
+        private void Start()
         {
-            // Unity writes the serialized field directly, so the property setter never fires when
-            // the checkbox is clicked. Push it across every frame instead; it only writes on change.
-            if (Node != null && DrivesNode && Node.On != _on) Node.On = _on;
+            if (_readout != null && PowerGrid.Current != null) PowerGrid.Current.Ticked += Readout;
+        }
 
-            if (Node == null || _readout == null || !_readout.enabled) return;
+        private void OnDestroy()
+        {
+            if (_readout != null && PowerGrid.Current != null) PowerGrid.Current.Ticked -= Readout;
+        }
+
+        private void Readout()
+        {
+            if (Node == null || !_readout.enabled) return;
             if (Time.time < _nextReadout) return;
             _nextReadout = Time.time + _readoutInterval;
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -28,6 +29,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             GridDirection.ZPlus, GridDirection.ZMinus,
         };
 
+        /// Raised when a face's direction actually changes, for what draws the tile to follow.
+        public event Action Changed;
+
         /// Which way power may cross a face.
         public virtual FlowDirection GetFace(GridDirection face)
         {
@@ -43,18 +47,21 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             }
         }
 
-        /// Sets which way power may cross a face.
+        /// Sets which way power may cross a face. Raises Changed when it differs from what the face had.
         public void SetFace(GridDirection face, FlowDirection flow)
         {
+            FlowDirection was;
             switch (face)
             {
-                case GridDirection.XPlus: _xPlus = flow; break;
-                case GridDirection.XMinus: _xMinus = flow; break;
-                case GridDirection.YPlus: _yPlus = flow; break;
-                case GridDirection.YMinus: _yMinus = flow; break;
-                case GridDirection.ZPlus: _zPlus = flow; break;
-                case GridDirection.ZMinus: _zMinus = flow; break;
+                case GridDirection.XPlus: was = _xPlus; _xPlus = flow; break;
+                case GridDirection.XMinus: was = _xMinus; _xMinus = flow; break;
+                case GridDirection.YPlus: was = _yPlus; _yPlus = flow; break;
+                case GridDirection.YMinus: was = _yMinus; _yMinus = flow; break;
+                case GridDirection.ZPlus: was = _zPlus; _zPlus = flow; break;
+                case GridDirection.ZMinus: was = _zMinus; _zMinus = flow; break;
+                default: return;
             }
+            if (was != flow) Changed?.Invoke();
         }
 
         /// Every face power leaves by, anywhere along it.

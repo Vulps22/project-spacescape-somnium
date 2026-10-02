@@ -13,6 +13,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private bool _repositionable;
         [Tooltip("How far out along its facing this sits: 0 in the middle of the cable, like a junction's box; 1 flush with the cell's face, where a wall's access panel will be, like a switch.")]
         [SerializeField, Range(0f, 1f)] private float _outward;
+        [Tooltip("The part that runs back into the wall, like a switch's base. When the addon sits out at an access panel's surface, this is made deeper by the same amount, back to the cell's face, so the addon reaches through the panel. Its local z is depth, toward the cell being -z.")]
+        [SerializeField] private Transform _housing;
 
         [Header("Hologram")]
         [Tooltip("Ticked: a hand must pass through the unlock cube before this conduit's hologram opens. For addons with something to press, like a switch or a fuse.")]
@@ -49,6 +51,29 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         /// Where the unlock cube sits, or null.
         public Transform UnlockTransform => _unlockTransform;
+
+        private bool _housingKnown;
+        private float _housingZ;
+        private float _housingDepth;
+
+        /// Makes the housing deeper by this many metres, back toward the cell, from its own depth: the addon
+        /// has been set out this far to reach an access panel's surface. 0 puts it back as built.
+        public void Recess(float extra)
+        {
+            if (_housing == null) return;
+            if (!_housingKnown)
+            {
+                _housingKnown = true;
+                _housingZ = _housing.localPosition.z;
+                _housingDepth = _housing.localScale.z;
+            }
+            var position = _housing.localPosition;
+            position.z = _housingZ - extra * 0.5f;
+            _housing.localPosition = position;
+            var scale = _housing.localScale;
+            scale.z = _housingDepth + extra;
+            _housing.localScale = scale;
+        }
 
         /// False while this addon stops power crossing the conduit.
         public virtual bool Conducts => true;

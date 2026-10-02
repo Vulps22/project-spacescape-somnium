@@ -9,8 +9,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     ///
     /// It draws one stub per face the tile actually uses, running from the tile's centre out to that
     /// face. Two opposite faces meet in the middle and read as one straight run; two faces at right
-    /// angles read as a corner; three read as a tee. No case is special.
-    [ExecuteAlways]
+    /// angles read as a corner; three read as a tee. No case is special. A parked conduit uses no face,
+    /// so it draws nothing.
+    ///
+    /// Nothing here runs per frame (docs/conduits.md, When a conduit updates). The stubs are rebuilt when
+    /// the faces or the addon change; the colour is looked at when the grid ticks, and a stub's material is
+    /// swapped only when its colour band changes. Each band is one material shared by every conduit, so
+    /// URP batches them.
     [RequireComponent(typeof(GridNode))]
     public sealed class Conduit : MonoBehaviour
     {
@@ -24,6 +29,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Header("Appearance")]
         [Tooltip("Watts at which the cable shows fully lit. Less shows proportionally dimmer.")]
         [SerializeField] private double _referenceWatts = 100.0;
+        [Tooltip("How many steps the colour takes from carrying nothing to Reference Watts. Fewer steps, fewer materials and fewer swaps.")]
+        [SerializeField, Range(2, 32)] private int _bands = 8;
         [Tooltip("Colour when carrying nothing.")]
         [SerializeField] private Color _idle = new Color(0.16f, 0.18f, 0.2f);
         [Tooltip("Colour at Reference Watts.")]
@@ -46,8 +53,19 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private float _readoutInterval = 0.25f;
 
         private GridNode _tile;
-        private MaterialPropertyBlock _block;
+        private NodeEdgeModule _edges;
+        private AddonModule _addon;
+        private PowerGrid _grid;
+        private Material _source;
+        private int _band = int.MinValue;
         private float _nextReadout;
+
+        private const int OpenBand = -1;
+        private const int WastingBand = -2;
+
+        // Every band's material, made once from a stub's own material and shared by every conduit using it.
+        private static readonly System.Collections.Generic.Dictionary<(Material, int), Material> Shared =
+            new System.Collections.Generic.Dictionary<(Material, int), Material>();
 
         /// The tile this cable occupies.
         public GridNode Tile => _tile != null ? _tile : _tile = GetComponent<GridNode>();
@@ -60,12 +78,47 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _tile = GetComponent<GridNode>();
         }
 
-        private void LateUpdate()
+        private void Start()
         {
+            if (!Application.isPlaying) return;
+            if (_stubs.Length > 0 && _stubs[0] != null && _stubs[0].TryGetComponent<Renderer>(out var first)) _source = first.sharedMaterial;
+
             Rename();
+            _edges = Tile.Edges;
+            if (_edges != null) _edges.Changed += Reshape;
+            if (TryGetComponent(out _addon)) _addon.Changed += Reshape;
+            _grid = PowerGrid.Current;
+            if (_grid != null) _grid.Ticked += OnTicked;
+            Reshape();
+        }
+
+        private void OnDestroy()
+        {
+            if (_edges != null) _edges.Changed -= Reshape;
+            if (_addon != null) _addon.Changed -= Reshape;
+            if (_grid != null) _grid.Ticked -= OnTicked;
+        }
+
+        /// The faces or the addon changed: lay the stubs out again, and colour any new ones.
+        private void Reshape()
+        {
             Fit();
-            Tint();
+            _band = int.MinValue;
+            Recolour();
+        }
+
+        private void OnTicked()
+        {
+            if (!HasStubShowing()) return;   // parked: nothing to colour or read out
+            Recolour();
             Readout();
+        }
+
+        private bool HasStubShowing()
+        {
+            foreach (var stub in _stubs)
+                if (stub != null && stub.gameObject.activeSelf) return true;
+            return false;
         }
 
         /// Puts a stub on every face the tile uses, each running from the centre out to its face.
@@ -129,50 +182,57 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private static readonly GridDirection[] NoFaces = new GridDirection[0];
 
-        /// Keeps the name matching where the tile actually sits, so a line in the log says where to
-        /// look. Named for the grid coordinate rather than the transform, because that is what the
-        /// graph reports and what a neighbour is worked out from.
+        /// Names it after the cell it sits in, once, so a line in the log says where to look. Named for the
+        /// grid coordinate rather than the transform, because that is what the graph reports and what a
+        /// neighbour is worked out from. A conduit never moves once built.
         private void Rename()
         {
             if (!_autoName || Tile == null) return;
-
             var at = Tile.Coordinate;
-            string want = $"{_namePrefix}_{at.x}_{at.y}_{at.z}";
-            if (name != want) name = want;
+            name = $"{_namePrefix}_{at.x}_{at.y}_{at.z}";
         }
 
-        /// Colours the cable by what passes through it, and flags a tile that is wasting power.
-        private void Tint()
+        /// Which colour band it is in now: open, wasting, or how much it carries in steps.
+        private int CurrentBand()
         {
-            if (_stubs == null || _stubs.Length == 0) return;
-
             var node = Tile != null ? Tile.Node : null;
-            Color colour;
-
-            if (IsOpen) colour = _open;
-            else if (node == null) colour = _idle;
-            else if (node.Dumped > 0.01) colour = _wasting;
-            else
-            {
-                float load = _referenceWatts > 0.0 ? Mathf.Clamp01((float)(node.Inflow / _referenceWatts)) : 0f;
-                colour = Color.Lerp(_idle, _loaded, load);
-            }
-
-            if (_block == null) _block = new MaterialPropertyBlock();
-            _block.SetColor("_BaseColor", colour);
-            _block.SetColor("_EmissionColor", colour);
-            foreach (var stub in _stubs)
-            {
-                if (stub == null) continue;
-                var r = stub.GetComponent<Renderer>();
-                if (r != null) r.SetPropertyBlock(_block);
-            }
+            if (IsOpen) return OpenBand;
+            if (node == null) return 0;
+            if (node.Dumped > 0.01) return WastingBand;
+            float load = _referenceWatts > 0.0 ? Mathf.Clamp01((float)(node.Inflow / _referenceWatts)) : 0f;
+            return Mathf.RoundToInt(load * (_bands - 1));
         }
 
-        /// Writes what it is carrying, and does no string work at all while the label is switched off.
+        /// Puts the band's shared material on every stub, when the band has changed.
+        private void Recolour()
+        {
+            if (_source == null) return;
+            int band = CurrentBand();
+            if (band == _band) return;
+            _band = band;
+
+            var material = MaterialFor(band);
+            foreach (var stub in _stubs)
+                if (stub != null && stub.TryGetComponent<Renderer>(out var r) && r.sharedMaterial != material)
+                    r.sharedMaterial = material;
+        }
+
+        private Material MaterialFor(int band)
+        {
+            if (Shared.TryGetValue((_source, band), out var made) && made != null) return made;
+            Color colour = band == OpenBand ? _open
+                : band == WastingBand ? _wasting
+                : Color.Lerp(_idle, _loaded, band / (float)(_bands - 1));
+            made = new Material(_source) { name = $"{_source.name} ({band})" };
+            made.SetColor("_BaseColor", colour);
+            made.SetColor("_EmissionColor", colour);
+            Shared[(_source, band)] = made;
+            return made;
+        }
+
+        /// Writes what it is carrying, only while its label is showing.
         private void Readout()
         {
-            if (!Application.isPlaying) return;          // no live numbers to show, and it would dirty the scene
             if (_readout == null || !_readout.enabled) return;
             if (Time.time < _nextReadout) return;
             _nextReadout = Time.time + _readoutInterval;

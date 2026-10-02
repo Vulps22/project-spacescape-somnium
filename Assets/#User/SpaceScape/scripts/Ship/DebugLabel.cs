@@ -3,7 +3,8 @@ using UnityEngine;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
-    /// A readout that only exists for development. A meter is a plain label and carries none of this.
+    /// A readout that only exists for development. A meter is a plain label and carries none of this. Shows
+    /// and hides when the overlay is switched or its hologram opens or closes; nothing runs per frame.
     [RequireComponent(typeof(TMP_Text))]
     public sealed class DebugLabel : MonoBehaviour
     {
@@ -12,11 +13,33 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private TMP_Text _text;
 
+        private bool _revealed;
+
         /// Set while its conduit's hologram is open, which is when a label that is only in the hologram shows.
-        public bool Revealed { get; set; }
+        public bool Revealed
+        {
+            get => _revealed;
+            set
+            {
+                if (_revealed == value) return;
+                _revealed = value;
+                Show();
+            }
+        }
 
-        private void Awake() => _text = GetComponent<TMP_Text>();
+        private void Awake()
+        {
+            _text = GetComponent<TMP_Text>();
+            DebugVisuals.Changed += Show;
+            Show();
+        }
 
-        private void Update() => _text.enabled = DebugVisuals.UseDebuggingVisuals && (!_onlyInHologram || Revealed);
+        private void OnDestroy() => DebugVisuals.Changed -= Show;
+
+        private void Show()
+        {
+            bool show = DebugVisuals.UseDebuggingVisuals && (!_onlyInHologram || _revealed);
+            if (_text != null && _text.enabled != show) _text.enabled = show;
+        }
     }
 }

@@ -59,10 +59,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             return addon != null && addon.ShouldLockHologram();
         }
 
-        /// Where a hand unlocks the hologram, or null.
-        public Transform UnlockPoint => Active != null ? Active.UnlockTransform : null;
+        /// Where a hand unlocks the hologram, or null: the middle of the conduit, for an addon that asks for a
+        /// lock. Not on the addon itself, which may be out at an access panel's surface while the conduit is
+        /// behind it.
+        public Transform UnlockPoint => Active != null && Active.ShouldLockHologram() ? transform : null;
 
         private void Awake() => Place();
+
+        // Again once the whole world is awake: an access panel it faces may have woken after it.
+        private void Start() => Pose();
 
         /// Sets what is installed and how it sits, before the world starts. For the drawn layout, which
         /// builds conduits while they are inactive; does nothing once the addon is on the cable.
@@ -149,6 +154,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (_mount == null) return;
             Vector3 forward = _facing.Vector();
             float outward = _addon != null ? _addon.Outward * GridCell.Half : 0f;
+            // A flush addon (a switch) facing an access panel is made deeper by the panel's depth: it reaches
+            // from the cell's face out through the panel, so it can be worked with the panel shut.
+            float deeper = _addon != null && _addon.Outward >= 1f && Application.isPlaying
+                ? AccessPanel.Depth(GridCell.ToCell(transform.position), _facing) : 0f;
+            outward += deeper;
+            if (_addon != null) _addon.Recess(deeper);
             _mount.SetPositionAndRotation(transform.position + forward * outward,
                 Quaternion.LookRotation(forward, UpFor(_facing, _turns)));
             bool shown = !_parked && !_hidden;

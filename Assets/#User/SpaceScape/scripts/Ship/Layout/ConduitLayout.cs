@@ -134,7 +134,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             // Every other cell a definition holds gets a plain conduit, both segments parked.
             foreach (var definition in FindObjectsByType<ConduitLayoutDefinition>(FindObjectsSortMode.None))
             {
-                if (!definition.isActiveAndEnabled) continue;
+                // Not isActiveAndEnabled: this runs from the grid's Awake, before a definition's own OnEnable,
+                // and until then Unity reports every definition as disabled.
+                if (!definition.enabled || !definition.gameObject.activeInHierarchy) continue;
                 foreach (var cell in definition.WorldCells)
                 {
                     if (taken.Contains(cell) || Index.ContainsKey(cell)) continue;

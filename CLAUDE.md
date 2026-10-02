@@ -18,6 +18,7 @@ A feature that works for one player and has not had that conversation is not rea
 - `docs/README.md`: the project, how to run the sim tests, and Editor gotchas.
 - `docs/principles.md`: the design rules. Read first.
 - `docs/grid.md`: slot sizes and the rules for sizing and placing components on the grid.
+- `docs/conduits.md`: where conduits come from, parked vs wired, and what each one costs.
 - `docs/networking.md`: the networking plan: authority rules, steps, and notes as we go.
 - `docs/2d.md`: how a mouse-and-keyboard player does everything a VR player does. Draft.
 - `docs/polish.md`: **the current focus**: what the first many-player test turned up, and why.
