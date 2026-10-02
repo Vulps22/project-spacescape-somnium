@@ -245,7 +245,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             for (int i = 0; i < count; i++)
             {
                 var conduit = ConduitAt(_hands[i]);
-                if (conduit == null || IsOpenElsewhere(conduit) || (IsLocked(conduit) && conduit != _unlocked)) continue;
+                if (conduit == null || IsOpenElsewhere(conduit) || (IsLocked(conduit) && conduit != _unlocked)
+                    || AccessPanel.Blocks(conduit.Coordinate)) continue;
                 _holder = i;
                 _hologram.Holder = i;
                 _hologram.Show(conduit);

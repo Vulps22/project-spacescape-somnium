@@ -6,6 +6,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// The ship's conduits as drawn, one packed number each (see ConduitCode). Nothing of them is in the
     /// scene while editing; they show as gizmos, and are built from the conduit prefab when the world
     /// starts, before the grid is. A hand-placed tile in a drawn cell wins, and the drawn conduit is skipped.
+    /// Every other cell a ConduitLayoutDefinition holds is built too, as a plain conduit with nothing wired.
     public sealed class ConduitLayout : MonoBehaviour
     {
         private const string RootName = "Conduits (drawn)";
@@ -90,7 +91,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private void OnValidate() => _index = null;
 
-        /// Builds every drawn conduit, once. Called by the grid before it builds, so they are part of it.
+        /// Builds every drawn conduit, then fills the definitions' remaining cells, once. Called by the grid before it builds, so they are part of it.
         public void Spawn()
         {
             if (_conduitPrefab == null || transform.Find(RootName) != null) return;
@@ -128,6 +129,21 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 }
                 if (conduit.TryGetComponent<AddonModule>(out var slot))
                     slot.Configure(addon, code.AddonFacing, code.AddonTurns, code.AddonParked);
+            }
+
+            // Every other cell a definition holds gets a plain conduit, both segments parked.
+            foreach (var definition in FindObjectsByType<ConduitLayoutDefinition>(FindObjectsSortMode.None))
+            {
+                if (!definition.isActiveAndEnabled) continue;
+                foreach (var cell in definition.WorldCells)
+                {
+                    if (taken.Contains(cell) || Index.ContainsKey(cell)) continue;
+                    taken.Add(cell);
+                    var plain = Instantiate(_conduitPrefab, GridCell.ToWorld(cell), Quaternion.identity, root.transform);
+                    if (plain.TryGetComponent<NodeEdgeModule>(out var edges))
+                        foreach (GridDirection face in System.Enum.GetValues(typeof(GridDirection)))
+                            if (face != GridDirection.None) edges.SetFace(face, FlowDirection.None);
+                }
             }
 
             root.SetActive(true);

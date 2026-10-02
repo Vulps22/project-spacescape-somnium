@@ -38,8 +38,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             }
         }
 
-        /// Spawns a prefab registered on SceneNetworking, owned by the master, and places it. Null on
-        /// any failure, logged against the context.
+        /// Spawns a prefab registered on SceneNetworking and places it. Who owns it is the prefab's
+        /// NetworkObject's call (Is Master Client Object, Allow State Authority Override); otherwise the
+        /// spawner. Null on any failure, logged against the context.
         public static NetworkObject Spawn(NetworkObject prefab, Vector3 position, Quaternion rotation, string context)
         {
             if (prefab == null)
@@ -61,7 +62,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             NetworkObject spawned;
             try
             {
-                spawned = runner.Spawn(prefabId, position, rotation, null, null, NetworkSpawnFlags.SharedModeStateAuthMasterClient);
+                spawned = runner.Spawn(prefabId, position, rotation);
             }
             catch (Exception e)
             {
