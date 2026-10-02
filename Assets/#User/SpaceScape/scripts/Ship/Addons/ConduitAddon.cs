@@ -15,6 +15,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField, Range(0f, 1f)] private float _outward;
         [Tooltip("The part that runs back into the wall, like a switch's base. When the addon sits out at an access panel's surface, this is made deeper by the same amount, back to the cell's face, so the addon reaches through the panel. Its local z is depth, toward the cell being -z.")]
         [SerializeField] private Transform _housing;
+        [Tooltip("How far the housing's front stands out from an access panel's mesh, in metres, wherever on the panel it is.")]
+        [SerializeField] private float _standOff = 0.03f;
 
         [Header("Hologram")]
         [Tooltip("Ticked: a hand must pass through the unlock cube before this conduit's hologram opens. For addons with something to press, like a switch or a fuse.")]
@@ -55,6 +57,26 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private bool _housingKnown;
         private float _housingZ;
         private float _housingDepth;
+
+        /// How far the housing's front stands out from an access panel's mesh, in metres.
+        public float StandOff => _standOff;
+
+        /// Where the housing's front is, along the addon's facing, from where the addon sits, as built: how far
+        /// out it already reaches before it is made deeper. 0 with no housing.
+        public float HousingFront
+        {
+            get
+            {
+                if (_housing == null) return 0f;
+                if (!_housingKnown)
+                {
+                    _housingKnown = true;
+                    _housingZ = _housing.localPosition.z;
+                    _housingDepth = _housing.localScale.z;
+                }
+                return _housingZ + _housingDepth * 0.5f;
+            }
+        }
 
         /// Makes the housing deeper by this many metres, back toward the cell, from its own depth: the addon
         /// has been set out this far to reach an access panel's surface. 0 puts it back as built.

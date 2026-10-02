@@ -154,10 +154,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (_mount == null) return;
             Vector3 forward = _facing.Vector();
             float outward = _addon != null ? _addon.Outward * GridCell.Half : 0f;
-            // A flush addon (a switch) facing an access panel is made deeper by the panel's depth: it reaches
-            // from the cell's face out through the panel, so it can be worked with the panel shut.
-            float deeper = _addon != null && _addon.Outward >= 1f && Application.isPlaying
-                ? AccessPanel.Depth(GridCell.ToCell(transform.position), _facing) : 0f;
+            // A flush addon (a switch) facing an access panel is made deeper, from the cell's face out through
+            // the panel, until its housing's front stands Stand Off proud of the panel's mesh at that spot.
+            float deeper = 0f;
+            if (_addon != null && _addon.Outward >= 1f && Application.isPlaying
+                && AccessPanel.Surface(GridCell.ToCell(transform.position), _facing, out float surface))
+            {
+                float housingFront = Vector3.Dot(transform.position, forward) + outward + _addon.HousingFront;
+                deeper = Mathf.Max(0f, surface + _addon.StandOff - housingFront);
+            }
             outward += deeper;
             if (_addon != null) _addon.Recess(deeper);
             _mount.SetPositionAndRotation(transform.position + forward * outward,

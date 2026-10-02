@@ -8,7 +8,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// The panel in front of a conduit container. A hand passed through any of its sockets (pulsing cubes,
     /// like a switch's lock; a pillar has one on each face) opens it: the panel smokes away to nothing, and
     /// the conduits behind it can be reached. While it is shut, the conduits it covers cannot be opened, but a
-    /// switch on one, facing it, sits out at its surface (Depth) and can be worked.
+    /// switch on one, facing it, reaches out through it (Surface) and can be worked.
     ///
     /// It stays open until nobody is left in its trigger box (anything on the Occupant Layers: Somnium gives
     /// each player a PlayerTrigger on its Triggers layer), then smokes back in. The box is asked of physics
@@ -78,7 +78,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private bool _wearingSmoke;
         private bool _measured;
         private GridDirection _side = GridDirection.None;
-        private float _surface;
+        private readonly Dictionary<Vector3Int, float> _surfaceAt = new Dictionary<Vector3Int, float>();
 
         /// Every panel in the world.
         public static IReadOnlyList<AccessPanel> All => Panels;
@@ -104,24 +104,49 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             return false;
         }
 
-        /// How far past a cell's face, in metres, the room-side surface of the panel covering it is, when the
-        /// face is the one toward that panel; 0 otherwise. A flush addon (a switch) sits out by this much.
-        public static float Depth(Vector3Int cell, GridDirection face)
+        /// Where the panel's mesh is in front of a cell, as a distance along the given face (a world position
+        /// along that axis), when the face is the one toward the panel covering the cell. False otherwise, or
+        /// when the mesh has nothing in front of that cell. A switch on the cell sets its depth from this.
+        public static bool Surface(Vector3Int cell, GridDirection face, out float surface)
         {
+            surface = 0f;
             foreach (var panel in Panels)
             {
                 if (panel == null) continue;
                 panel.Measure();
                 if (panel._side != face || !panel._covers.Contains(cell)) continue;
-                float cellFace = Vector3.Dot(GridCell.ToWorld(cell), face.Vector()) + GridCell.Half;
-                return Mathf.Max(0f, panel._surface - cellFace);
+                return panel.SurfaceAt(cell, out surface);
             }
-            return 0f;
+            return false;
         }
 
-        /// Works out, once, which cells it covers, which side of them it stands on, and where its room-side
-        /// surface is along that side. Asked for, not done at Start, because conduits place their switches
-        /// while the world is still waking.
+        /// The mesh in front of one cell: one ray from the room side back toward the cell, against the panel's
+        /// own colliders, asked once per cell and kept. A panel that is open has its colliders off, so they are
+        /// switched on for the ray and back off after.
+        private bool SurfaceAt(Vector3Int cell, out float surface)
+        {
+            if (_surfaceAt.TryGetValue(cell, out surface)) return !float.IsNaN(surface);
+
+            Vector3 along = _side.Vector();
+            Vector3 centre = GridCell.ToWorld(cell);
+            float reach = GridCell.Size * 8f;
+            var ray = new Ray(centre + along * reach, -along);
+            float nearest = float.MaxValue;
+            foreach (var c in _panel.GetComponentsInChildren<Collider>(true))
+            {
+                if (c == null || c.isTrigger) continue;
+                bool was = c.enabled;
+                if (!was) c.enabled = true;
+                if (c.Raycast(ray, out var hit, reach) && hit.distance < nearest) nearest = hit.distance;
+                if (!was) c.enabled = false;
+            }
+            surface = nearest < float.MaxValue ? Vector3.Dot(ray.origin, along) - nearest : float.NaN;
+            _surfaceAt[cell] = surface;
+            return !float.IsNaN(surface);
+        }
+
+        /// Works out, once, which cells it covers and which side of them it stands on. Asked for, not done at
+        /// Start, because conduits place their switches while the world is still waking.
         private void Measure()
         {
             if (_measured) return;
@@ -130,6 +155,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             foreach (var cell in definition.WorldCells) _covers.Add(cell);
             if (_panel == null) return;
 
+            // Which side of its cells the panel stands on: the axis its middle is furthest off them along.
             bool any = false;
             var bounds = new Bounds();
             foreach (var r in _panel.GetComponentsInChildren<Renderer>(true))
@@ -138,16 +164,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 else { bounds = r.bounds; any = true; }
             }
             if (!any) return;
-
-            // The side is the axis the panel is furthest off the cells along; its surface is its far edge there.
             Vector3 offset = bounds.center - definition.Origin.position;
             Vector3 abs = new Vector3(Mathf.Abs(offset.x), Mathf.Abs(offset.y), Mathf.Abs(offset.z));
             if (abs.x >= abs.y && abs.x >= abs.z) _side = offset.x >= 0f ? GridDirection.XPlus : GridDirection.XMinus;
             else if (abs.y >= abs.z) _side = offset.y >= 0f ? GridDirection.YPlus : GridDirection.YMinus;
             else _side = offset.z >= 0f ? GridDirection.ZPlus : GridDirection.ZMinus;
-            Vector3 along = _side.Vector();
-            var axis = new Vector3(Mathf.Abs(along.x), Mathf.Abs(along.y), Mathf.Abs(along.z));
-            _surface = Vector3.Dot(bounds.center, along) + Vector3.Dot(bounds.extents, axis);
         }
 
         private void Awake()
