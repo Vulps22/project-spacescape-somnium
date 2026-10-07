@@ -39,7 +39,17 @@ heat and integrity are shared as for every component; the charged sound follows 
 
 Not done: the Disruptor must be in `SceneNetworking`'s network prefabs to be spawned into a slot.
 
-## Phase 2: radar targeting (planned)
+## Phase 2: radar targeting (built 2026-10-07, untested in-world)
+
+The disruptor reads `RadarData` from its data network every frame (`DataGrid.Read`). With a powered radar there,
+it turns at **Auto Aim Speed** (20°/s per axis) toward the first selected target inside its ±45° field and its
+500 m reach, or back to straight ahead when there is none. With no radar on its network it is a manual gun.
+Nothing gates a hand on a lever against it: both move the aim, so the lever fights the hand until someone
+breaks the data connection (an open switch, a pulled radar, a cut conduit). It runs on every client from shared
+state (the radar's selection, the targets); whoever decides writes the aim that everyone keeps. To connect:
+run conduits from the radar's red data port to the gun's.
+
+Earlier plan:
 
 A radar (S1) with its own screen publishes its contacts and the selected target on the data network; the gun
 reads the selected target each tick and aims at it (`radar.md`, `data.md`). Someone presses fire, on the gun or, later, on

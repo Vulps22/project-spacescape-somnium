@@ -6,11 +6,8 @@ in the topic docs, never here; an item is removed once it is done. Build everyth
 
 ## Weapons and data
 
-- Test the disruptor in-world: push to fire, the charged and firing sounds, aim from another client. `weapons.md`
-- Register the Disruptor and the Radar in `SceneNetworking`'s network prefabs. `weapons.md`, `radar.md`
-- Test the radar in-world: contacts, cycling, selecting, from another client too. `radar.md`
-- The radar publishing to the data network, and the gun auto-aiming at its selected target. `radar.md`, `data.md`
-- Data along conduits: settle what is still open, then build `DataGrid`. `data.md`
+- Test in-world: the radar's data reaching the gun over conduits, auto-aim, and a hand fighting it. `radar.md`, `weapons.md`
+- The data upgrade: data only along branches that carry it (any wired conduit carries it for now). `data.md`
 - Logic board (unrefined). `data.md`
 
 ## Power, reactor and repair
@@ -38,6 +35,7 @@ in the topic docs, never here; an item is removed once it is done. Build everyth
 - Writeable signs. `ship-structure.md`
 - Climbing. `ship-structure.md`
 - A room built round the training displays; a one-hand rewiring display. `training-room.md`
+- Private voiced tutorial in a local sub-sim (near the end of development). `training-room.md`
 
 ## Interaction
 

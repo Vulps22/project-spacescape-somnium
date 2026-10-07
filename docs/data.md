@@ -1,7 +1,25 @@
 # Data
 
 How information moves round the ship: data along conduits, and logic boards. The radar is in `radar.md`.
-Nothing here is built yet.
+**The data network and data ports are built (2026-10-07), untested in-world;** the data upgrade and logic
+boards are not.
+
+## Built (2026-10-07, untested in-world)
+
+- **Data ports:** `FlowDirection.Data`, set on a component's port like In or Out (the port inspector has
+  **Add Data**). Its ring is red (`ComponentData.mat` on the Port prefab). No power crosses it:
+  `SendsAt`/`AcceptsAt` never answer for it, and `DataAt` does. The Radar and the Disruptor each have one on
+  the back face at (4, 0), beside their power In.
+- **Joining a data port:** a conduit with a segment on that face. Point the segment's arrow **into the conduit
+  (In)**: an Out segment there sends power at a port that takes none, which is wasted as heat like any dead end.
+- **`IDataSource` / `DataObject`** (`scripts/Ship/Data`): `Module` and `ConduitAddon` answer `GetData()` with
+  null until overridden.
+- **`DataGrid`** (`PowerGrid.Current.Data`): groups power nodes into networks. Two conduits join when each has a
+  segment on the face between them, whatever the arrows; a conduit joins a component when its segment is on the
+  component's data port. A conduit that is off (an open switch) or blown joins nothing. Worked out again only
+  when `PowerNode.LinkRevision` (switches, pops, nodes added or removed) or `DataGrid.Invalidate` (faces
+  changed, a tile bound or unbound, as a slot's component changes) has moved; otherwise `Read<T>(tile)` is a
+  lookup plus each publisher's `GetData()`. The list it returns is reused by the next read of the same kind.
 
 ## How data travels (in discussion, from 2026-10-03)
 
@@ -55,6 +73,9 @@ How information moves round the ship. The radar, a bridge fire button and the lo
 
 - **An open switch or a popped conduit cuts data** (decided 2026-10-03): a link is conduits that currently
   carry power across.
+- **Components join through a data port** (decided 2026-10-07), separate from their power ports and shown
+  **red**. A conduit with a segment on that cell face links the component to the data network, whichever way
+  the segment's arrow points; data ignores power's direction. Power ports carry no data.
 - **For this stage, data travels along any wired conduit** (decided 2026-10-03). The data upgrade requirement
   comes later as its own step: there are no upgrade items, nothing installs into the upgrade circle, and
   nothing works out branches yet.

@@ -1,7 +1,8 @@
 # Radar
 
 The component that sees what is outside the ship and lets the crew pick a target. **Seeing, cycling and
-selecting are built (2026-10-03), untested in-world;** publishing to the data network and the gun aiming are not. How its
+selecting are built and tested in-world; publishing to the data network and the gun's auto-aim are built
+(2026-10-07), untested in-world.** How its
 data reaches the gun is in `data.md`; the gun is in `weapons.md`.
 
 ## Decided (2026-10-03)
@@ -46,6 +47,13 @@ data reaches the gun is in `data.md`; the gun is in `weapons.md`.
 
 - **The gun auto-aims at the selected target** (decided 2026-10-03): its levers move themselves to point at
   it while it is inside the gun's ±45° field of fire; someone still presses fire.
+- **Auto and manual are not gated; they fight** (decided 2026-10-07). A hand on a lever and the auto-aim
+  both move the aim, every tick, and the result is whatever comes of that: the lever pulls against the hand.
+  To aim by hand, a player has to **break the data connection** (open a switch on the data line, pull the
+  radar, cut the conduit). Auto-aim turns the aim at a set speed, so a hand can win for a moment.
+- **No target in range: the gun returns to centre** (decided 2026-10-07). On a data network with a radar but
+  nothing selected, or the selection outside the gun's field of fire or reach, the auto-aim slews it back to
+  straight ahead. A gun on no radar's network is left alone: it is a manual gun.
 
 ## Open
 
@@ -76,5 +84,9 @@ A 50 W load (`LoadBehaviourModule`, 50 J hold): unpowered, the screen is blank a
   `ComponentNetwork`); a button pressed or the lever moved on a client that does not decide is sent to the one
   that does, so everyone sees the same lever and screen.
 
-Not done: the Radar must be in `SceneNetworking`'s network prefabs to be spawned into a slot.
+**Publishing and auto-aim (2026-10-07, untested in-world).** The radar is `RadarBehaviourModule`, its own load
+(it was a separate `Radar` script beside one), and while powered publishes `RadarData`: a copy of every contact
+(`Contact`: id, position, facing) and the selected one if it is in sight. Unpowered, it publishes nothing. Its
+readout says how many contacts it sees and Target N or No target (Off when unpowered). The disruptor's auto-aim
+is in `weapons.md`.
 

@@ -383,10 +383,10 @@ place without walking to it.
 | `BatteryBehaviourModule` | kind of cell, and a Smart cell's dial |
 | `ReactorBehaviourModule` | output, rods, core °C against its baseline, fuel, coolant |
 | `DisruptorBehaviourModule` | Ready, Charging (its hold is filling) or Not Charging |
+| `RadarBehaviourModule` | how many contacts, and Target N or No target (Off unpowered) |
 
-**Every component has a readout.** Still without one: `LoadBehaviourModule`, `LightBehaviourModule`,
-`ConstantSourceBehaviourModule`, and the radar, which is still a separate `Radar` script beside a load
-(the disruptor was too, until 2026-10-07).
+**Every component has a readout.** Still without one: `LoadBehaviourModule`, `LightBehaviourModule` and
+`ConstantSourceBehaviourModule`.
 
 `Readout` (`scripts/Ship/Readout.cs`) does the drawing. It redraws when its module says something
 changed, never more than every 0.1 s, only while a camera can see the text (`Renderer.isVisible`), and

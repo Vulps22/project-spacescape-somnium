@@ -59,6 +59,8 @@ only when something actually changed.
 | Per-frame scripts | none | none |
 | Shape (stubs) | - | rebuilt when its faces or addon change (`NodeEdgeModule` and `AddonModule` events) |
 | Colour | - | set when the grid ticks, and only when its colour band changes; one shared material per band, so URP still batches them |
+| Data | - | on a data connection between two or more components (`DataGrid.Links`, 2026-10-07, untested): carrying no power, the whole conduit glows Data blue (a colour band like the others); carrying power, it keeps its colour and gets four thin blue lines along each segment. Nothing sent: every client works out the same data network |
+| Data pulse (debugging) | - | on a network that reaches a component's data port but joins no second component (`DataGrid.Reaches`): pulses from its own colour to Data blue over 2.5 s, back over 2.5 s, then rests 3 s (all three on the prefab; off with Pulse Where Data Reaches). One pulsing twin per colour band, animated once a frame, so every pulse is in step |
 | Name | set once, when built | set once |
 | Grid | a node with no edges | a node, joined to its neighbours |
 | Network | one slot in the conduit chunks | same |
