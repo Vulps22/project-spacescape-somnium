@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
@@ -9,13 +10,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// the way it faces (its local x+). Previous and Next move a cursor (amber) through the contacts; Select makes
     /// the cursor's contact the selected target: a square round its marker, with lines from the square to the
     /// screen's edges. A lever under the buttons zooms: fully left shows all of Range, fully right Zoomed In
-    /// Range, on a log scale. Works only while powered: a LoadBehaviourModule beside it must be working.
+    /// Range, on a log scale. It is a load (LoadBehaviourModule) and works only while powered.
+    ///
+    /// It publishes RadarData on its data network while powered (data.md): what it sees and the selected
+    /// target, for a gun to aim at. Its readout says how many contacts it has and which is selected.
     ///
     /// Networking (ComponentNetwork): the cursor, the selection and the zoom are the radar's state, written by
     /// whoever decides; a button pressed or the lever moved on another client is sent there. The contacts need nothing sent: every client
     /// works them out from the same targets.
-    [RequireComponent(typeof(LoadBehaviourModule))]
-    public sealed class Radar : MonoBehaviour, INetworkedState, ILeverDial
+    public sealed class RadarBehaviourModule : LoadBehaviourModule, ILeverDial
     {
         [Header("Seeing")]
         [Tooltip("How far it sees, in metres. The edge of the screen's height is this far.")]
@@ -43,6 +46,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Tooltip("Thickness of the selection's square and lines, in metres.")]
         [SerializeField] private float _lineWidth = 0.004f;
 
+        [Header("Readout")]
+        [Tooltip("Text showing how many contacts it sees and which is selected. Optional.")]
+        [SerializeField] private TMP_Text _readout;
+
         [Header("Buttons")]
         [SerializeField] private PushButton _previous;
         [SerializeField] private PushButton _select;
@@ -51,7 +58,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private readonly List<DetectableModule> _contacts = new List<DetectableModule>();
         private readonly List<MeshRenderer> _markers = new List<MeshRenderer>();
         private readonly Transform[] _lines = new Transform[8];
-        private LoadBehaviourModule _load;
+        private Readout _readoutShown;
+        private string _readoutWords;
         private int _cursor = -1;
         private int _selected = -1;
         private float _zoom;
@@ -85,7 +93,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         public int Selected => _selected;
 
         /// True while it is powered and seeing.
-        public bool On => _load != null && _load.Working;
+        public bool On => Working;
 
         /// Everything it sees now, nearest id first. Empty while it is off.
         public IReadOnlyList<DetectableModule> Contacts => _contacts;
@@ -98,20 +106,21 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private void Awake()
         {
-            _load = GetComponent<LoadBehaviourModule>();
             if (_display != null)
                 for (int i = 0; i < _lines.Length; i++) _lines[i] = MakePiece($"Selection {i}", _quadMesh, _selectionMaterial).transform;
         }
 
-        private void OnEnable()
+        protected override void OnEnable()
         {
+            base.OnEnable();
             if (_previous != null) _previous.Pressed += OnPrevious;
             if (_next != null) _next.Pressed += OnNext;
             if (_select != null) _select.Pressed += OnSelect;
         }
 
-        private void OnDisable()
+        protected override void OnDisable()
         {
+            base.OnDisable();
             if (_previous != null) _previous.Pressed -= OnPrevious;
             if (_next != null) _next.Pressed -= OnNext;
             if (_select != null) _select.Pressed -= OnSelect;
@@ -145,10 +154,51 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _cursor = _contacts[at].Id;
         }
 
+        private void Start()
+        {
+            if (_readout == null) return;
+            _readoutShown = new Readout(_readout, ReadoutWords, ReadoutChanged);
+            _readoutShown.Listen();
+        }
+
+        private void OnDestroy() => _readoutShown?.Stop();
+
         private void Update()
         {
             See();
             Draw();
+        }
+
+        /// What it shares while powered: a copy of what it sees, and the selected target if it is in sight.
+        public override DataObject GetData()
+        {
+            if (!On) return null;
+            var contacts = new Contact[_contacts.Count];
+            Contact? selected = null;
+            for (int i = 0; i < _contacts.Count; i++)
+            {
+                var c = _contacts[i];
+                contacts[i] = new Contact(c.Id, c.Position, c.Forward);
+                if (c.Id == _selected) selected = contacts[i];
+            }
+            return new RadarData(contacts, selected);
+        }
+
+        private string ReadoutWords()
+        {
+            if (!On) return "Off";
+            string count = _contacts.Count == 1 ? "1 contact" : $"{_contacts.Count} contacts";
+            bool inSight = false;
+            foreach (var c in _contacts) if (c.Id == _selected) inSight = true;
+            return inSight ? $"{count}\nTarget {_selected}" : $"{count}\nNo target";
+        }
+
+        private bool ReadoutChanged()
+        {
+            string words = ReadoutWords();
+            if (words == _readoutWords) return false;
+            _readoutWords = words;
+            return true;
         }
 
         /// Everything detectable within range, in id order, so stepping through them goes the same way everywhere.
@@ -244,10 +294,22 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             return renderer;
         }
 
-        public int StateCount => 3;
-        public void WriteState(float[] to, int at) { to[at] = _cursor; to[at + 1] = _selected; to[at + 2] = _zoom; }
-        public void ReadState(float[] from, int at)
+        // The load's own value first, then the cursor, the selection and the zoom.
+        public override int StateCount => base.StateCount + 3;
+
+        public override void WriteState(float[] to, int at)
         {
+            base.WriteState(to, at);
+            at += base.StateCount;
+            to[at] = _cursor;
+            to[at + 1] = _selected;
+            to[at + 2] = _zoom;
+        }
+
+        public override void ReadState(float[] from, int at)
+        {
+            base.ReadState(from, at);
+            at += base.StateCount;
             _cursor = Mathf.RoundToInt(from[at]);
             _selected = Mathf.RoundToInt(from[at + 1]);
             if (!_zoomHeld) _zoom = Mathf.Clamp01(from[at + 2]);

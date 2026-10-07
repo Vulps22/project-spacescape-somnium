@@ -949,7 +949,6 @@ GameObject:
   - component: {fileID: 3267838806938707306}
   - component: {fileID: 2345057555082115823}
   - component: {fileID: 1489072417218097843}
-  - component: {fileID: 2587301434334130915}
   - component: {fileID: 958313885280140822}
   m_Layer: 0
   m_Name: Radar
@@ -1008,7 +1007,6 @@ MonoBehaviour:
   _size: {x: 8, y: 8, z: 8}
   _on: 1
   _readout: {fileID: 0}
-  _readoutInterval: 0.25
 --- !u!114 &2786540738470826501
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1032,7 +1030,7 @@ MonoBehaviour:
   _packedYPlus: 
   _packedYMinus: 
   _packedZPlus: 
-  _packedZMinus: 03000100
+  _packedZMinus: 0300010003010300
   _portPrefab: {fileID: 1330740377116229456, guid: b89cfadafc5969556899f78cbe0b4c20,
     type: 3}
 --- !u!114 &3097277071488262406
@@ -1049,6 +1047,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SpaceScape.Ship.CapacitorModule
   _capacityJoules: 50
   _startFull: 0
+  _readout: {fileID: 0}
 --- !u!114 &3980633430238502293
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1066,6 +1065,7 @@ MonoBehaviour:
   _failureChanceWhenSpent: 0.5
   _damageThresholds: []
   _damageModels: []
+  _readout: {fileID: 0}
 --- !u!114 &4687426168042295669
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1338,20 +1338,6 @@ MonoBehaviour:
   _sagWhenHeaviest: 0.25
   _snapBuzzAmplitude: 0.6
   _snapBuzzSeconds: 0.1
---- !u!114 &2587301434334130915
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7639127463960972119}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 081fa7006e0d8e6d0ae5029789e75ac0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.LoadBehaviourModule
-  _ratedWatts: 50
-  _drainWatts: -1
 --- !u!114 &958313885280140822
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1364,6 +1350,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7043f3b54551d047cb1ed1052af3c90e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.Radar
+  _ratedWatts: 50
+  _drainWatts: -1
   _range: 1000
   _zoomedInRange: 100
   _display: {fileID: 5117944881463739384}
@@ -1375,6 +1363,7 @@ MonoBehaviour:
   _cursorMaterial: {fileID: 2100000, guid: 04dd716076353e8ab8cd954a871e432d, type: 2}
   _selectionMaterial: {fileID: 2100000, guid: 9d05b260cff4d3afda902acfaba3c9d4, type: 2}
   _lineWidth: 0.007
+  _readout: {fileID: 0}
   _previous: {fileID: 3101346950041346804}
   _select: {fileID: 6777132704826703603}
   _next: {fileID: 4403205391218462757}

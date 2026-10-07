@@ -49,7 +49,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         private float? _pendingDial;
         private DisruptorBehaviourModule _disruptor;
         private Vector2? _pendingAim;
-        private Radar _radar;
+        private RadarBehaviourModule _radar;
         private float? _pendingZoom;
         private bool _usable;
 
