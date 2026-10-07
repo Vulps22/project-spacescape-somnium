@@ -11,7 +11,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         protected override string Label => "Smart";
 
-        protected override string Extra => $"\n{_throttle:P0} dial";
+        protected override string Extra => $"\ndial {_throttle:P0}";
 
         protected override BatteryBehaviour Create(Capacitor hold, double chargeWatts, double dischargeWatts) =>
             new SmartBatteryBehaviour(hold, chargeWatts, dischargeWatts);

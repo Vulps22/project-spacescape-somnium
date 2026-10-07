@@ -1,4 +1,5 @@
 using SomniumSpace.Worlds.SpaceScape.Power;
+using TMPro;
 using UnityEngine;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
@@ -11,7 +12,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Tooltip("Starts the session full rather than empty.")]
         [SerializeField] private bool _startFull;
 
+        [Header("Readout")]
+        [Tooltip("Text showing the charge out of the capacity, and the watts it is gaining or losing. Optional.")]
+        [SerializeField] private TMP_Text _readout;
+
         private Capacitor _capacitor;
+        private Readout _readoutShown;
 
         /// The sim object behind this module, built on first use so Awake order cannot matter.
         public Capacitor Capacitor =>
@@ -19,7 +25,20 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         public int StateCount => 1;
         public void WriteState(float[] to, int at) => to[at] = (float)Capacitor.Charge;
+
         public void ReadState(float[] from, int at) => Capacitor.Correct(from[at]);
+
+        private void Start()
+        {
+            if (_readout == null) return;
+            _readoutShown = new Readout(_readout, ReadoutText);
+            _readoutShown.Listen();
+        }
+
+        private void OnDestroy() => _readoutShown?.Stop();
+
+        private string ReadoutText() =>
+            $"Charge: {Capacitor.Charge:0}/{Capacitor.Capacity:0} J\nNet: {Capacitor.NetWatts:+0;-0;0} W";
 
         private void OnValidate()
         {

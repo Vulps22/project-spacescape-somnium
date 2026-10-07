@@ -1,4 +1,5 @@
 using SomniumSpace.Worlds.SpaceScape.Power;
+using TMPro;
 using UnityEngine;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
@@ -19,8 +20,14 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Tooltip("Objects to show as it gets damaged, paired by order with the thresholds. The rest are hidden.")]
         [SerializeField] private GameObject[] _damageModels = new GameObject[0];
 
+        [Header("Readout")]
+        [Tooltip("Text showing its condition out of its maximum, whether it is worn or wrecked, and its chance of misfiring now. Optional.")]
+        [SerializeField] private TMP_Text _readout;
+
         private Integrity _integrity;
         private int _shown = -2;
+        private Readout _readoutShown;
+        private double _lastCurrent = double.NaN;
 
         /// The sim object behind this module, built on first use so Awake order cannot matter.
         public Integrity Integrity
@@ -39,24 +46,35 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             }
         }
 
-        /// What it knows, for a component's debug readout: condition, the worn line, and the chance it
-        /// misfires now.
-        public string DebugText
-        {
-            get
-            {
-                var integrity = Integrity;
-                string state = integrity.IsDestroyed ? "WRECKED" : integrity.IsWorn ? "WORN" : "sound";
-                return $"integrity {integrity.Current:0}/{integrity.Max:0} ({integrity.Fraction:P0}) {state}\n" +
-                       $"worn below {integrity.WornBelowFraction:P0}, misfire {integrity.FailureChance:P0}";
-            }
-        }
-
         public int StateCount => 1;
         public void WriteState(float[] to, int at) => to[at] = (float)Integrity.Current;
         public void ReadState(float[] from, int at) => Integrity.Correct(from[at]);
 
+        private void Start()
+        {
+            if (_readout == null) return;
+            _readoutShown = new Readout(_readout, ReadoutText, ConditionChanged);
+            _readoutShown.Listen();
+        }
+
+        private void OnDestroy() => _readoutShown?.Stop();
+
         private void Update() => ShowDamage();
+
+        private bool ConditionChanged()
+        {
+            double current = Integrity.Current;
+            if (current == _lastCurrent) return false;
+            _lastCurrent = current;
+            return true;
+        }
+
+        private string ReadoutText()
+        {
+            var integrity = Integrity;
+            string state = integrity.IsDestroyed ? "WRECKED" : integrity.IsWorn ? "WORN" : "sound";
+            return $"integrity {integrity.Current:0}/{integrity.Max:0} {state}\nmisfire {integrity.FailureChance:P0}";
+        }
 
         /// Shows the model for the lowest threshold the condition has fallen below, and hides the rest.
         private void ShowDamage()
@@ -82,6 +100,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _integrity.Max = _max;
             _integrity.WornBelowFraction = _wornBelowFraction;
             _integrity.FailureChanceWhenSpent = _failureChanceWhenSpent;
+            _readoutShown?.Changed();
         }
     }
 }

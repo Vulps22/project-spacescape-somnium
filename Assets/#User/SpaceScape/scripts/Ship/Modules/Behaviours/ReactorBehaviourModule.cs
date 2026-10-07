@@ -45,13 +45,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private double _flow;                     // nobody turns this down for you
 
         [Header("Readout")]
-        [Tooltip("Debug text showing output, rods, temperature, fuel and coolant. Optional.")]
+        [Tooltip("Text showing output, rods, core temperature against its working baseline, fuel and coolant. Optional.")]
         [SerializeField] private TMP_Text _readout;
-        [Tooltip("Seconds between readout updates.")]
-        [SerializeField] private float _readoutInterval = 0.25f;
 
         private ReactorBehaviour _reactor;
-        private float _nextReadout;
+        private Readout _readoutShown;
 
         /// The sim object behind this module, built on first use so Awake order cannot matter.
         public ReactorBehaviour Reactor
@@ -164,21 +162,26 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _reactor.Coolant.DegreesPerLitre = _degreesPerLitre;
         }
 
-        private void Update()
+        private void Start()
         {
-            if (_readout == null || !_readout.enabled) return;
-            if (Time.time < _nextReadout) return;
-            _nextReadout = Time.time + _readoutInterval;
+            if (_readout == null) return;
+            _readoutShown = new Readout(_readout, ReadoutText);
+            _readoutShown.Listen();
+        }
 
             var r = Reactor;
             double celsius = Tile.Node != null ? Tile.Node.Celsius : 0.0;
 
-            _readout.SetText(
+            return
                 $"{r.Core.WattsProduced:0} W\n" +
+        private void OnDestroy() => _readoutShown?.Stop();
+
+        private string ReadoutText()
+        {
                 $"rods {r.Core.Withdrawal:P0} of {_targetWithdrawal:P0}{(r.RodsHeld ? "" : "  NO GRIP")}\n" +
                 $"{celsius:0} / {r.Core.BaselineCelsius:0} C\n" +
                 $"fuel {r.Core.FuelSeconds:0} s\n" +
-                $"{r.Coolant.Litres:0} L @ {r.Coolant.ActualFlow:0.#}/s{(r.Coolant.AtCeiling ? " MAX" : "")}{IntegrityText}");
+                $"{r.Coolant.Litres:0} L @ {r.Coolant.ActualFlow:0.#}/s{(r.Coolant.AtCeiling ? " MAX" : "")}";
         }
 
         private void OnValidate()

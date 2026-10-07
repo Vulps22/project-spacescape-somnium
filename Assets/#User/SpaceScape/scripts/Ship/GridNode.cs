@@ -16,10 +16,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private bool _on = true;
 
         [Header("Readout")]
-        [Tooltip("Debug text showing power in, drawn, wasted and temperature. Optional.")]
+        [Tooltip("Text showing power in, out, wasted and temperature. Optional.")]
         [SerializeField] private TMP_Text _readout;
-        [Tooltip("Seconds between readout updates.")]
-        [SerializeField] private float _readoutInterval = 0.25f;
 
         /// The sim node this stands for, handed over by PowerGrid once the graph is built.
         public PowerNode Node { get; private set; }
@@ -278,7 +276,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             set { _on = value; if (Node != null && DrivesNode) Node.On = value; }
         }
 
-        private float _nextReadout;
+        private Readout _readoutShown;
 
         /// Called by PowerGrid while it builds the graph.
         public void Bind(PowerNode node)
@@ -290,28 +288,20 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// Lets go of the node, for a component leaving its slot.
         public void Unbind() => Node = null;
 
-        // Only a tile with a readout listens to the grid; a conduit's has none. Nothing here runs per frame:
-        // the On checkbox reaches the node through OnValidate, which Unity calls when it is clicked.
+        // Only a tile with a readout listens to the grid. Nothing here runs per frame: the On checkbox
+        // reaches the node through OnValidate, which Unity calls when it is clicked.
         private void Start()
         {
-            if (_readout != null && PowerGrid.Current != null) PowerGrid.Current.Ticked += Readout;
+            if (_readout == null) return;
+            _readoutShown = new Readout(_readout, ReadoutText);
+            _readoutShown.Listen();
         }
 
-        private void OnDestroy()
-        {
-            if (_readout != null && PowerGrid.Current != null) PowerGrid.Current.Ticked -= Readout;
-        }
+        private void OnDestroy() => _readoutShown?.Stop();
 
-        private void Readout()
-        {
-            if (Node == null || !_readout.enabled) return;
-            if (Time.time < _nextReadout) return;
-            _nextReadout = Time.time + _readoutInterval;
-
-            _readout.SetText(Node.Dumped > 0.01
-                ? $"{name}\nin {Node.Inflow:0} W\ndrew {Node.Drawn:0} W\nWASTE {Node.Dumped:0} W\n{Node.Celsius:0.0} C"
-                : $"{name}\nin {Node.Inflow:0} W\ndrew {Node.Drawn:0} W\n{Node.Celsius:0.0} C");
-        }
+        private string ReadoutText() => Node == null
+            ? "unbound"
+            : $"in {Node.Arriving:0} W\nout {Node.Offered:0} W\nwasted {Node.Dumped:0} W\n{Node.Celsius:0.0} C";
 
         private void OnValidate()
         {

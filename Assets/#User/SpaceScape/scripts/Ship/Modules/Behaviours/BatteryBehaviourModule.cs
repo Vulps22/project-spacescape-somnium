@@ -15,13 +15,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private double _dischargeWatts = 100.0;
 
         [Header("Readout")]
-        [Tooltip("Debug text showing charge and temperature. Optional.")]
+        [Tooltip("Text showing what kind of cell it is, and any setting the crew has dialled in. Its charge is on the Capacitor Module's readout. Optional.")]
         [SerializeField] private TMP_Text _readout;
-        [Tooltip("Seconds between readout updates.")]
-        [SerializeField] private float _readoutInterval = 0.25f;
 
         private BatteryBehaviour _battery;
-        private float _nextReadout;
+        private Readout _readoutShown;
 
         /// The sim object behind this module, built on first use so Awake order cannot matter.
         public BatteryBehaviour Battery
@@ -49,15 +47,16 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// Hands any extra Inspector values to the sim object.
         protected virtual void Push(BatteryBehaviour battery) { }
 
-        private void Update()
+        // Nothing it shows follows the grid: it changes only when a setting does. It still listens, so a
+        // readout nobody could see when it last changed is drawn once someone can.
+        private void Start()
         {
-            if (_readout == null || !_readout.enabled) return;
-            if (Time.time < _nextReadout) return;
-            _nextReadout = Time.time + _readoutInterval;
-
-            double celsius = Tile.Node != null ? Tile.Node.Celsius : 0.0;
-            _readout.SetText($"Type: {Label}\nCharge: {Battery.Charge:0} J\nAvailable: {Battery.ChargeFraction:P0}{Extra}{IntegrityText}");
+            if (_readout == null) return;
+            _readoutShown = new Readout(_readout, () => $"{Label} cell{Extra}", () => false);
+            _readoutShown.Listen();
         }
+
+        private void OnDestroy() => _readoutShown?.Stop();
 
         /// A line of its own for the readout, for a cell with something more to say.
         protected virtual string Extra => "";
@@ -69,6 +68,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _battery.DischargeWatts = _dischargeWatts;
             _battery.Enabled = enabled;
             Push(_battery);
+            _readoutShown?.Changed();
         }
     }
 }
