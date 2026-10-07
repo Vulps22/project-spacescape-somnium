@@ -114,6 +114,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.ConduitLayoutDefinition
   _cells: {x: 7, y: 6, z: 1}
   _origin: {fileID: 5984038613654076378}
+  _carriesRings: 1
 --- !u!65 &1227325960318172461
 BoxCollider:
   m_ObjectHideFlags: 0

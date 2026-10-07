@@ -152,7 +152,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (_measured) return;
             _measured = true;
             if (!TryGetComponent<ConduitLayoutDefinition>(out var definition)) return;
-            foreach (var cell in definition.WorldCells) _covers.Add(cell);
+            foreach (var cell in definition.Cells) _covers.Add(cell);
             if (_panel == null) return;
 
             // Which side of its cells the panel stands on: the axis its middle is furthest off them along.

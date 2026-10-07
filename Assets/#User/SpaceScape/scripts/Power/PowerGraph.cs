@@ -593,11 +593,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
                 problems.Add($"'{node.Name}' draws power but no conduit reaches it from a source");
             }
 
-            foreach (var node in _nodes)
-            {
-                if (node.Incoming.Count == 0 && node.Outgoing.Count == 0 && node.Source == null)
-                    problems.Add($"'{node.Name}' is not wired to anything");
-            }
+            // A node wired to nothing is not a problem: it is a parked conduit, waiting for the crew
+            // (conduits.md). A load wired to nothing is caught above, as drawing with nothing reaching it.
 
             return problems;
         }

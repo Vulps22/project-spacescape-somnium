@@ -7,7 +7,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// than one each way. Goes on a conduit container's root; the Origin is an empty child placed where the
     /// conduits run. When the world starts, every cell in it gets a conduit with both segments parked, unless
     /// a drawn conduit or a placed tile is already there (ConduitLayout.Spawn); while editing they show as
-    /// gizmos.
+    /// gizmos. Cells inside a component slot's volume are left out: a slot's volume is reserved (grid.md), so
+    /// a floor's layer of conduits routes round the slots standing on it.
     ///
     /// Keeps the container on the grid while edited: the root turns only in quarter turns and sits on a cell
     /// centre, and the Origin stays square to the root, on a cell centre along an axis with an odd count and on
@@ -21,6 +22,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private Vector3Int _cells = Vector3Int.one;
         [Tooltip("Where the block is centred: an empty child placed where the conduits run. None centres it on this object.")]
         [SerializeField] private Transform _origin;
+        [Tooltip("Ticked on walls and corners: its cells at the layout's Ring Heights are wired as the ship's rings, runs that go all the way round from one open end to the other (ConduitLayout).")]
+        [SerializeField] private bool _carriesRings;
+
+        /// True when its cells at the ring heights are part of the ship's rings.
+        public bool CarriesRings => _carriesRings;
 
         /// Where the block is centred: the Origin, or this object when none is set.
         public Transform Origin => _origin != null ? _origin : transform;
@@ -56,6 +62,25 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             }
         }
 
+        /// The cells that get conduits: every cell it holds but those inside a component slot.
+        public IEnumerable<Vector3Int> Cells
+        {
+            get
+            {
+                foreach (var cell in WorldCells)
+                    if (!InSlot(cell)) yield return cell;
+            }
+        }
+
+        /// True when a cell is inside a component slot's volume.
+        public static bool InSlot(Vector3Int cell)
+        {
+            Vector3 centre = GridCell.ToWorld(cell);
+            foreach (var slot in ComponentSlot.All)
+                if (slot != null && slot.gameObject.activeInHierarchy && slot.Contains(centre)) return true;
+            return false;
+        }
+
         private void OnValidate()
         {
             _cells = Vector3Int.Max(_cells, Vector3Int.one);
@@ -82,6 +107,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 Debug.LogWarning($"ConduitLayoutDefinition: '{name}' is not square to the grid (its parent is turned by something other than quarter turns); it holds no cells", this);
                 return;
             }
+
+            // On a slot, the slot places it: a slot's centre is a grid corner, which the slot keeps it on, and in
+            // the slot's prefab (centred on the origin, which is not a corner) snapping would save it half a cell off.
+            if (transform.parent != null && GetComponentInParent<ComponentSlot>() != null) return;
 
             if (Origin == transform)
             {
@@ -131,7 +160,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
             if (_layout == null) _layout = FindFirstObjectByType<ConduitLayout>();
             Gizmos.color = new Color(0.7f, 0.7f, 0.75f, 0.8f);
-            foreach (var cell in WorldCells)
+            foreach (var cell in Cells)
                 if (_layout == null || !_layout.TryGet(cell, out _))
                     Gizmos.DrawWireCube(GridCell.ToWorld(cell), Vector3.one * (GridCell.Size * 0.15f));
         }

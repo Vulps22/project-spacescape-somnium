@@ -17,6 +17,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private ConduitAddon[] _addons = new ConduitAddon[0];
         [Tooltip("The drawn conduits, packed. Edit them with the drawing tool, not by hand.")]
         [SerializeField] private long[] _cells = new long[0];
+        [Tooltip("Heights, in cells above y 0 (0.5 m each), of the rings: at each, every cell of a definition that Carries Rings is wired into one run from one open end to the other (down a corridor, round the room, back up the corridor). Each next height runs the other way. A height whose cells close into a loop or branch is left parked, with a warning: a closed loop would be a ring that blows (power.md).")]
+        [SerializeField] private int[] _ringHeights = { 2, 4 };
 
         private Dictionary<Vector3Int, int> _index;
 
@@ -131,24 +133,120 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     slot.Configure(addon, code.AddonFacing, code.AddonTurns, code.AddonParked);
             }
 
-            // Every other cell a definition holds gets a plain conduit, both segments parked.
+            var rings = WireRings(taken);
+
+            // Every other cell a definition holds gets a plain conduit, both segments parked, or its ring's
+            // two faces when it is on one.
             foreach (var definition in FindObjectsByType<ConduitLayoutDefinition>(FindObjectsSortMode.None))
             {
                 // Not isActiveAndEnabled: this runs from the grid's Awake, before a definition's own OnEnable,
                 // and until then Unity reports every definition as disabled.
                 if (!definition.enabled || !definition.gameObject.activeInHierarchy) continue;
-                foreach (var cell in definition.WorldCells)
+                foreach (var cell in definition.Cells)
                 {
                     if (taken.Contains(cell) || Index.ContainsKey(cell)) continue;
                     taken.Add(cell);
                     var plain = Instantiate(_conduitPrefab, GridCell.ToWorld(cell), Quaternion.identity, root.transform);
                     if (plain.TryGetComponent<NodeEdgeModule>(out var edges))
+                    {
                         foreach (GridDirection face in System.Enum.GetValues(typeof(GridDirection)))
                             if (face != GridDirection.None) edges.SetFace(face, FlowDirection.None);
+                        if (rings.TryGetValue(cell, out var ring))
+                        {
+                            if (ring.from != GridDirection.None) edges.SetFace(ring.from, FlowDirection.In);
+                            if (ring.to != GridDirection.None) edges.SetFace(ring.to, FlowDirection.Out);
+                        }
+                    }
                 }
             }
 
             root.SetActive(true);
+        }
+
+        private static readonly GridDirection[] Level =
+            { GridDirection.XPlus, GridDirection.XMinus, GridDirection.ZPlus, GridDirection.ZMinus };
+
+        /// The rings: at each Ring Height, every free cell of the definitions that carry rings, traced from one
+        /// open end to the other, each cell given the face power comes in by and the face it goes on by. The
+        /// first height starts at the end lowest in x then z, the next at the other end, and so on, so they
+        /// run opposite ways.
+        private Dictionary<Vector3Int, (GridDirection from, GridDirection to)> WireRings(HashSet<Vector3Int> taken)
+        {
+            var wired = new Dictionary<Vector3Int, (GridDirection, GridDirection)>();
+            for (int h = 0; h < _ringHeights.Length; h++)
+            {
+                var cells = new HashSet<Vector3Int>();
+                foreach (var definition in FindObjectsByType<ConduitLayoutDefinition>(FindObjectsSortMode.None))
+                {
+                    if (!definition.CarriesRings || !definition.enabled || !definition.gameObject.activeInHierarchy) continue;
+                    foreach (var cell in definition.Cells)
+                        if (cell.y == _ringHeights[h] && !taken.Contains(cell) && !Index.ContainsKey(cell)) cells.Add(cell);
+                }
+
+                var done = new HashSet<Vector3Int>();
+                foreach (var seed in cells)
+                {
+                    if (done.Contains(seed)) continue;
+                    var piece = Piece(seed, cells, done);
+                    var ends = new List<Vector3Int>();
+                    bool branches = false;
+                    foreach (var cell in piece)
+                    {
+                        int around = Around(cell, cells);
+                        if (around == 1) ends.Add(cell);
+                        else if (around > 2) branches = true;
+                    }
+                    if (piece.Count < 2) continue;
+                    if (branches || ends.Count != 2)
+                    {
+                        Debug.LogWarning($"ConduitLayout: the ring at height {_ringHeights[h]} near {seed} {(branches ? "branches" : "closes into a loop")}; left parked", this);
+                        continue;
+                    }
+
+                    ends.Sort((a, b) => a.x != b.x ? a.x.CompareTo(b.x) : a.z.CompareTo(b.z));
+                    var at = h % 2 == 0 ? ends[0] : ends[1];
+                    var came = GridDirection.None;
+                    while (true)
+                    {
+                        var next = GridDirection.None;
+                        foreach (var face in Level)
+                            if (face != came && cells.Contains(at + face.Offset())) { next = face; break; }
+                        wired[at] = (came, next);
+                        if (next == GridDirection.None) break;
+                        at += next.Offset();
+                        came = GridNode.Opposite(next);
+                    }
+                }
+            }
+            return wired;
+        }
+
+        /// Every cell joined to the seed across level faces, marking them done.
+        private static List<Vector3Int> Piece(Vector3Int seed, HashSet<Vector3Int> cells, HashSet<Vector3Int> done)
+        {
+            var piece = new List<Vector3Int>();
+            var queue = new Queue<Vector3Int>();
+            queue.Enqueue(seed);
+            done.Add(seed);
+            while (queue.Count > 0)
+            {
+                var cell = queue.Dequeue();
+                piece.Add(cell);
+                foreach (var face in Level)
+                {
+                    var next = cell + face.Offset();
+                    if (cells.Contains(next) && done.Add(next)) queue.Enqueue(next);
+                }
+            }
+            return piece;
+        }
+
+        private static int Around(Vector3Int cell, HashSet<Vector3Int> cells)
+        {
+            int count = 0;
+            foreach (var face in Level)
+                if (cells.Contains(cell + face.Offset())) count++;
+            return count;
         }
 
         private void OnDrawGizmos()
