@@ -1,0 +1,80 @@
+# Radar
+
+The component that sees what is outside the ship and lets the crew pick a target. **Seeing, cycling and
+selecting are built (2026-10-03), untested in-world;** publishing to the data network and the gun aiming are not. How its
+data reaches the gun is in `data.md`; the gun is in `weapons.md`.
+
+## Decided (2026-10-03)
+
+- **An S3 component** (S1 at first; its screen sat far too low, 2026-10-03), in a slot like any other: carried,
+  swapped, powered, worn.
+- **It has its own screen.** Phase 1 has no separate console: the radar is where a person looks at contacts
+  and picks one.
+- **It owns detection**, since only it can see contacts, **and selection**, since the selection is made on its
+  screen. A bridge console later is just another reader of its contacts that publishes its own selection; the
+  gun's question does not change.
+- **It publishes `RadarData`** (`data.md`): its **contacts** (what it can detect) and the **selected target**,
+  as a read-only record through `IDataSource`. Anything on its data network reads it: a gun, and later a
+  bridge monitor, at no extra cost.
+- **The gun reads the selected target each tick** and ignores the rest (`weapons.md`). Nothing commands the
+  gun; reading is how the radar acts on it.
+- **Networking:** the selected target is the radar's state, kept by the master; a hand on any client sends its
+  choice to the master, like the disruptor's aim, and late joiners get it with the rest of the radar's state.
+  The contacts are worked out on every client from the same targets, so they need nothing sent (Phase 1).
+
+## Phase 1 (decided 2026-10-03)
+
+- **What it detects:** anything with a **`DetectableModule`** within **1 km** of the radar, found by distance,
+  not by raycast: the radar sits inside the ship, so a ray from it would stop at the ship's own walls. Line of
+  sight can come with a hull.
+- **Test targets:** static objects with a `DetectableModule`, dotted at random from **z -100 to z -500**,
+  **x -50 to +50**. Positions come from a fixed seed, so every client places them the same with nothing sent.
+  **Hit, a target disappears and comes back where it was one minute later.** The master decides hits
+  (`damage.md`: the master resolves every hit) and brings targets back; whether each is down is shared state,
+  one bit per target (like the access panels), so late joiners see the same.
+- **The screen:** the contacts as markers. Under it, **Previous** and **Next** buttons step through them, with
+  a **green square button** between them that selects the one stepped to. The selected marker gets a square
+  round it, with horizontal and vertical lines drawn from the square across the screen.
+- **Two radars on one network:** a gun takes the **first selected target it finds in range**; a radar with
+  nothing selected is ignored. With no selection anywhere, the gun does nothing with radar data.
+- **Accuracy:** none lost. A contact on the screen is exactly where it is: the radar reports true
+  coordinates. That is not the gun's ability to hit it.
+- **The disruptor's beam reaches 500 m** (it was 200 m), which covers the test targets out to z -500.
+- **Networking:** the contacts need nothing sent (fixed seed, shared down bits). The selected target is the
+  radar's state, kept by the master; Previous, Next and select on any client go to the master, like the gun's
+  aim.
+
+- **The gun auto-aims at the selected target** (decided 2026-10-03): its levers move themselves to point at
+  it while it is inside the gun's ±45° field of fire; someone still presses fire.
+
+## Open
+
+- **Range and confidence later:** contacts growing less certain with distance, like the nav scanner's JPR
+  (`the-loop.md`, `principles.md` §6). Not for now: phase 1 reports true positions.
+
+## Built (2026-10-03, untested in-world)
+
+`Prefabs/Components/Radar`: S3 (4 m), 600 kg, its art fitted to the slot, screen centre 1.83 m above the slot's
+floor, with everything a component carries (from
+the battery: grid node, power, integrity, networking, carrying). One **In** port on the back face, bottom row, middle. In engineering it starts in `Slot S3` (x 25.75), fed by
+battery B.
+A 50 W load (`LoadBehaviourModule`, 50 J hold): unpowered, the screen is blank and the buttons do nothing.
+
+- **`Radar`** (`scripts/Ship/Sensors`): contacts are every `DetectableModule` within 1 km, in id order; plotted
+  top down on `Display` (the screen's front face), the back of the slot up the screen, 1 km to the screen's
+  top and bottom edges. Each is an arrowhead (`Meshes/RadarContact`) turned to its local x+. The cursor's
+  contact is amber; the selected one has a green square with lines to the screen's edges.
+- **Buttons:** Previous and Next (amber triangles) move the cursor, wrapping round; Select (green) selects the
+  cursor's contact. Each a `PushButton`.
+- **Zoom lever** (added 2026-10-03, after the first test found the targets cramped): a three-quarter-size rod lever under
+  the buttons, swinging left and right. Fully left shows the whole 1 km to the screen's top and bottom edges;
+  fully right shows 100 m (Zoomed In Range). Evenly by ratio between (a log scale), so every bit of travel zooms
+  by the same factor. Detection stays 1 km; contacts past the screen's edge are not drawn.
+- **Contacts' ids:** `DetectableModule.Id`, set by whatever places them (`TargetField` numbers its targets), so
+  the cursor and selection name the same contact on every client.
+- **Networking:** cursor, selection and zoom are the radar's state (`INetworkedState`, through
+  `ComponentNetwork`); a button pressed or the lever moved on a client that does not decide is sent to the one
+  that does, so everyone sees the same lever and screen.
+
+Not done: the Radar must be in `SceneNetworking`'s network prefabs to be spawned into a slot.
+

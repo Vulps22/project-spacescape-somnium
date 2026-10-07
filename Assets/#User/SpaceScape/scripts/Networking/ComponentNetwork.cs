@@ -12,8 +12,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
     /// Values travel as a float's bits in each int. Slot 0 is a counter the master bumps with every write,
     /// so a client can tell a fresh write from the zeros that are there before the first one arrives.
     ///
-    /// The reactor's dial is the one thing a non-master sets: a hand turns it here at once and the new
-    /// value is sent to the master, which applies it and writes it back out with everything else.
+    /// The reactor's dial and the disruptor's aim are what a non-master sets: a hand moves it here at once and
+    /// the new value is sent to the master, which applies it and writes it back out with everything else. The
+    /// disruptor's fire button on a non-master asks the master to fire; the master fires and tells everyone, so
+    /// every client shows the shot.
     [RequireComponent(typeof(GridNode))]
     public sealed class ComponentNetwork : MonoBehaviour
     {
@@ -21,6 +23,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         private enum ComponentMessageType : byte
         {
             DialTurned = 0,
+            AimMoved = 1,   // the disruptor's aim: two floats
+            Fire = 2,       // asked of the master
+            Fired = 3,      // from the master, to everyone
+            RadarButton = 4, // a radar button pressed elsewhere: -1 Previous, +1 Next, 0 Select
+            RadarZoom = 5,   // a radar's zoom lever moved elsewhere: one float
         }
 
         [Tooltip("Where the state is replicated. Any size with room for 3 + the modules' values; the log says if it is too small.")]
@@ -40,6 +47,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         private float _nextWrite;
         private float _nextDialSend;
         private float? _pendingDial;
+        private DisruptorBehaviourModule _disruptor;
+        private Vector2? _pendingAim;
+        private Radar _radar;
+        private float? _pendingZoom;
         private bool _usable;
 
         private void Awake()
@@ -66,19 +77,46 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
 
             _usable = true;
             _data.OnMessageToController += OnMessageToController;
+            _data.OnMessageToAll += OnMessageToAll;
             if (TryGetComponent(out _reactor)) _reactor.DialTurned += OnDialTurned;
+            if (TryGetComponent(out _disruptor))
+            {
+                _disruptor.AimMoved += OnAimMoved;
+                _disruptor.FireRequested += OnFireRequested;
+                _disruptor.Fired += OnFired;
+            }
+            if (TryGetComponent(out _radar))
+            {
+                _radar.ButtonRequested += OnRadarButton;
+                _radar.ZoomMoved += OnZoomMoved;
+            }
         }
 
         private void OnDestroy()
         {
             if (_data != null) _data.OnMessageToController -= OnMessageToController;
+            if (_data != null) _data.OnMessageToAll -= OnMessageToAll;
             if (_reactor != null) _reactor.DialTurned -= OnDialTurned;
+            if (_disruptor != null)
+            {
+                _disruptor.AimMoved -= OnAimMoved;
+                _disruptor.FireRequested -= OnFireRequested;
+                _disruptor.Fired -= OnFired;
+            }
+            if (_radar != null)
+            {
+                _radar.ButtonRequested -= OnRadarButton;
+                _radar.ZoomMoved -= OnZoomMoved;
+            }
         }
 
         private bool IsLive => _usable && _data.Object != null && _data.Object.IsValid && _tile.Node != null && _grid != null && _grid.Graph != null;
 
         private void Update()
         {
+            // A gun nobody can be told about (no network, or not in a grid) decides for itself.
+            if (_disruptor != null) _disruptor.Decides = !IsLive || _data.Object.HasStateAuthority;
+            if (_radar != null) _radar.Decides = !IsLive || _data.Object.HasStateAuthority;
             if (!IsLive) return;
 
             if (_data.Object.HasStateAuthority)
@@ -93,6 +131,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
 
             Read();
             SendPendingDial();
+            SendPendingAim();
+            SendPendingZoom();
         }
 
         private void Write()
@@ -148,6 +188,63 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             _data.RPC_SendMessageToController(MessageFrame.Pack((byte)ComponentMessageType.DialTurned, payload));
         }
 
+        private void OnAimMoved(Vector2 aim)
+        {
+            if (IsLive && !_data.Object.HasStateAuthority) _pendingAim = aim;
+        }
+
+        // Like the dial: a few times a second while a hand moves it, and the last value always goes.
+        private void SendPendingAim()
+        {
+            if (_pendingAim == null || Time.time < _nextDialSend) return;
+            _nextDialSend = Time.time + 1f / Mathf.Max(0.1f, _dialSendsPerSecond);
+
+            var aim = _pendingAim.Value;
+            _pendingAim = null;
+            byte[] payload = new byte[8];
+            Buffer.BlockCopy(BitConverter.GetBytes(aim.x), 0, payload, 0, 4);
+            Buffer.BlockCopy(BitConverter.GetBytes(aim.y), 0, payload, 4, 4);
+            _data.RPC_SendMessageToController(MessageFrame.Pack((byte)ComponentMessageType.AimMoved, payload));
+        }
+
+        private void OnFireRequested()
+        {
+            if (IsLive) _data.RPC_SendMessageToController(MessageFrame.Pack((byte)ComponentMessageType.Fire, null));
+        }
+
+        /// The master fired: everyone, the master included, shows the shot. With no network, only here.
+        private void OnFired()
+        {
+            if (IsLive) _data.RPC_SendMessageToAll(MessageFrame.Pack((byte)ComponentMessageType.Fired, null));
+            else _disruptor.ShowShot();
+        }
+
+        private void OnZoomMoved(float zoom)
+        {
+            if (IsLive && !_data.Object.HasStateAuthority) _pendingZoom = zoom;
+        }
+
+        // Like the dial: a few times a second while a hand moves it, and the last value always goes.
+        private void SendPendingZoom()
+        {
+            if (_pendingZoom == null || Time.time < _nextDialSend) return;
+            _nextDialSend = Time.time + 1f / Mathf.Max(0.1f, _dialSendsPerSecond);
+            byte[] payload = BitConverter.GetBytes(_pendingZoom.Value);
+            _pendingZoom = null;
+            _data.RPC_SendMessageToController(MessageFrame.Pack((byte)ComponentMessageType.RadarZoom, payload));
+        }
+
+        private void OnRadarButton(int button)
+        {
+            if (IsLive) _data.RPC_SendMessageToController(MessageFrame.Pack((byte)ComponentMessageType.RadarButton, BitConverter.GetBytes(button)));
+        }
+
+        private void OnMessageToAll(byte[] framed)
+        {
+            if (!MessageFrame.Unpack(framed, out byte id, out _)) return;
+            if ((ComponentMessageType)id == ComponentMessageType.Fired && _disruptor != null) _disruptor.ShowShot();
+        }
+
         private void OnMessageToController(byte[] framed)
         {
             if (!IsLive || !_data.Object.HasStateAuthority) return;
@@ -157,6 +254,19 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             {
                 case ComponentMessageType.DialTurned:
                     if (_reactor != null && data.Length >= 4) _reactor.TargetWithdrawal = BitConverter.ToSingle(data, 0);
+                    break;
+                case ComponentMessageType.AimMoved:
+                    if (_disruptor != null && data.Length >= 8)
+                        _disruptor.SetAim(new Vector2(BitConverter.ToSingle(data, 0), BitConverter.ToSingle(data, 4)));
+                    break;
+                case ComponentMessageType.Fire:
+                    if (_disruptor != null) _disruptor.Fire();
+                    break;
+                case ComponentMessageType.RadarZoom:
+                    if (_radar != null && data.Length >= 4) _radar.SetZoom(BitConverter.ToSingle(data, 0));
+                    break;
+                case ComponentMessageType.RadarButton:
+                    if (_radar != null && data.Length >= 4) _radar.Apply(BitConverter.ToInt32(data, 0));
                     break;
                 default:
                     Debug.LogWarning($"ComponentNetwork: '{name}' got unknown message {id}", this);
