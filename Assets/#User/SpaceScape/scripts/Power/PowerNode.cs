@@ -29,6 +29,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         /// stops doing anything with it, so it becomes a dead end that cooks its own compartment.
         public Integrity Integrity;
 
+        /// Set when the component here holds power. The grid closes out its rate at the end of every tick.
+        public Capacitor Hold;
+
         /// True once the component here is beyond saving. It stays wired in and keeps taking what it
         /// is given; it simply does nothing with it.
         public bool IsWrecked => Integrity != null && Integrity.IsDestroyed;

@@ -141,6 +141,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 _node.Source = null;
                 _node.Sink = InertSink.Instance;
                 _node.Integrity = null;
+                _node.Hold = null;
                 _node.On = true;
                 _node.Celsius = PowerGraph.AmbientCelsius;
                 return;
@@ -152,6 +153,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _node.Sink = behaviour != null && behaviour.Sink != null ? behaviour.Sink
                 : _node.Source == null ? InertSink.Instance : null;
             _node.Integrity = _component.TryGetComponent<IntegrityModule>(out var integrity) ? integrity.Integrity : null;
+            _node.Hold = _component.TryGetComponent<CapacitorModule>(out var hold) ? hold.Capacitor : null;
             _component.DrivesNode = true;
             _component.Bind(_node);
             _node.Celsius = _component.HeldCelsius;

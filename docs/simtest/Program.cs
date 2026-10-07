@@ -96,6 +96,7 @@ static class Program
         WornComponentsMisfire();
         RemovedNodeLeavesTheRestWorking();
         LooseReactorKeepsRunning();
+        CapacitorNetWatts();
 
         Console.WriteLine();
         Console.WriteLine($"=== {_pass} passed, {_fail} failed ===");
@@ -1660,5 +1661,31 @@ static class Program
         for (int t = 0; t < 1200; t++) g.Tick(0.05);
         Check("shut down, its rods drop", core.Withdrawal, 0);
         Check("and it stops producing", core.WattsProduced, 0);
+    }
+
+    // A hold's net watts is what it filled and drew over the last tick: positive while
+    // charging, negative while discharging, and a correction from the network does not count as power moving.
+    static void CapacitorNetWatts()
+    {
+        Console.WriteLine("a hold knows the watts it is gaining or losing");
+        var g = new PowerGraph();
+        var src = g.AddSource("source", 1000);
+        var hold = new Capacitor(1e6);
+        var battery = new BatteryBehaviour(hold, 100, 40);
+        var cell = g.AddSource("cell", battery, battery);
+        cell.Hold = hold;
+        g.Connect(src, cell);
+        for (int t = 0; t < 20; t++) g.Tick(0.05);
+        Check("charging at its charge rate", hold.NetWatts, 100, 1e-6);
+
+        hold.Correct(hold.Charge + 500);
+        g.Tick(0.05);
+        Check("a correction is not counted", hold.NetWatts, 100, 1e-6);
+
+        g.Disconnect(src.OutgoingEdges[0]);
+        var load = Sink(g, "load");
+        g.Connect(cell, load);
+        for (int t = 0; t < 20; t++) g.Tick(0.05);
+        Check("discharging into a load", hold.NetWatts, -40, 1e-6);
     }
 }

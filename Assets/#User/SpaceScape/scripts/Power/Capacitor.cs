@@ -9,6 +9,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         /// Joules it holds right now.
         public double Charge { get; private set; }
 
+        /// Watts it gained (positive) or lost (negative) over the last grid tick, from what was filled and
+        /// drawn. A correction from the network is not counted: it is the copy catching up, not power moving.
+        public double NetWatts { get; private set; }
+
+        private double _moved;   // joules filled minus joules drawn since the last tick ended
+
         public Capacitor(double capacityJoules, double startingJoules = 0.0)
         {
             Capacity = capacityJoules;
@@ -40,9 +46,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         {
             if (joules <= 0.0) return 0.0;
             Charge += joules;
-            if (Charge <= Capacity) return 0.0;
+            if (Charge <= Capacity) { _moved += joules; return 0.0; }
             double over = Charge - Capacity;
             Charge = Capacity;
+            _moved += joules - over;
             return over;
         }
 
@@ -53,11 +60,23 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
             double got = joules < Charge ? joules : Charge;
             Charge -= got;
             if (Charge < 0.0) Charge = 0.0;
+            _moved -= got;
             return got;
         }
 
         /// Spends everything at once.
-        public void Empty() => Charge = 0.0;
+        public void Empty()
+        {
+            _moved -= Charge;
+            Charge = 0.0;
+        }
+
+        /// Called by the grid once every tick has done its filling and drawing: turns what moved into watts.
+        public void EndTick(double seconds)
+        {
+            NetWatts = seconds > 0.0 ? _moved / seconds : 0.0;
+            _moved = 0.0;
+        }
 
         public override string ToString() => $"{Charge:0.##}/{Capacity:0.##} J ({Fraction:P0})";
     }

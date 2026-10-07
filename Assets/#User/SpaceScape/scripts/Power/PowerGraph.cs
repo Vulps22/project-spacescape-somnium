@@ -257,10 +257,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
                 if (!node.CanReceivePower())
                 {
                     if (node.Sink != null) node.Sink.Receive(0.0, seconds);
-                    continue;
                 }
-                if (node.Source != null) node.Source.ProvidePower(node, seconds);
-                if (node.Sink != null) node.Sink.Receive(node.Drawn, seconds);
+                else
+                {
+                    if (node.Source != null) node.Source.ProvidePower(node, seconds);
+                    if (node.Sink != null) node.Sink.Receive(node.Drawn, seconds);
+                }
+                if (node.Hold != null) node.Hold.EndTick(seconds);
             }
         }
 

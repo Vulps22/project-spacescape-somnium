@@ -122,6 +122,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     ? _graph.AddSource(placed.name, source, sink)
                     : _graph.AddNode(placed.name, sink);
                 if (placed.TryGetComponent<IntegrityModule>(out var integrity)) node.Integrity = integrity.Integrity;
+                if (placed.TryGetComponent<CapacitorModule>(out var hold)) node.Hold = hold.Capacitor;
                 placed.Bind(node);
                 _tileOf[node] = placed;
             }
@@ -162,6 +163,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             var sink = behaviour != null ? behaviour.Sink : null;
             var node = source != null ? _graph.AddSource(component.name, source, sink) : _graph.AddNode(component.name, sink);
             if (component.TryGetComponent<IntegrityModule>(out var integrity)) node.Integrity = integrity.Integrity;
+            if (component.TryGetComponent<CapacitorModule>(out var hold)) node.Hold = hold.Capacitor;
             node.Celsius = component.HeldCelsius;
             component.DrivesNode = true;
             component.Bind(node);
