@@ -21,6 +21,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     ///
     /// Its readout says Ready (charged), Charging (its hold is filling) or Not Charging.
     ///
+    /// Auto-aim (radar.md): on a data network with a powered radar, it turns at Auto Aim Speed toward the first
+    /// selected target inside its field of fire and reach, or back to straight ahead when there is none. A gun on
+    /// no radar's network is left alone. Nothing gates a hand on a lever against it: both move the aim, and the
+    /// lever fights the hand until someone breaks the data connection. It runs on every client from the same
+    /// shared state (the radar's selection and the targets); whoever decides writes the aim everyone keeps.
+    ///
     /// Networking (ComponentNetwork): the aim is this component's state, after the load's own, written by whoever decides (the
     /// component's state authority, or anyone with no network). A slider moved on another client moves here
     /// at once and is sent to the decider; the levers and barrel follow the aim everywhere else. Pressing fire
@@ -36,6 +42,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private Transform _muzzle;
         [Tooltip("Degrees the barrel can turn either side of straight out, on each axis.")]
         [SerializeField] private float _fieldOfFire = 45f;
+        [Tooltip("Degrees per second the auto-aim turns the barrel, on each axis, toward a radar's selected target or back to centre.")]
+        [SerializeField] private float _autoAimSpeed = 20f;
 
         [Header("Controls")]
         [Tooltip("The fire button: a PushButton, pressed by pushing a hand into it or grabbing it. The two aiming levers are RodLevers that find this themselves.")]
@@ -229,7 +237,47 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             return true;
         }
 
-        private void Update() => ShowReady();
+        private void Update()
+        {
+            ShowReady();
+            AutoAim();
+        }
+
+        /// Turns toward the first selected target in reach on its data network, or back to centre when a radar is
+        /// there but nothing is in reach. Does nothing with no radar on its network.
+        private void AutoAim()
+        {
+            var grid = PowerGrid.Current;
+            if (grid == null || Tile.Node == null) return;
+            var radars = grid.Data.Read<RadarData>(Tile);
+            if (radars.Count == 0) return;
+
+            var wanted = new Vector2(0.5f, 0.5f);
+            foreach (var radar in radars)
+                if (radar.Selected is Contact target && AimAt(target.Position, out var aim)) { wanted = aim; break; }
+
+            float step = _autoAimSpeed / Mathf.Max(0.01f, 2f * _fieldOfFire) * Time.deltaTime;
+            var turned = new Vector2(Mathf.MoveTowards(_aim.x, wanted.x, step), Mathf.MoveTowards(_aim.y, wanted.y, step));
+            if (turned == _aim) return;
+            _aim = turned;
+            Point();
+        }
+
+        /// The aim that points the barrel at a place, when it is inside the field of fire and the beam's reach.
+        private bool AimAt(Vector3 place, out Vector2 aim)
+        {
+            aim = default;
+            if (_traverse == null || _elevation == null) return false;
+            var body = _traverse.parent != null ? _traverse.parent : transform;
+            Vector3 toward = place - _elevation.position;
+            if (toward.sqrMagnitude > _beamLength * _beamLength) return false;
+            Vector3 local = body.InverseTransformDirection(toward);
+            float yaw = Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg;
+            float pitch = Mathf.Atan2(local.y, new Vector2(local.x, local.z).magnitude) * Mathf.Rad2Deg;
+            if (Mathf.Abs(yaw) > _fieldOfFire || Mathf.Abs(pitch) > _fieldOfFire) return false;
+            aim = new Vector2(Mathf.InverseLerp(-_fieldOfFire, _fieldOfFire, yaw), Mathf.InverseLerp(-_fieldOfFire, _fieldOfFire, pitch));
+            return true;
+        }
 
         // Its two dials, for the levers: 0 the traverse, 1 the elevation.
         public float GetDial(int axis) => axis == 0 ? _aim.x : _aim.y;

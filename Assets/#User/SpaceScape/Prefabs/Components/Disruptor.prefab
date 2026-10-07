@@ -90,7 +90,7 @@ MonoBehaviour:
   _packedYPlus: 
   _packedYMinus: 
   _packedZPlus: 
-  _packedZMinus: 03000100
+  _packedZMinus: 0300010004000300
   _portPrefab: {fileID: 1330740377116229456, guid: b89cfadafc5969556899f78cbe0b4c20,
     type: 3}
 --- !u!114 &4449412485874695310
@@ -435,6 +435,7 @@ MonoBehaviour:
   _elevation: {fileID: 1659198769236595283}
   _muzzle: {fileID: 3307185913891864350}
   _fieldOfFire: 45
+  _autoAimSpeed: 20
   _fire: {fileID: 548249690716594664}
   _readyLamp: {fileID: 7073623893825284720}
   _readyMaterial: {fileID: 2100000, guid: 9d05b260cff4d3afda902acfaba3c9d4, type: 2}
@@ -618,9 +619,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.RodLever
   _target: {fileID: 6184862587839573889}
-  _axis: 0
+  _axis: 1
   _handle: {fileID: 690173796336895690}
-  _pivot: {fileID: 0}
+  _pivot: {fileID: 3932508390689414145}
   _insertedAngle: -40
   _withdrawnAngle: 40
   _smoothTime: 0.35
@@ -1073,7 +1074,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.RodLever
   _target: {fileID: 6184862587839573889}
-  _axis: 1
+  _axis: 0
   _handle: {fileID: 3854284066260982491}
   _pivot: {fileID: 3347340197400680287}
   _insertedAngle: -40
