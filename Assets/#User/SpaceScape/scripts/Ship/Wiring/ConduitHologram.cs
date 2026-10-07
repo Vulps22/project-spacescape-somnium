@@ -107,8 +107,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// True while it is open or opening, rather than closing or closed.
         public bool IsOpen => _opening && Tile != null;
 
-        /// The hand holding the conduit open, by its index in PlayerHands. Its grabs are ignored.
+        /// The hand holding the conduit open, by its index in PlayerHands. It can grab handles too: one hand can
+        /// open a conduit and configure it.
         public int Holder { get; set; } = -1;
+
+        /// True while a hand is dragging a handle or an arrow, which keeps the conduit open wherever the hand goes.
+        public bool Dragging => _drag != Drag.None;
 
         /// The addon slot, where an addon item is shown and let go of to install it.
         public Transform AddonSlot => _slotItems[0] != null ? _slotItems[0] : _slots;
@@ -434,11 +438,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             else if (_drag == Drag.Arrow) DragArrow();
         }
 
-        /// Starts a drag, unless the hand is the one holding the conduit open or something is already being dragged.
+        /// Starts a drag, unless something is already being dragged. Either hand can, the one holding it open
+        /// included.
         private void Begin(Drag kind, int index, IXRSelectInteractor interactor)
         {
             if (!IsOpen || _drag != Drag.None || index >= _segmentCount) return;
-            if (HandOf(interactor) == Holder) return;
             if (kind == Drag.Arrow && _faceOf[index] == GridDirection.None) return;
 
             _drag = kind;
@@ -628,22 +632,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             if (_drag == Drag.Addon) return _addonHandle.TipGrab;
             return _drag == Drag.Tip ? _segments[_dragged].TipGrab : _segments[_dragged].ArrowGrab;
-        }
-
-        /// Which of PlayerHands' hands an interactor belongs to: the one nearest its grip.
-        private int HandOf(IXRSelectInteractor interactor)
-        {
-            var point = (interactor as Component)?.transform.position;
-            if (point == null) return -1;
-            int count = PlayerHands.Positions(_hands);
-            int best = -1;
-            float bestDistance = float.MaxValue;
-            for (int i = 0; i < count; i++)
-            {
-                float d = (_hands[i] - point.Value).sqrMagnitude;
-                if (d < bestDistance) { bestDistance = d; best = i; }
-            }
-            return best;
         }
 
         /// Grows the centre cube, jittering and flickering until it has resolved, and swells it while a held

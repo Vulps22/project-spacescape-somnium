@@ -5,8 +5,10 @@ using UnityEngine;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
-    /// Opens a conduit while a hand is inside its cell. The first hand in holds it open; the hologram
-    /// closes when that hand leaves. The other hand is the one that configures it.
+    /// Opens a conduit while a hand is inside its cell. The first hand in holds it open, and closes it by
+    /// leaving; one hand can do everything, grabbing the handles as well, and a handle being dragged keeps it
+    /// open wherever the hand goes. Changing anything always takes a deliberate grab, so brushing past a cable
+    /// only opens it.
     ///
     /// A conduit another player has open is boxed in the handles' material and cannot be opened here.
     /// Who has what open arrives from the network; this only draws it and keeps hands out.
@@ -238,6 +240,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             int count = PlayerHands.Positions(_hands);
             UpdateLocks(count);
 
+            if (_hologram.IsOpen && _hologram.Dragging && !IsOpenElsewhere(_hologram.Tile)) return;
             if (_holder >= 0 && _holder < count && _hologram.IsOpen && ConduitAt(_hands[_holder]) == _hologram.Tile
                 && !IsOpenElsewhere(_hologram.Tile)) return;
 
