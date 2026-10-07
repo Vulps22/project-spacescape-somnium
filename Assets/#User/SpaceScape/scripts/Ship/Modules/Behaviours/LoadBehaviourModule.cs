@@ -36,9 +36,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// How full it is, for anything that shows readiness or brightness.
         public double ChargeFraction => Load.ChargeFraction;
 
-        public int StateCount => 1;
-        public void WriteState(float[] to, int at) => to[at] = Load.Working ? 1f : 0f;
-        public void ReadState(float[] from, int at) => Load.CorrectWorking(from[at] > 0.5f);
+        public virtual int StateCount => 1;
+        public virtual void WriteState(float[] to, int at) => to[at] = Load.Working ? 1f : 0f;
+        public virtual void ReadState(float[] from, int at) => Load.CorrectWorking(from[at] > 0.5f);
 
         private double Drain => _drainWatts < 0.0 ? _ratedWatts : _drainWatts;
 
