@@ -5,8 +5,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// Something installed on a conduit as a child of it, adding to the cable without replacing it. The
     /// conduit asks it questions and does the writing; an addon overrides only what it changes.
-    public abstract class ConduitAddon : MonoBehaviour
+    public abstract class ConduitAddon : MonoBehaviour, IDataSource
     {
+        /// What this addon shares on the data network: nothing, until an addon says otherwise (data.md).
+        public virtual DataObject GetData() => null;
+
         [Tooltip("The item a hand takes out of the hologram's addon slot when this is removed, and puts back in to install it.")]
         [SerializeField] private AddonItem _item;
         [Tooltip("Ticked: the hologram shows a handle that turns this to face any free side of the conduit, twists it about that direction, or parks it in the middle, where it is off and the conduit is plain cable. Unlike a junction's extra segments, the handle carries no power.")]

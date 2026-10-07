@@ -61,7 +61,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 case GridDirection.ZMinus: was = _zMinus; _zMinus = flow; break;
                 default: return;
             }
-            if (was != flow) Changed?.Invoke();
+            if (was == flow) return;
+            DataGrid.Invalidate();
+            Changed?.Invoke();
         }
 
         /// Every face power leaves by, anywhere along it.
@@ -78,6 +80,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         /// Whether power may enter by one cell of a face. Here, any cell of an In face.
         public virtual bool AcceptsAt(GridDirection face, Vector3Int cell) => GetFace(face) == FlowDirection.In;
+
+        /// Whether one cell of a face is a data port, where a conduit joins the data network. Only components
+        /// have them.
+        public virtual bool DataAt(GridDirection face, Vector3Int cell) => false;
 
         /// Every face set to one direction.
         private IEnumerable<GridDirection> FacesSetTo(FlowDirection flow)

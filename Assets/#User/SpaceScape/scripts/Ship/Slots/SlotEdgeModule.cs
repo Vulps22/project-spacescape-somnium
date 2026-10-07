@@ -30,5 +30,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         public override bool AcceptsAt(GridDirection face, UnityEngine.Vector3Int cell) =>
             Inner != null && Inner.AcceptsAt(face, cell);
+
+        public override bool DataAt(GridDirection face, UnityEngine.Vector3Int cell) =>
+            Inner != null && Inner.DataAt(face, cell);
     }
 }

@@ -6,8 +6,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// Where a component takes power in and sends it out: ports, each on one cell of one face, In or Out,
     /// at most one per cell face. Power crosses nowhere else, so a conduit touching the component anywhere
-    /// but a port does not join it. Each port shows as a Port prefab on its cell face, its ring blue for In
-    /// and green for Out.
+    /// but a port does not join it. Each port shows as a Port prefab on its cell face, its ring blue for In,
+    /// green for Out and red for Data. A Data port carries no power: a conduit with a segment on it joins the
+    /// component to the data network, whichever way the segment's arrow points (data.md).
     ///
     /// Ports are the component's own: faces and cells turn with it, in quarter turns, so a port stays on
     /// the same spot of the model however the component is placed. A port's cell is counted from the face's
@@ -22,7 +23,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             [Tooltip("The cell on the face, counted from its bottom left looking at it from outside: x right, y up. On the top and bottom faces, up is toward the component's front.")]
             public Vector2Int Cell;
-            [Tooltip("In takes power from a neighbour's Out; Out sends to a neighbour's In.")]
+            [Tooltip("In takes power from a neighbour's Out; Out sends to a neighbour's In; Data joins a conduit's segment to the data network, and carries no power.")]
             public FlowDirection Flow;
         }
 
@@ -230,6 +231,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         public override bool AcceptsAt(GridDirection face, Vector3Int cell) => FlowAt(face, cell) == FlowDirection.In;
 
+        public override bool DataAt(GridDirection face, Vector3Int cell) => FlowAt(face, cell) == FlowDirection.Data;
+
         private IEnumerable<GridDirection> FacesWith(FlowDirection flow)
         {
             foreach (var local in AllFaces)
@@ -313,8 +316,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 foreach (var port in PortsOn(local))
                 {
                     if (port.Flow == FlowDirection.None) continue;
-                    Gizmos.color = !OnFace(local, port.Cell) ? Color.red
-                        : port.Flow == FlowDirection.In ? new Color(0.3f, 0.55f, 1f) : new Color(0.3f, 0.9f, 0.4f);
+                    // Blue In, green Out, red Data, as the port rings are; magenta for a port off its face.
+                    Gizmos.color = !OnFace(local, port.Cell) ? Color.magenta
+                        : port.Flow == FlowDirection.In ? new Color(0.3f, 0.55f, 1f)
+                        : port.Flow == FlowDirection.Data ? new Color(0.9f, 0.1f, 0.08f)
+                        : new Color(0.3f, 0.9f, 0.4f);
                     Vector3 at = PointOf(local, port.Cell);
                     Gizmos.DrawSphere(at, GridCell.Size * 0.06f);
                     Gizmos.DrawLine(at, at + outward * (GridCell.Size * 0.2f));

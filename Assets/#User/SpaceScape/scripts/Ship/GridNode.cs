@@ -283,10 +283,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             Node = node;
             if (DrivesNode) node.On = _on;
+            DataGrid.Invalidate();   // a component going into a slot brings its data ports
         }
 
         /// Lets go of the node, for a component leaving its slot.
-        public void Unbind() => Node = null;
+        public void Unbind()
+        {
+            Node = null;
+            DataGrid.Invalidate();
+        }
 
         // Only a tile with a readout listens to the grid. Nothing here runs per frame: the On checkbox
         // reaches the node through OnValidate, which Unity calls when it is clicked.

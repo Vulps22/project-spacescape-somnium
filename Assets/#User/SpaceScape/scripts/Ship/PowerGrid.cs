@@ -24,6 +24,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// The grid itself, for anything that needs to read the whole picture.
         public PowerGraph Graph => _graph;
 
+        /// Which tiles share a data network, and what is published on each (data.md).
+        public DataGrid Data => _data ??= new DataGrid(_byCell, _tileOf);
+
+        private DataGrid _data;
+
         /// The grid in the world, or null before it wakes.
         public static PowerGrid Current { get; private set; }
 

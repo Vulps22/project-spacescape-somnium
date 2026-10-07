@@ -566,3 +566,4 @@ MonoBehaviour:
   _ring: {fileID: 8301312213177915014}
   _inMaterial: {fileID: 2100000, guid: c63079116dddba2e6871ce5b4300a497, type: 2}
   _outMaterial: {fileID: 2100000, guid: 7bdc0f66236a0b061a1243ace8564390, type: 2}
+  _dataMaterial: {fileID: 2100000, guid: d8278b399ac39a051b4aa6162191c542, type: 2}

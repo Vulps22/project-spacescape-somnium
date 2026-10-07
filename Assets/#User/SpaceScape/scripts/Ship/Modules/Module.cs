@@ -4,8 +4,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// A script added to a tile to give it a feature or a behaviour. Knows only the tile it sits on.
     [RequireComponent(typeof(GridNode))]
-    public abstract class Module : MonoBehaviour
+    public abstract class Module : MonoBehaviour, IDataSource
     {
+        /// What this module shares on the data network: nothing, until a module says otherwise (data.md).
+        public virtual DataObject GetData() => null;
+
         private GridNode _tile;
 
         /// The tile this module is on.
