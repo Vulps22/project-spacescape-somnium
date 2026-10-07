@@ -8,7 +8,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// A reactor. Its hold keeps the rod magnets gripping; the core tops it up before anything reaches
     /// the output, and the input fills it only when the core cannot, so cutting both drops the rods.
     [RequireComponent(typeof(CapacitorModule))]
-    public sealed class ReactorBehaviourModule : BehaviourModule, INetworkedState
+    public sealed class ReactorBehaviourModule : BehaviourModule, INetworkedState, ILeverDial
     {
         [Header("Core")]
         [Tooltip("Watts one core makes with the rods fully out.")]
@@ -107,6 +107,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             DialTurned?.Invoke(_targetWithdrawal);
         }
 
+        // Its one dial, for the rod lever.
+        float ILeverDial.GetDial(int axis) => TargetWithdrawal;
+        void ILeverDial.SetDialHeld(int axis, bool held) => DialHeld = held;
+        void ILeverDial.TurnDial(int axis, float value) => TurnDial(value);
+
         /// How far in the rods actually are, from fully out (0) to fully in (1).
         public double RodInsertion => 1.0 - Reactor.Core.Withdrawal;
 
@@ -169,15 +174,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _readoutShown.Listen();
         }
 
+        private void OnDestroy() => _readoutShown?.Stop();
+
+        private string ReadoutText()
+        {
             var r = Reactor;
             double celsius = Tile.Node != null ? Tile.Node.Celsius : 0.0;
 
             return
                 $"{r.Core.WattsProduced:0} W\n" +
-        private void OnDestroy() => _readoutShown?.Stop();
-
-        private string ReadoutText()
-        {
                 $"rods {r.Core.Withdrawal:P0} of {_targetWithdrawal:P0}{(r.RodsHeld ? "" : "  NO GRIP")}\n" +
                 $"{celsius:0} / {r.Core.BaselineCelsius:0} C\n" +
                 $"fuel {r.Core.FuelSeconds:0} s\n" +

@@ -1,26 +1,31 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
-    /// A heavy lever that sets a reactor's dial. Grabbed, it drags after the hand through a damped
-    /// spring and buzzes the hand while it moves; let go, it settles wherever the dial is.
+    /// A heavy lever that sets a dial: a reactor's rods, or one of a disruptor's two aiming axes (ILeverDial).
+    /// Grabbed, it drags after the hand through a damped spring and buzzes the hand while it moves; let go, it
+    /// settles wherever the dial is.
     [SelectionBase]
     public sealed class RodLever : MonoBehaviour
     {
-        [Tooltip("The reactor whose dial this lever sets. Found automatically in a parent.")]
-        [SerializeField] private ReactorBehaviourModule _reactor;
+        [Tooltip("What this lever sets: anything with a dial (ILeverDial), like a reactor or a disruptor. Found automatically in a parent.")]
+        [FormerlySerializedAs("_reactor")]
+        [SerializeField] private MonoBehaviour _target;
+        [Tooltip("Which of the target's dials: 0 for a reactor's rods; 0 for a disruptor's traverse (left and right), 1 for its elevation (up and down).")]
+        [SerializeField] private int _axis;
         [Tooltip("The part a hand grabs. Found automatically in a child.")]
         [SerializeField] private XRBaseInteractable _handle;
         [Tooltip("The part that rotates.")]
         [SerializeField] private Transform _pivot;
 
         [Header("Travel")]
-        [Tooltip("Lever angle, in degrees, for rods fully in: no power.")]
+        [Tooltip("Lever angle, in degrees, for the dial at 0 (rods fully in; aimed fully left or down).")]
         [SerializeField] private float _insertedAngle = -40f;
-        [Tooltip("Lever angle, in degrees, for rods fully out: full power.")]
+        [Tooltip("Lever angle, in degrees, for the dial at 1 (rods fully out; aimed fully right or up).")]
         [SerializeField] private float _withdrawnAngle = 40f;
 
         [Header("Weight")]
@@ -40,6 +45,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private float _stillBelowDegreesPerSecond = 1f;
 
         private IXRSelectInteractor _grabber;
+        private ILeverDial _dial;
+
+        private ILeverDial Dial => _dial ??= _target as ILeverDial;
         private float _angle;
         private float _velocity;
         private float _nextPulse;
@@ -68,14 +76,14 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private void OnGrabbed(SelectEnterEventArgs args)
         {
             _grabber = args.interactorObject;
-            if (_reactor != null) _reactor.DialHeld = true;
+            Dial?.SetDialHeld(_axis, true);
         }
 
         private void OnReleased(SelectExitEventArgs args)
         {
             if (args.interactorObject != _grabber) return;
             _grabber = null;
-            if (_reactor != null) _reactor.DialHeld = false;
+            Dial?.SetDialHeld(_axis, false);
         }
 
         private void Update()
@@ -85,7 +93,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             Apply();
 
             if (_grabber == null) return;
-            if (_reactor != null) _reactor.TurnDial(Mathf.InverseLerp(_insertedAngle, _withdrawnAngle, _angle));
+            Dial?.TurnDial(_axis, Mathf.InverseLerp(_insertedAngle, _withdrawnAngle, _angle));
             Buzz();
         }
 
@@ -99,9 +107,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             return Mathf.Clamp(angle, Mathf.Min(_insertedAngle, _withdrawnAngle), Mathf.Max(_insertedAngle, _withdrawnAngle));
         }
 
-        /// The angle that matches the reactor's dial as it stands.
+        /// The angle that matches the dial as it stands.
         private float DialAngle() =>
-            _reactor != null ? Mathf.Lerp(_insertedAngle, _withdrawnAngle, _reactor.TargetWithdrawal) : _insertedAngle;
+            Dial != null ? Mathf.Lerp(_insertedAngle, _withdrawnAngle, Dial.GetDial(_axis)) : _insertedAngle;
 
         /// Pulses the grabbing hand, harder the faster the lever is moving, and not at all while it is still.
         private void Buzz()
@@ -120,7 +128,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private void OnValidate()
         {
-            if (_reactor == null) _reactor = GetComponentInParent<ReactorBehaviourModule>();
+            if (!(_target is ILeverDial))
+            {
+                _target = null;
+                foreach (var candidate in GetComponentsInParent<MonoBehaviour>(true))
+                    if (candidate is ILeverDial) { _target = candidate; break; }
+            }
+            _dial = null;
             if (_handle == null) _handle = GetComponentInChildren<XRBaseInteractable>();
         }
     }
