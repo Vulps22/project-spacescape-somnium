@@ -15,6 +15,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// the faces or the addon change; the colour is looked at when the grid ticks, and a stub's material is
     /// swapped only when its colour band changes. Each band is one material shared by every conduit, so
     /// URP batches them.
+    ///
+    /// On a data connection between two or more components (DataGrid.Links), a conduit carrying no power glows
+    /// Data blue, and one carrying power keeps its colour with thin Data blue lines along each segment. Worked
+    /// out on every client from the same data network: nothing is sent.
     [RequireComponent(typeof(GridNode))]
     public sealed class Conduit : MonoBehaviour
     {
@@ -38,6 +42,20 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private Color _open = new Color(0.35f, 0.08f, 0.08f);
         [Tooltip("Colour while this tile is dumping power as heat.")]
         [SerializeField] private Color _wasting = new Color(1f, 0.25f, 0.1f);
+        [Tooltip("Colour of a data connection: the whole conduit while it carries data and no power, its lines while it carries both.")]
+        [SerializeField] private Color _data = new Color(0.15f, 0.45f, 1f);
+        [Tooltip("Thickness of the data lines along a segment carrying power, in metres.")]
+        [SerializeField] private float _dataLineWidth = 0.006f;
+
+        [Header("Data pulse (debugging)")]
+        [Tooltip("Ticked: a conduit whose data network reaches a component's data port, with nothing yet on the other end, pulses Data blue, so where data would go can be seen.")]
+        [SerializeField] private bool _pulseWhereDataReaches = true;
+        [Tooltip("Seconds a pulse takes from the conduit's own colour to Data blue.")]
+        [SerializeField] private float _pulseUpSeconds = 2.5f;
+        [Tooltip("Seconds it takes back again.")]
+        [SerializeField] private float _pulseDownSeconds = 2.5f;
+        [Tooltip("Seconds at its own colour before the next pulse.")]
+        [SerializeField] private float _pulseRestSeconds = 3f;
 
         [Header("Naming")]
         [Tooltip("Renames the object after its grid position, so log lines say where to look.")]
@@ -54,10 +72,25 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private const int OpenBand = -1;
         private const int WastingBand = -2;
+        private const int DataBand = -3;
+        private const int LinesPerStub = 4;   // round each segment, so one shows from any side
+
+        private bool _carriesData;
+        private bool _pulsing;
+        private bool _pulsingShown;
+        private bool _linesShown;
+        private Transform[] _lines = new Transform[0];
 
         // Every band's material, made once from a stub's own material and shared by every conduit using it.
         private static readonly System.Collections.Generic.Dictionary<(Material, int), Material> Shared =
             new System.Collections.Generic.Dictionary<(Material, int), Material>();
+
+        // Each band's pulsing twin, and its own colour, animated together once a frame so every pulse is in step.
+        private static readonly System.Collections.Generic.Dictionary<(Material, int), Material> Pulsing =
+            new System.Collections.Generic.Dictionary<(Material, int), Material>();
+        private static readonly System.Collections.Generic.List<(Material material, Color own)> PulseColours =
+            new System.Collections.Generic.List<(Material, Color)>();
+        private static int _pulsedFrame = -1;
 
         /// The tile this cable occupies.
         public GridNode Tile => _tile != null ? _tile : _tile = GetComponent<GridNode>();
@@ -97,12 +130,17 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             Fit();
             _band = int.MinValue;
             Recolour();
+            if (_linesShown) PlaceDataLines();
         }
 
         private void OnTicked()
         {
             if (!HasStubShowing()) return;   // parked: nothing to colour
+            _carriesData = _grid != null && _grid.Data.Links(Tile);
+            _pulsing = _pulseWhereDataReaches && !_carriesData && _grid != null && _grid.Data.Reaches(Tile);
             Recolour();
+            if (_pulsing) AnimatePulses();
+            ShowDataLines(_carriesData && _band != DataBand);
         }
 
         private bool HasStubShowing()
@@ -190,6 +228,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (IsOpen) return OpenBand;
             if (node == null) return 0;
             if (node.Dumped > 0.01) return WastingBand;
+            if (_carriesData && node.Inflow < 0.01) return DataBand;
             float load = _referenceWatts > 0.0 ? Mathf.Clamp01((float)(node.Inflow / _referenceWatts)) : 0f;
             return Mathf.RoundToInt(load * (_bands - 1));
         }
@@ -199,10 +238,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             if (_source == null) return;
             int band = CurrentBand();
-            if (band == _band) return;
+            bool pulsing = _pulsing && band != OpenBand && band != WastingBand;
+            if (band == _band && pulsing == _pulsingShown) return;
             _band = band;
+            _pulsingShown = pulsing;
 
-            var material = MaterialFor(band);
+            var material = pulsing ? PulsingFor(band) : MaterialFor(band);
             foreach (var stub in _stubs)
                 if (stub != null && stub.TryGetComponent<Renderer>(out var r) && r.sharedMaterial != material)
                     r.sharedMaterial = material;
@@ -213,12 +254,104 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (Shared.TryGetValue((_source, band), out var made) && made != null) return made;
             Color colour = band == OpenBand ? _open
                 : band == WastingBand ? _wasting
+                : band == DataBand ? _data
                 : Color.Lerp(_idle, _loaded, band / (float)(_bands - 1));
             made = new Material(_source) { name = $"{_source.name} ({band})" };
             made.SetColor("_BaseColor", colour);
             made.SetColor("_EmissionColor", colour);
             Shared[(_source, band)] = made;
             return made;
+        }
+
+        /// A band's pulsing twin: its own colour to Data blue and back, animated by AnimatePulses.
+        private Material PulsingFor(int band)
+        {
+            if (Pulsing.TryGetValue((_source, band), out var made) && made != null) return made;
+            var own = MaterialFor(band);
+            made = new Material(own) { name = $"{own.name} (data pulse)" };
+            Pulsing[(_source, band)] = made;
+            PulseColours.Add((made, own.GetColor("_BaseColor")));
+            return made;
+        }
+
+        /// Sets every pulsing material's colour for this moment, once a frame however many conduits pulse:
+        /// up to Data blue over Pulse Up Seconds, back over Pulse Down Seconds, then a rest.
+        private void AnimatePulses()
+        {
+            if (_pulsedFrame == Time.frameCount) return;
+            _pulsedFrame = Time.frameCount;
+            float up = Mathf.Max(0.01f, _pulseUpSeconds), down = Mathf.Max(0.01f, _pulseDownSeconds);
+            float t = Time.time % (up + down + Mathf.Max(0f, _pulseRestSeconds));
+            float k = t < up ? t / up : t < up + down ? 1f - (t - up) / down : 0f;
+            k = Mathf.SmoothStep(0f, 1f, k);
+            foreach (var (material, own) in PulseColours)
+            {
+                if (material == null) continue;
+                var colour = Color.Lerp(own, _data, k);
+                material.SetColor("_BaseColor", colour);
+                material.SetColor("_EmissionColor", colour);
+            }
+        }
+
+        /// Shows or hides the thin data lines along each segment, when that changes.
+        private void ShowDataLines(bool show)
+        {
+            if (show == _linesShown) return;
+            _linesShown = show;
+            if (show) PlaceDataLines();
+            else foreach (var line in _lines) if (line != null) line.gameObject.SetActive(false);
+        }
+
+        /// Lays four thin lines along every showing segment, just off its surface, made the first time they are
+        /// needed. They hang from the conduit, not the stub, so the stub's stretched scale does not bend them.
+        private void PlaceDataLines()
+        {
+            if (_source == null) return;
+            int wanted = _stubs.Length * LinesPerStub;
+            if (_lines.Length < wanted)
+            {
+                int had = _lines.Length;
+                System.Array.Resize(ref _lines, wanted);
+                for (int i = had; i < wanted; i++) _lines[i] = MakeDataLine(i);
+            }
+
+            var material = MaterialFor(DataBand);
+            for (int s = 0; s < _stubs.Length; s++)
+            {
+                var stub = _stubs[s];
+                bool showing = stub != null && stub.gameObject.activeSelf;
+                Vector3 along = showing ? stub.up : Vector3.up;
+                Vector3 side = Mathf.Abs(along.y) > 0.5f ? Vector3.forward : Vector3.up;
+                float radius = showing ? Mathf.Max(stub.lossyScale.x, stub.lossyScale.z) * 0.5f : 0f;
+                float length = showing ? stub.lossyScale.y * _bodyLengthAtScaleOne : 0f;
+                for (int k = 0; k < LinesPerStub; k++)
+                {
+                    var line = _lines[s * LinesPerStub + k];
+                    if (line == null) continue;
+                    line.gameObject.SetActive(showing);
+                    if (!showing) continue;
+                    Vector3 off = Quaternion.AngleAxis(k * 360f / LinesPerStub, along) * side;
+                    line.SetPositionAndRotation(stub.position + off * (radius + _dataLineWidth * 0.5f),
+                        Quaternion.LookRotation(off, along));
+                    line.localScale = new Vector3(_dataLineWidth, length, _dataLineWidth);
+                    if (line.TryGetComponent<Renderer>(out var r) && r.sharedMaterial != material) r.sharedMaterial = material;
+                }
+            }
+        }
+
+        private Transform MakeDataLine(int index)
+        {
+            var line = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            DestroyImmediate(line.GetComponent<Collider>());
+            line.name = $"Data Line {index}";
+            line.transform.SetParent(transform, false);
+            if (line.TryGetComponent<Renderer>(out var r))
+            {
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                r.receiveShadows = false;
+            }
+            line.SetActive(false);
+            return line.transform;
         }
 
         private void OnValidate()
