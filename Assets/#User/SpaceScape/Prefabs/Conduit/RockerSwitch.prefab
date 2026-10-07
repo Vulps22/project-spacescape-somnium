@@ -590,6 +590,9 @@ MonoBehaviour:
   _snapAt: 0.5
   _returnDegreesPerSecond: 120
   _squareness: 0.05
+  _toggleClip: {fileID: 8300000, guid: 97800a14462e8c54d9b03355ca9b28b4, type: 3}
+  _toggleVolume: 1
+  _toggleMaxDistance: 10
 --- !u!114 &6792261558567237011
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -606,6 +609,7 @@ MonoBehaviour:
   _repositionable: 1
   _outward: 1
   _housing: {fileID: 4837480128128803731}
+  _standOff: 0.03
   _requireHologramUnlock: 1
   _unlockTransform: {fileID: 6087575191716990372}
   _closed: 0

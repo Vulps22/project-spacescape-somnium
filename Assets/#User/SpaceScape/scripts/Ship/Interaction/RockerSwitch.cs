@@ -34,7 +34,19 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Tooltip("How square a push must be to count, 0 to 1: 1 is only straight into the face, 0 counts anything with any push inward at all. Kept low so a push at any natural angle works.")]
         [SerializeField, Range(0f, 1f)] private float _squareness = 0.05f;
 
+        [Header("Sound")]
+        [Tooltip("Played whenever it flips over, by a hand here or because the switch changed for everyone. Optional.")]
+        [SerializeField] private AudioClip _toggleClip;
+        [Tooltip("Volume of the flip, 0 to 1.")]
+        [SerializeField, Range(0f, 1f)] private float _toggleVolume = 1f;
+        [Tooltip("Distance, in metres, beyond which the flip cannot be heard.")]
+        [SerializeField] private float _toggleMaxDistance = 10f;
+
         private readonly Collider[] _overlaps = new Collider[MaxOverlaps];
+        private AudioSource _audio;
+
+        // A late joiner's switches take up how they stand over the first moments; that is not a flip to hear.
+        private const float QuietAfterLoadSeconds = 5f;
         private bool _topIn;
         private float _angle;
 
@@ -53,6 +65,20 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (_switch != null) _topIn = _switch.Closed == _topInMeansClosed;
             _angle = RestAngle;
             Apply();
+            if (_toggleClip != null)
+            {
+                _audio = gameObject.AddComponent<AudioSource>();
+                _audio.playOnAwake = false;
+                _audio.spatialBlend = 1f;
+                _audio.rolloffMode = AudioRolloffMode.Linear;
+                _audio.minDistance = 0.5f;
+                _audio.maxDistance = _toggleMaxDistance;
+            }
+        }
+
+        private void Click()
+        {
+            if (_audio != null) _audio.PlayOneShot(_toggleClip, _toggleVolume);
         }
 
         private void FixedUpdate()
@@ -112,6 +138,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _topIn = !_topIn;
             _angle = RestAngle;
             Apply();
+            Click();
             if (_switch != null) _switch.Press(_topIn == _topInMeansClosed);
         }
 
@@ -123,6 +150,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (wantTopIn == _topIn) return;
             _topIn = wantTopIn;
             _angle = RestAngle;
+            // A flip from elsewhere clicks too, once the world has settled.
+            if (Time.timeSinceLevelLoad > QuietAfterLoadSeconds) Click();
         }
 
         private void Apply()
