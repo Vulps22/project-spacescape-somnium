@@ -1,5 +1,4 @@
 using SomniumSpace.Worlds.SpaceScape.Power;
-using TMPro;
 using UnityEngine;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
@@ -46,19 +45,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Tooltip("Text before the coordinates in the automatic name.")]
         [SerializeField] private string _namePrefix = "Conduit";
 
-        [Header("Readout")]
-        [Tooltip("Debug text showing watts, waste and temperature. Optional.")]
-        [SerializeField] private TMP_Text _readout;
-        [Tooltip("Seconds between readout updates.")]
-        [SerializeField] private float _readoutInterval = 0.25f;
-
         private GridNode _tile;
         private NodeEdgeModule _edges;
         private AddonModule _addon;
         private PowerGrid _grid;
         private Material _source;
         private int _band = int.MinValue;
-        private float _nextReadout;
 
         private const int OpenBand = -1;
         private const int WastingBand = -2;
@@ -109,9 +101,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private void OnTicked()
         {
-            if (!HasStubShowing()) return;   // parked: nothing to colour or read out
+            if (!HasStubShowing()) return;   // parked: nothing to colour
             Recolour();
-            Readout();
         }
 
         private bool HasStubShowing()
@@ -228,21 +219,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             made.SetColor("_EmissionColor", colour);
             Shared[(_source, band)] = made;
             return made;
-        }
-
-        /// Writes what it is carrying, only while its label is showing.
-        private void Readout()
-        {
-            if (_readout == null || !_readout.enabled) return;
-            if (Time.time < _nextReadout) return;
-            _nextReadout = Time.time + _readoutInterval;
-
-            var node = Tile != null ? Tile.Node : null;
-            if (node == null) { _readout.SetText("unbound"); return; }
-            if (IsOpen) { _readout.SetText($"open\n{node.Celsius:0.0} C"); return; }
-            _readout.SetText(node.Dumped > 0.01
-                ? $"{node.Inflow:0} W\nWASTE {node.Dumped:0} W\n{node.Celsius:0.0} C"
-                : $"{node.Inflow:0} W\n{node.Celsius:0.0} C");
         }
 
         private void OnValidate()

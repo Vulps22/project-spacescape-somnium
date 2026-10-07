@@ -164,9 +164,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (tile != Tile)
             {
                 CancelDrag();
-                RevealLabels(Tile, false);
                 Tile = tile;
-                RevealLabels(Tile, true);
                 _open = 0f;
                 Layout(tile);
             }
@@ -177,13 +175,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 _ambience.time = Random.Range(0f, _ambience.clip.length);
                 _ambience.Play();
             }
-        }
-
-        /// Shows a conduit's debug text while the ghost is open around it, or hides it again.
-        private static void RevealLabels(GridNode tile, bool revealed)
-        {
-            if (tile == null) return;
-            foreach (var label in tile.GetComponentsInChildren<DebugLabel>(true)) label.Revealed = revealed;
         }
 
         /// Lays the ghost out again after the conduit changed under it, such as an addon going in or out.
@@ -415,7 +406,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _open = Mathf.MoveTowards(_open, _opening ? 1f : 0f, step);
             if (!_opening && _open <= 0f)
             {
-                RevealLabels(Tile, false);
                 Tile = null;
                 DropDisplay();
                 if (_ambience != null) _ambience.Stop();
