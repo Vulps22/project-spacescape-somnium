@@ -59,11 +59,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private float _ambienceMaxDistance = 3f;
 
         [Header("Hover")]
-        [Tooltip("How much bigger a slot grows while a hand is inside it: 0.25 is 25%.")]
+        [Tooltip("How much bigger a slot grows while a hand is inside it, and a handle or arrow while a hand is in reach to grab it: 0.25 is 25%.")]
         [SerializeField] private float _hoverGrow = 0.25f;
         [Tooltip("How close a hand must be to a slot's centre to count as inside it, in metres.")]
         [SerializeField] private float _hoverRadius = 0.05f;
-        [Tooltip("Seconds a slot takes to grow or shrink back.")]
+        [Tooltip("Seconds a slot, handle or arrow takes to grow or shrink back.")]
         [SerializeField] private float _hoverSeconds = 0.12f;
 
         [Header("Handles and arrows")]

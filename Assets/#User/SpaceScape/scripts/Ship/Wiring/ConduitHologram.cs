@@ -414,10 +414,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             }
 
             float eased = Mathf.SmoothStep(0f, 1f, _open);
-            for (int i = 0; i < _segmentCount && i < _segments.Count; i++) _segments[i].Pose(eased);
+            for (int i = 0; i < _segmentCount && i < _segments.Count; i++) _segments[i].Pose(eased, _motion.HoverGrow, _motion.HoverSeconds);
             if (_hasHandle)
             {
-                _addonHandle.Pose(eased);
+                _addonHandle.Pose(eased, _motion.HoverGrow, _motion.HoverSeconds);
                 if (_drag != Drag.Addon) TwistHandle(_addonFace, _addonTurns);
             }
             PoseCentre(eased);

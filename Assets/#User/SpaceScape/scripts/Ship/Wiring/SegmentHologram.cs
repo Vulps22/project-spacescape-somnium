@@ -29,6 +29,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private bool _parked;
         private bool _sliding;
         private float _slideSpeed;
+        private bool _scalesKnown;
+        private Vector3 _tipScale;
+        private Vector3 _arrowScale;
+        private float _tipHover;
+        private float _arrowHover;
 
         /// The handle at the segment's tip.
         public Transform Tip => _tip;
@@ -80,9 +85,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         }
 
         /// Poses the segment partway open: the handle slides out from the centre and the arrow rises out of
-        /// the cable, rolling about the direction it points. 0 is closed, 1 fully open.
-        public void Pose(float open)
+        /// the cable, rolling about the direction it points. 0 is closed, 1 fully open. The handle and the arrow
+        /// each swell by hoverGrow while a hand is in reach to grab them, easing over hoverSeconds, as the addon
+        /// slots do.
+        public void Pose(float open, float hoverGrow = 0f, float hoverSeconds = 0f)
         {
+            Swell(open, hoverGrow, hoverSeconds);
+
             if (_tip != null && !TipHeld)
             {
                 Vector3 home = _parked ? Vector3.zero : Vector3.up * (_faceDistance * open);
@@ -99,5 +108,25 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             var rest = Quaternion.LookRotation(_side, _outward ? Vector3.up : Vector3.down);
             _arrow.localRotation = Quaternion.AngleAxis((1f - open) * _rollDegrees, Vector3.up) * rest;
         }
+
+        /// Grows the handle and the arrow while a hand could grab them, or has hold of them. Only while the
+        /// hologram is fully open, as the slots only respond once they are in place.
+        private void Swell(float open, float grow, float seconds)
+        {
+            if (!_scalesKnown)
+            {
+                _scalesKnown = true;
+                if (_tip != null) _tipScale = _tip.localScale;
+                if (_arrow != null) _arrowScale = _arrow.localScale;
+            }
+            float step = seconds > 0f ? Time.deltaTime / seconds : 1f;
+            bool ready = open >= 1f;
+            _tipHover = Mathf.MoveTowards(_tipHover, ready && InReach(_tipGrab) ? 1f : 0f, step);
+            _arrowHover = Mathf.MoveTowards(_arrowHover, ready && InReach(_arrowGrab) ? 1f : 0f, step);
+            if (_tip != null) _tip.localScale = _tipScale * (1f + grow * Mathf.SmoothStep(0f, 1f, _tipHover));
+            if (_arrow != null) _arrow.localScale = _arrowScale * (1f + grow * Mathf.SmoothStep(0f, 1f, _arrowHover));
+        }
+
+        private static bool InReach(XRBaseInteractable grab) => grab != null && (grab.isHovered || grab.isSelected);
     }
 }
