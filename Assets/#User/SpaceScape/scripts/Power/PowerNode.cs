@@ -14,7 +14,27 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         public IPowerSink Sink;
 
         /// False when whatever is on this tile is switched off.
-        public bool On = true;
+        public bool On
+        {
+            get => _on;
+            set
+            {
+                if (_on == value) return;
+                _on = value;
+                LinksChanged();
+            }
+        }
+
+        private bool _on = true;
+        private bool _popped;
+
+        /// Counts every change that could join or part two tiles: a tile switched on or off, blowing or being
+        /// mended, and conduits added or taken away. Anything that works out what is connected to what (the
+        /// data network) does so again only when this has moved.
+        public static int LinkRevision { get; private set; }
+
+        /// Says something that joins or parts tiles has changed.
+        public static void LinksChanged() => LinkRevision++;
 
         /// Whether power arriving here may leave again by an output. Only a bare conduit forwards: a
         /// component's input fills its own hold and its output carries only what it chose to release.
@@ -22,7 +42,16 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
 
         /// True once this tile has blown. Unlike a switch it cannot be undone by flipping anything.
         /// Only tiles without integrity blow: anything with integrity takes damage instead.
-        public bool IsPopped { get; internal set; }
+        public bool IsPopped
+        {
+            get => _popped;
+            internal set
+            {
+                if (_popped == value) return;
+                _popped = value;
+                LinksChanged();
+            }
+        }
 
         /// Set when a component sits here. A thermal failure damages it rather than severing the
         /// tile. A wrecked component stays wired in and keeps taking what it is given - it simply

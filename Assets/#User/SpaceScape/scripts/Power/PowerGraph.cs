@@ -64,6 +64,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         {
             var node = new PowerNode(name) { Sink = sink, Index = _nodes.Count };
             _nodes.Add(node);
+            PowerNode.LinksChanged();
             return node;
         }
 
@@ -73,6 +74,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
             if (source == null) throw new ArgumentNullException(nameof(source));
             var node = new PowerNode(name) { Source = source, Sink = sink, Index = _nodes.Count };
             _nodes.Add(node);
+            PowerNode.LinksChanged();
             return node;
         }
 
@@ -101,6 +103,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
             foreach (var edge in new List<PowerEdge>(node.Incoming)) Disconnect(edge);
             foreach (var edge in new List<PowerEdge>(node.Outgoing)) Disconnect(edge);
             for (int i = 0; i < _nodes.Count; i++) _nodes[i].Index = i;
+            PowerNode.LinksChanged();
         }
 
         /// Mends a tile that has blown, so it carries power again. It keeps the heat it blew with.
