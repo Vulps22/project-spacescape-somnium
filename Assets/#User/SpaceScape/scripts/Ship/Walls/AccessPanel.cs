@@ -16,7 +16,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// fire when one side has a Rigidbody.
     ///
     /// Whoever decides (the master, or anyone with no network) opens and shuts it; everyone else asks
-    /// (OpenRequested) and follows (SetOpen). The smoke plays on every client from that one state.
+    /// (OpenRequested) and follows (SetOpen). The smoke plays on every client from that one state, but only
+    /// where a camera can see the panel as it starts to go or come back; anywhere else it is simply gone or
+    /// back, with nothing to watch.
     ///
     /// While editing, each socket shows a copy of the socket prefab, so they can be placed by eye. The copies
     /// are never saved.
@@ -62,6 +64,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private static readonly int DissolveId = Shader.PropertyToID("_Dissolve");
 
         private static readonly Collider[] Found = new Collider[32];
+        private static readonly Plane[] Frustum = new Plane[6];
+        private static Camera[] _cameras = new Camera[4];
         private readonly HashSet<Vector3Int> _covers = new HashSet<Vector3Int>();
         private readonly Vector3[] _hands = new Vector3[MaxHands];
         private Renderer[] _renderers = new Renderer[0];
@@ -76,6 +80,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private float _openedAt;
         private float _gone;
         private bool _wearingSmoke;
+        private bool _watched;
+        private Bounds _bounds;
+        private bool _hasBounds;
         private bool _measured;
         private GridDirection _side = GridDirection.None;
         private readonly Dictionary<Vector3Int, float> _surfaceAt = new Dictionary<Vector3Int, float>();
@@ -182,7 +189,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 _renderers = _panel.GetComponentsInChildren<Renderer>(true);
                 _colliders = _panel.GetComponentsInChildren<Collider>(true);
                 _ownMaterials = new Material[_renderers.Length][];
-                for (int i = 0; i < _renderers.Length; i++) _ownMaterials[i] = _renderers[i].sharedMaterials;
+                for (int i = 0; i < _renderers.Length; i++)
+                {
+                    _ownMaterials[i] = _renderers[i].sharedMaterials;
+                    if (_hasBounds) _bounds.Encapsulate(_renderers[i].bounds);
+                    else { _bounds = _renderers[i].bounds; _hasBounds = true; }
+                }
             }
             MakeCubes(HideFlags.None);
         }
@@ -318,6 +330,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             if (open == Open) return;
             Open = open;
+            _watched = Seen();
             if (open)
             {
                 _openedAt = Time.time;
@@ -358,7 +371,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             float target = Open ? 1f : 0f;
             if (Mathf.Approximately(_gone, target)) return;
-            _gone = Mathf.MoveTowards(_gone, target, Time.deltaTime / Mathf.Max(0.01f, _dissolveSeconds));
+            _gone = _watched ? Mathf.MoveTowards(_gone, target, Time.deltaTime / Mathf.Max(0.01f, _dissolveSeconds)) : target;
 
             if (_gone <= 0f)
             {
@@ -383,6 +396,24 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             Wear(_smokeMaterials, true);
             foreach (var set in _smokeMaterials)
                 foreach (var material in set) material.SetFloat(DissolveId, _gone);
+        }
+
+        /// True when the panel is inside the view of any camera rendering now. Asked of its bounds, not its
+        /// renderers, since an open panel's renderers are off and a renderer that is off is never visible.
+        /// Walls in the way do not count: a panel behind one still smokes.
+        private bool Seen()
+        {
+            if (!_hasBounds) return true;
+            if (_cameras.Length < Camera.allCamerasCount) _cameras = new Camera[Camera.allCamerasCount];
+            int count = Camera.GetAllCameras(_cameras);
+            for (int i = 0; i < count; i++)
+            {
+                var cam = _cameras[i];
+                if (cam == null || cam.targetTexture != null) continue;   // a camera drawing to a texture is not an eye
+                GeometryUtility.CalculateFrustumPlanes(cam, Frustum);
+                if (GeometryUtility.TestPlanesAABB(Frustum, _bounds)) return true;
+            }
+            return false;
         }
 
         /// A dissolve material for each of the panel's own, carrying its textures and colour.
