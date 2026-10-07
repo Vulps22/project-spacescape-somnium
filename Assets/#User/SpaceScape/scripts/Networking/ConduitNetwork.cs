@@ -51,6 +51,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         private readonly Dictionary<int, float> _heldUntil = new Dictionary<int, float>();
         private float _nextSync;
         private bool _joined;
+        private float _nextHeldReport;
+        private const float HeldReportSeconds = 10f;
 
         /// The conduit in a slot, or null.
         public static GridNode TileAt(int slot) =>
@@ -216,8 +218,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             if (Time.time < _nextSync && _joined) return;
             _nextSync = Time.time + 1f / Mathf.Max(0.1f, _syncsPerSecond);
             bool complete = Read();
+            if (complete && !_joined) Debug.Log($"ConduitNetwork: all {ChunkCount} chunk(s) read at {Time.timeSinceLevelLoad:0.0}s; the grid runs");
             if (complete) _joined = true;
             _grid.Held = !_joined;
+            if (!_joined && Time.time >= _nextHeldReport) ReportHeld();
         }
 
         private void SpawnMissingChunks()
@@ -272,6 +276,22 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
                 }
             }
             return complete;
+        }
+
+        /// Says, every so often, why a joined client's grid is still held: which chunks it is missing.
+        private void ReportHeld()
+        {
+            _nextHeldReport = Time.time + HeldReportSeconds;
+            if (Time.timeSinceLevelLoad < HeldReportSeconds) return;
+            int missing = 0, first = -1;
+            for (int c = 0; c < ChunkCount; c++)
+            {
+                var chunk = ConduitChunk.Find(c);
+                if (chunk != null && chunk.Index == c) continue;
+                missing++;
+                if (first < 0) first = c;
+            }
+            Debug.LogWarning($"ConduitNetwork: grid still held at {Time.timeSinceLevelLoad:0}s: {missing} of {ChunkCount} chunk(s) not read (first {first}); this client holds {ConduitChunk.Held} chunk object(s)");
         }
 
         /// A conduit's faces (2 bits each, In 1 and Out 2, as ConduitCode packs them), severed and has-addon.

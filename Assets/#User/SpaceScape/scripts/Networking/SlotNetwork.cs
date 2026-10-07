@@ -147,7 +147,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             var found = WorldManager.Find((uint)raw);
             if (found == null || !found.TryGetComponent<GridNode>(out var component)) return;
             if (_slot.Component != null && _slot.Component != component) _slot.Remove();
-            _slot.Install(component);
+            if (_slot.Install(component) && !_slot.Decides) Debug.Log($"SlotNetwork: '{name}' installed '{component.name}' from the master");
         }
 
         private static int IdOf(GridNode component) =>

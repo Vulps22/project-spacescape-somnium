@@ -22,6 +22,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         private static readonly List<ConduitChunk> All = new List<ConduitChunk>();
         private int _claimed = -1;
 
+        /// How many chunks this client holds, numbered or not.
+        public static int Held => All.Count;
+
         private void OnEnable() => All.Add(this);
         private void OnDisable() => All.Remove(this);
 
