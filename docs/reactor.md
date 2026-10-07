@@ -223,3 +223,36 @@ physical act is the information.
   warns. The rods rise on their own once the starter has charged the magnets.
 
 See also: `power.md` (the built model), `open-questions.md`, `principles.md`.
+
+## Open: an overproducing reactor bakes its own cables
+
+
+Since power only goes where a receiver can be reached (`power.md`), a reactor with nowhere to send its
+output takes it as heat itself. At the current settings that is 100 C a second at 2000 W, and heat
+conducts along the metal with no current in it, so in the harness two minutes left an 8-tile run at
+about 1300 C behind a 1384 C reactor. Nothing pops while nothing flows (pop chance is power x heat),
+but reconnecting any receiver would send full power down cables already that hot.
+
+Options: stop a producer's surplus conducting into conduits; give the reactor a heat ceiling it
+scrams at; or treat it as the crew's problem (throttle the reactor), which is the lever it is for.
+Undecided.
+
+## Reactor hum, generated in code (planned, logged 2026-10-03)
+
+
+The reactor's sound, synthesised live (`OnAudioFilterRead`) rather than a recording, since a good mechanical
+hum is hard to find: a base tone around 50 to 60 Hz with two or three harmonics, a little filtered noise for
+texture, and a slow wobble so it never sounds like a test tone. **It follows the reactor:** pitch and loudness
+rise with output, it roughens as integrity drops, and it falls silent when the rods are in, so engineering hears
+the reactor working hard or struggling before reading anything (principle 2). Built from the reactor's own
+networked state, so every client hears the same; nothing new to send. A recorded engine-room bed could be
+layered under it later.
+
+## Coolant consumption (planned)
+
+
+Coolant exists only inside the reactor today (`CoolantLoop`: a drum, a pump ceiling, a flow the crew
+sets, and litres boiling off as it carries heat away). It needs to become something the ship
+consumes and the crew has to manage.
+
+The coolant upgrade for branches is in `conduits.md`.

@@ -28,7 +28,7 @@ re-derive only what is actually different here.
 - **Conduits are not scene objects.** `ConduitLayout` holds each one as a packed `long`
   (`ConduitCode`) and builds them when the world starts. Every client therefore builds the same grid
   from the same inputs, and a conduit's cell coordinate is already a stable, shared id.
-- **Most interaction keeps private state** (`todolist.md` → *Interaction rework*): the rod lever and
+- **Most interaction keeps private state** (`interaction.md`): the rod lever and
   the hologram handles are `XRSimpleInteractable` driven by our own scripts, the addon slot is a
   distance check, the rocker reads hand penetration. Only the addon item is a stock
   `XRGrabInteractable`.
@@ -339,7 +339,7 @@ The README's "gate" test was dropped from this plan and the docs (2026-09-28): n
 
 - **Grabbables.** Add `NetworkGrabbable` (with `NetworkObject` and `NetworkRigidbody3D`) to the addon
   item prefab.
-- **Interaction rework** (`todolist.md`): the rod lever and hologram handles to stock XRI.
+- **Interaction rework** (`interaction.md`): the rod lever and hologram handles to stock XRI.
 
 ## Notes
 

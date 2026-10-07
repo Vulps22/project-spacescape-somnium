@@ -277,7 +277,7 @@ tile is part of live rewiring, below.
 
 ## Conduit variants — pinned until after the first static upload
 
-**Superseded (2026-09-26)** by the hologram design in `todolist.md` → *Live wiring*: a switch or a
+**Superseded (2026-09-26)** by the hologram design in `conduits.md` → *Live wiring*: a switch or a
 junction is now an **addon** installed into an open conduit, which reshapes it, rather than a part
 placed on top of it. Splitters and mergers are gone in favour of Junction +1 to +4. The rest of this
 section is what the scene still does today.
@@ -287,7 +287,7 @@ seamlessly into the cable, and the part **takes over that conduit's behaviour**.
 while the ship is running comes after something static has been uploaded to Somnium.
 
 Until then, the scene bakes them in. The switch is the rocker, named in that conduit's
-`AddonModule` and put on the cable when the world starts (see `todolist.md` → *Addons and upgrades*), and the splitter is an extra `Out` face on that tile's `NodeEdgeModule`. The
+`AddonModule` and put on the cable when the world starts (see `conduits.md` → *Addons and upgrades*), and the splitter is an extra `Out` face on that tile's `NodeEdgeModule`. The
 `SwitchModule` and `SplitterModule` prefabs survive only as script-less markers that show where
 they are. Their names predate "module" meaning what it does now.
 
@@ -366,3 +366,52 @@ checked back tile by tile.
 same length, not an array of pairs. Arrays of custom `[Serializable]` classes arrive **empty** from a
 Somnium bundle export while plain arrays survive (Project Garden lost uploads to this before it was
 understood). Below each threshold its model is shown and the rest are hidden.
+
+## Readouts (written 2026-10-07, untested in-world)
+
+Readouts are for players, not a debug overlay. Playing with others showed the old debug labels were
+vital but hard to read, so each module now writes **only its own stats** on its own `_readout` text,
+and a component's readout is laid out by placing the texts of the modules it wants. Not every
+component shows every stat. Meters and other instruments are still progression: they let you read a
+place without walking to it.
+
+| Module | Shows |
+|---|---|
+| `GridNode` | in, out, wasted W, °C |
+| `CapacitorModule` | charge / capacity J, net watts (`+5 W`, `-50 W`) |
+| `IntegrityModule` | current / max, sound / WORN / WRECKED, misfire chance |
+| `BatteryBehaviourModule` | kind of cell, and a Smart cell's dial |
+| `ReactorBehaviourModule` | output, rods, core °C against its baseline, fuel, coolant |
+| `DisruptorBehaviourModule` | Ready, Charging (its hold is filling) or Not Charging |
+
+**Every component has a readout.** Still without one: `LoadBehaviourModule`, `LightBehaviourModule`,
+`ConstantSourceBehaviourModule`, and the radar, which is still a separate `Radar` script beside a load
+(the disruptor was too, until 2026-10-07).
+
+`Readout` (`scripts/Ship/Readout.cs`) does the drawing. It redraws when its module says something
+changed, never more than every 0.1 s, only while a camera can see the text (`Renderer.isVisible`), and
+it writes the text only when the words differ. A change it could not draw waits for the next grid
+tick. Numbers that follow the grid change every tick; integrity redraws only when its condition moves.
+
+**A readout shows sim values; it never works them out.** A capacitor's net watts is
+`Capacitor.NetWatts`, totalled from what it filled and drew and closed out by the graph at the end of
+every tick (`PowerNode.Hold`), because data transfer will need the same number. A correction from the
+network does not count, so players who aren't the master see no spikes.
+
+**Networking:** readouts hold no state. Charge, heat and integrity come from the master; flow is
+worked out by every client running the same sim (`networking.md`, rule 11).
+
+## Loading: a LoadingModule (planned)
+
+
+A way to physically load consumables into a component: fuel and coolant into the reactor first. It
+is the fuel rack and coolant pad that `reactor.md` lists as not built; today the fuel seconds and
+coolant litres are preset numbers in the Inspector.
+
+- **a `LoadingModule`**, not a reactor feature, so anything that consumes something loadable can use
+  it: missiles and gatling guns taking ammunition, if they are added
+- it owns what has been loaded and hands it to the behaviour as the behaviour uses it up; the
+  behaviour decides what it accepts and how fast it burns through it, the way the capacitor holds
+  power and the behaviour decides what to do with it
+- **one `LoadingModule` holds one kind of thing.** A component that takes several carries one per
+  kind, so the reactor has two: one for fuel, one for coolant

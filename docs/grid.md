@@ -79,7 +79,7 @@ the component.
 **Decided 2026-09-28.**
 
 - **A hand picks up the component itself,** full size. One player can pick up anything for now; weight
-  and carrying together are in `todolist.md`.
+  and carrying together are below (Weight and carrying together).
 - **Every slot has a grab handle** on top of its front bottom edge: the one thing a slot shows in-world.
   Pulled, it turns from red to green and unlocks the component, which can then be grabbed for 10
   seconds.
@@ -165,3 +165,10 @@ hand through `NetworkGrabbable`.
 - Snapping in the editor: slots onto grid corners, quarter turns only.
 - Gizmos for slot volumes, fronts, and components' ports.
 - A warning when the grid is built for anything that breaks these rules.
+
+## Weight and carrying together (planned)
+
+
+Components have a configurable weight, and every player can lift up to 500 kg. Each hand on a component
+takes its share, so the weight each carries drops until it can be lifted: a 2,000 kg reactor needs four
+players. Logged 2026-09-28; for now one player can pick up anything (`grid.md` → Moving a component).

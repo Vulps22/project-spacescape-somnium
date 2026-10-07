@@ -96,7 +96,7 @@ sets the count for an item placed in the scene; -1 takes the junction prefab's. 
 - **Weight:** the grab is velocity tracking, so a held component is physical: it follows the hand by a share
   of the gap each step (1 at no mass, 0.15 at 2000 kg) and hangs up to 0.25 m below the hold
   (`HeftGrabTransformer`, since XRI turns gravity off while held). Masses: Reactor 2000 kg (the figure in
-  `todolist.md` → Weight), Battery 400 kg. All tunable on `CarriedComponent` and each prefab's Rigidbody.
+  `grid.md` → Weight and carrying together), Battery 400 kg. All tunable on `CarriedComponent` and each prefab's Rigidbody.
 
 ## Component simulation
 

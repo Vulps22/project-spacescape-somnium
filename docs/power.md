@@ -362,3 +362,26 @@ hook for damage stages), `Lost` (condition reached zero).
 
 Breakers, conduit capacity, fire, and the fuel rack and coolant pad as real inventory. The reactor
 **is** built — see `reactor.md`. See `open-questions.md` for what is undecided.
+
+## Open: the battery tier ladder
+
+
+Plain and safety cells now behave the same, since the grid refuses dead runs itself. The bottom rung
+needs a new question, or the ladder becomes two tiers (`power.md` → Three cell tiers, `principles.md`
+10).
+
+## Why no conduit popped (from the 2026-09-29 in-world test)
+
+**Not a networking bug; the ship as wired never got a conduit hot enough.** The master does roll (the 01:51
+log has the reactor `Damaged()`, which only a rolling grid does). The scene's layout rebuilt in the sim
+harness does the same as the world: the reactor's 80 W splits 40/40 into the two batteries, each of which is
+discharging 100 W and so takes it all; nothing is wasted on the ship except battery B's 100 W pushed into the
+running reactor's input, which it refuses. That heat is on the reactor, conducts out, and levels off with no
+conduit above 25 C, under the 50 C pop floor. The reactor takes a hit every few minutes instead (sim: 174 s;
+world: about 4.5 min). To see a conduit pop, something on the ship must waste power with current flowing past
+it (an overfed load, a full cell, a charged gun nobody fires).
+
+Open: should a running reactor's input keep taking a cell's full discharge as heat?
+`DiodeStopsControlPowerLeakingOut` is the nearby case. One thing the sim did not match: in-world the log said
+the reactor was wasting 180 W (its own 80 W too), where the sim wastes 100 W; worth a look if the reactor ever
+seems to have no outlet.

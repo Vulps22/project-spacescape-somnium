@@ -18,7 +18,7 @@ decide what it does.** That is "one abstraction" (`README.md`) applied to combat
 |---|---|---|
 | **Shield** | a load in `modules.md`, not built | spends its charge to absorb the hit; once empty, the hit passes through |
 | **Hull** | no | armour with integrity: damaged, then breached into a real hole |
-| **Wall panel** | planned (access panels, `todolist.md`) | a thin layer; once off, the cell is exposed |
+| **Wall panel** | built (access panels, `ship-structure.md`) | a thin layer; once off, the cell is exposed |
 | **Tile** (conduit, component) | yes | heat and integrity damage through the sim |
 
 A hit passes through the layers in order and each one absorbs its share. **"Exposed components are
@@ -143,7 +143,7 @@ It follows `networking.md`'s rules:
 
 ## Repair
 
-Ties into `todolist.md` → *Repairing*: patching hull by carrying plates, refitting panels, replacing
+Ties into `repair.md`: patching hull by carrying plates, refitting panels, replacing
 severed conduits, and `Integrity.Restore` for components. A patched cell uses the patch piece, so a
 repaired ship shows its history.
 

@@ -109,7 +109,7 @@ what is already there. Rewiring the ship by hand comes after (`modules.md` → R
 - `networking.md` — the networking plan: authority rules, steps, notes.
 - `2d.md` — the 2D (mouse and keyboard) interaction model. Draft.
 - `polish.md` — the current focus: fixes and feel from the first many-player test.
-- `todolist.md` — single-player work queued before networking: live wiring, repairing, loading, coolant.
+- `todolist.md` — one line per piece of work queued, each pointing to its topic doc.
 - `open-questions.md` — what is undecided, what is parked, and what must not be re-proposed.
 
 ## Repo
