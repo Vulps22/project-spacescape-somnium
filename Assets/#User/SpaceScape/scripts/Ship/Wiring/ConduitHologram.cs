@@ -135,14 +135,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
             if (motion.Ambience != null)
             {
-                var audio = root.AddComponent<AudioSource>();
+                var audio = EnvironmentSound.Make(root.transform, "Ambience", 0.3f, motion.AmbienceMaxDistance);
                 audio.clip = motion.Ambience;
                 audio.loop = true;
-                audio.playOnAwake = false;
-                audio.spatialBlend = 1f;
-                audio.rolloffMode = AudioRolloffMode.Linear;
-                audio.minDistance = 0.3f;
-                audio.maxDistance = motion.AmbienceMaxDistance;
                 audio.volume = 0f;
                 hologram._ambience = audio;
             }

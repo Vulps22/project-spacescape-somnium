@@ -25,6 +25,7 @@ GameObject:
   - component: {fileID: 6150099175836688282}
   - component: {fileID: 8321637557566548952}
   - component: {fileID: 7868367044834488366}
+  - component: {fileID: 849978818294734947}
   m_Layer: 0
   m_Name: Reactor
   m_TagString: Untagged
@@ -88,9 +89,11 @@ MonoBehaviour:
   _packedXMinus: 
   _packedYPlus: 
   _packedYMinus: 
-  _packedZPlus: 
+  _packedZPlus: 02010400
   _packedZMinus: 0900010002000200
   _portPrefab: {fileID: 1330740377116229456, guid: b89cfadafc5969556899f78cbe0b4c20,
+    type: 3}
+  _itemPortPrefab: {fileID: 2710413414608572788, guid: 0540d7d948db5e4f9815bb868b3f70ec,
     type: 3}
 --- !u!114 &4449412485874695310
 MonoBehaviour:
@@ -123,7 +126,7 @@ MonoBehaviour:
   _cores: 1
   _heatRatio: 2
   _workingCelsius: 400
-  _fuelSeconds: 500
+  _fuelSecondsPerRod: 10
   _targetWithdrawal: 0
   _raisePerSecond: 0.05
   _dropPerSecond: 0.5
@@ -459,6 +462,22 @@ MonoBehaviour:
   _sagWhenHeaviest: 0.25
   _snapBuzzAmplitude: 0.6
   _snapBuzzSeconds: 0.1
+--- !u!114 &849978818294734947
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 67106170869057476}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3a7bf54c476df159b81ef3df8012f7a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.LoadingModule
+  _accepts: {fileID: 6870322651395437057, guid: 40eaba58f876e0fb08a8f9fd1172c6e1,
+    type: 3}
+  _startsWithOne: 0
+  _readout: {fileID: 0}
 --- !u!1 &275156461480892359
 GameObject:
   m_ObjectHideFlags: 0

@@ -126,7 +126,8 @@ the component.
    from the start, so it cannot fall before it is installed), a stock `XRGrabInteractable` (dynamic
    attach, no throw, only its own box as collider), `NetworkRigidbody3D` + `NetworkGrabbable` as the addon
    items have, `IgnoresPlayerBody`, and `CarriedComponent`. A component can be grabbed only while it is
-   loose or its slot is unlocked; grabbing it takes it out of the slot. Let go where a slot accepts it
+   loose or its slot is unlocked; grabbing it takes it out of the slot. Its box is switched off with the grab while
+   it sits in a locked slot (2026-10-08), so it never stands between a hand and the component's own controls. Let go where a slot accepts it
    (empty, its size, centre within 0.5 m, within 30° of square) it is seated and the slot locks; anywhere
    else it falls. The client whose hand did it acts at once and tells the master through the slot's
    messages (`TakeOut`, `PutIn`), keeping its own occupant for 2 seconds while the master catches up. A

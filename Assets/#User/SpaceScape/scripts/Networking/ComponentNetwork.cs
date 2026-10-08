@@ -15,7 +15,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
     /// The reactor's dial and the disruptor's aim are what a non-master sets: a hand moves it here at once and
     /// the new value is sent to the master, which applies it and writes it back out with everything else. The
     /// disruptor's fire button on a non-master asks the master to fire; the master fires and tells everyone, so
-    /// every client shows the shot.
+    /// every client shows the shot. An item port on a non-master that loads an item tells the master which of the
+    /// component's LoadingModules took it, and the master loads it too and writes it out.
     [RequireComponent(typeof(GridNode))]
     public sealed class ComponentNetwork : MonoBehaviour
     {
@@ -28,6 +29,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             Fired = 3,      // from the master, to everyone
             RadarButton = 4, // a radar button pressed elsewhere: -1 Previous, +1 Next, 0 Select
             RadarZoom = 5,   // a radar's zoom lever moved elsewhere: one float
+            ItemLoaded = 6,  // an item port elsewhere loaded an item: which of the component's LoadingModules, as an int
         }
 
         [Tooltip("Where the state is replicated. Any size with room for 3 + the modules' values; the log says if it is too small.")]
@@ -51,6 +53,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         private Vector2? _pendingAim;
         private RadarBehaviourModule _radar;
         private float? _pendingZoom;
+        private LoadingModule[] _loading;
+        private Action[] _loadedHandlers;
         private bool _usable;
 
         private void Awake()
@@ -90,6 +94,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
                 _radar.ButtonRequested += OnRadarButton;
                 _radar.ZoomMoved += OnZoomMoved;
             }
+            // Every client has the same LoadingModules in the same order, so one is named by its place.
+            _loading = GetComponents<LoadingModule>();
+            _loadedHandlers = new Action[_loading.Length];
+            for (int i = 0; i < _loading.Length; i++)
+            {
+                int index = i;
+                _loadedHandlers[i] = () => OnItemLoaded(index);
+                _loading[i].LoadedByHand += _loadedHandlers[i];
+            }
         }
 
         private void OnDestroy()
@@ -108,6 +121,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
                 _radar.ButtonRequested -= OnRadarButton;
                 _radar.ZoomMoved -= OnZoomMoved;
             }
+            if (_loading != null) for (int i = 0; i < _loading.Length; i++) _loading[i].LoadedByHand -= _loadedHandlers[i];
         }
 
         private bool IsLive => _usable && _data.Object != null && _data.Object.IsValid && _tile.Node != null && _grid != null && _grid.Graph != null;
@@ -239,6 +253,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             if (IsLive) _data.RPC_SendMessageToController(MessageFrame.Pack((byte)ComponentMessageType.RadarButton, BitConverter.GetBytes(button)));
         }
 
+        private void OnItemLoaded(int index)
+        {
+            if (IsLive && !_data.Object.HasStateAuthority)
+                _data.RPC_SendMessageToController(MessageFrame.Pack((byte)ComponentMessageType.ItemLoaded, BitConverter.GetBytes(index)));
+        }
+
         private void OnMessageToAll(byte[] framed)
         {
             if (!MessageFrame.Unpack(framed, out byte id, out _)) return;
@@ -267,6 +287,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
                     break;
                 case ComponentMessageType.RadarButton:
                     if (_radar != null && data.Length >= 4) _radar.Apply(BitConverter.ToInt32(data, 0));
+                    break;
+                case ComponentMessageType.ItemLoaded:
+                    if (data.Length >= 4)
+                    {
+                        int index = BitConverter.ToInt32(data, 0);
+                        if (index >= 0 && index < _loading.Length) _loading[index].Load();
+                    }
                     break;
                 default:
                     Debug.LogWarning($"ComponentNetwork: '{name}' got unknown message {id}", this);

@@ -5,8 +5,9 @@ using UnityEngine;
 
 namespace SomniumSpace.Worlds.SpaceScape.Networking
 {
-    /// Puts an item in its box whenever the box is empty: take one out and another appears. The item hangs
-    /// where it appears, out of physics, until a hand first lets go of it (AddonItem); from then on it is an
+    /// Puts an item in its box whenever the box is empty: take one out and another appears. Any Item: an addon
+    /// item, or a loadable item like a fuel rod. The item hangs
+    /// where it appears, out of physics, until a hand first lets go of it (Item); from then on it is an
     /// ordinary physics object for good. The master alone looks and spawns, through Fusion, so everyone (late
     /// joiners too) has the same items; there is nothing else to share, since whether the box is empty is
     /// asked again each time. A variant, like a +4 junction, is the same prefab with its state set: the master
@@ -18,9 +19,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
     {
         private const float OfflineAfterSeconds = 1f;
 
-        [Tooltip("The item it puts out: an addon item prefab registered on SceneNetworking.")]
-        [SerializeField] private AddonItem _item;
-        [Tooltip("The state each item is given, for an item whose state travels with it: a junction's extra segments, 1 to 4. -1: the prefab's own.")]
+        [Tooltip("The item it puts out: an Item prefab (an addon item, a fuel rod) registered on SceneNetworking.")]
+        [SerializeField] private Item _item;
+        [Tooltip("The state each addon item is given, for one whose state travels with it: a junction's extra segments, 1 to 4. -1: the prefab's own. Other items ignore it.")]
         [SerializeField] private int _state = -1;
         [Tooltip("What counts as something in the box. Triggers never count, nor does anything under this object.")]
         [SerializeField] private LayerMask _occupantLayers = ~0;
@@ -58,7 +59,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
                     return;
                 }
                 var spawned = WorldManager.Spawn(prefab, at, transform.rotation, $"dispenser '{name}'");
-                if (spawned != null && spawned.TryGetComponent<AddonItem>(out var made)) Prepare(made);
+                if (spawned != null && spawned.TryGetComponent<Item>(out var made)) Prepare(made);
             }
             else
             {
@@ -66,11 +67,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             }
         }
 
-        /// Gives a new item its state, and holds it still where it appeared until a hand has had it.
-        private void Prepare(AddonItem made)
+        /// Gives a new addon item its state, and holds any item still where it appeared until a hand has had it.
+        private void Prepare(Item made)
         {
-            if (_state >= 0) made.State = _state;
-            if (made.TryGetComponent<Rigidbody>(out var body)) body.isKinematic = true;
+            if (_state >= 0 && made is AddonItem addon) addon.State = _state;
+            made.Body.isKinematic = true;
         }
 
         /// True when anything solid on the Occupant Layers, other than this dispenser, is inside the box.

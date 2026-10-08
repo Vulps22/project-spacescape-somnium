@@ -21,7 +21,8 @@ namespace SomniumSpace.Worlds.SpaceScape.EditorTools
             EditorGUILayout.HelpBox(
                 "Faces and cells are the component's own and turn with it. A port's cell is counted from the face's " +
                 "bottom left, looking at it from outside: x right, y up (on the top and bottom faces, up is toward " +
-                "the front). One port per cell face. Blue gizmos are In, green Out, red is off its face.",
+                "the front). One port per cell face. Gizmos: blue In, green Out, red Data, amber Item, magenta off " +
+                "its face.",
                 MessageType.None);
 
             foreach (var (field, label) in Faces)
@@ -51,11 +52,13 @@ namespace SomniumSpace.Worlds.SpaceScape.EditorTools
                 if (GUILayout.Button("Add In")) Add(list, FlowDirection.In);
                 if (GUILayout.Button("Add Out")) Add(list, FlowDirection.Out);
                 if (GUILayout.Button("Add Data")) Add(list, FlowDirection.Data);
+                if (GUILayout.Button("Add Item")) Add(list, FlowDirection.Item);
                 EditorGUILayout.EndHorizontal();
                 EditorGUILayout.Space(4f);
             }
 
             EditorGUILayout.PropertyField(serializedObject.FindProperty("_portPrefab"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_itemPortPrefab"));
             serializedObject.ApplyModifiedProperties();
         }
 

@@ -1,3 +1,5 @@
+using System;
+
 namespace SomniumSpace.Worlds.SpaceScape.Power
 {
     /// A reactor core. Knows nothing about the grid: it burns fuel and makes watts, and its rods are
@@ -32,8 +34,18 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         /// Rods fall under gravity, so going down is not.
         public double DropPerSecond = 0.5;
 
-        /// Seconds of running left at full output. Stand-in until there is a rack to load.
+        /// Seconds one rod runs at full output. It burns proportionally slower with the rods part way.
+        public double FuelSecondsPerRod = 3600.0;
+
+        /// Seconds of running left in the rod being burnt, at full output. Starts with one rod in.
         public double FuelSeconds = 3600.0;
+
+        /// Asked for the next rod once the one being burnt is spent: true when one was there, and it is
+        /// consumed at that moment (loading.md). Null means nothing to refuel from.
+        public Func<bool> Refuel;
+
+        /// How much of the rod being burnt is left, from full (1) to spent (0).
+        public double FuelLevel => FuelSecondsPerRod <= 0.0 ? 0.0 : Clamp(FuelSeconds / FuelSecondsPerRod);
 
         /// Watts it would make with the rods fully out.
         public double MaxOutput => OutputPerCore * (Cores < 0 ? 0 : Cores);
@@ -74,6 +86,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
                 if (FuelSeconds < 0.0) FuelSeconds = 0.0;
             }
 
+            // Spent, so it takes the next rod if there is one, and is full again.
+            if (FuelSeconds <= 0.0 && Refuel != null && Refuel()) FuelSeconds = FuelSecondsPerRod;
+
             double target = Gripped ? Clamp(TargetWithdrawal) : 0.0;
             if (Withdrawal < target)
             {
@@ -91,6 +106,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
 
         public override string ToString() =>
             $"{WattsProduced:0} W, rods {Withdrawal:P0} of {Clamp(TargetWithdrawal):P0}{(Gripped ? "" : " NO GRIP")}, " +
-            $"{BaselineCelsius:0} C nominal, fuel {FuelSeconds:0} s";
+            $"{BaselineCelsius:0} C nominal, fuel {FuelLevel:P0}";
     }
 }

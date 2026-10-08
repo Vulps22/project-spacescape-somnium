@@ -97,6 +97,7 @@ static class Program
         RemovedNodeLeavesTheRestWorking();
         LooseReactorKeepsRunning();
         CapacitorNetWatts();
+        SpentRodTakesTheNextOne();
 
         Console.WriteLine();
         Console.WriteLine($"=== {_pass} passed, {_fail} failed ===");
@@ -1687,5 +1688,35 @@ static class Program
         g.Connect(cell, load);
         for (int t = 0; t < 20; t++) g.Tick(0.05);
         Check("discharging into a load", hold.NetWatts, -40, 1e-6);
+    }
+
+    // The supply holds only the next rod. The core takes it, and it is consumed, the moment the core is
+    // spent: the core is full again and the supply is empty (loading.md).
+    static void SpentRodTakesTheNextOne()
+    {
+        Console.WriteLine("a spent rod takes the next one, consuming it on the spot");
+
+        int next = 1, asked = 0;
+        var core = new FissionCore { OutputPerCore = 100, Cores = 1, RaisePerSecond = 1.0, FuelSecondsPerRod = 10, FuelSeconds = 10 };
+        core.Refuel = () => { asked++; if (next == 0) return false; next--; return true; };
+        core.TargetWithdrawal = 1.0;
+        core.ProducePower(1.0);                    // rods fully out after 1 s, 1 s of fuel not yet burnt
+        CheckTrue("nothing is asked for while the rod has fuel left", asked == 0);
+
+        for (int t = 0; t < 105; t++) core.ProducePower(0.1);     // 10.5 s at full output: spent at 10
+        CheckTrue("the next rod was taken and consumed", next == 0);
+        Check("and the core is nearly full again", core.FuelLevel, 0.95, 0.02);
+        CheckTrue("still running", core.WattsProduced > 0);
+
+        for (int t = 0; t < 120; t++) core.ProducePower(0.1);     // 12 s: spends it, with none to follow
+        Check("with no next rod it stays spent", core.FuelLevel, 0.0);
+        Check("and makes nothing", core.WattsProduced, 0.0);
+
+        next = 1;
+        core.TargetWithdrawal = 0.0;
+        core.CorrectWithdrawal(0.0);
+        core.ProducePower(0.1);
+        CheckTrue("a spent core takes a rod as soon as one is there, rods in or not", next == 0);
+        Check("and is full", core.FuelLevel, 1.0);
     }
 }

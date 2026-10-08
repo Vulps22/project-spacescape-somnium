@@ -76,10 +76,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private float _loopLength = 0.1f;
         [Tooltip("Played when it fires. Optional.")]
         [SerializeField] private AudioClip _fireClip;
-        [Tooltip("Volume of its sounds, 0 to 1.")]
-        [SerializeField, Range(0f, 1f)] private float _volume = 1f;
-        [Tooltip("Distance, in metres, beyond which its sounds cannot be heard.")]
-        [SerializeField] private float _soundMaxDistance = 25f;
+        [Tooltip("Plays the charged sound's intro. A child object on the Environment layer, so the player's volume controls apply.")]
+        [SerializeField] private AudioSource _introSource;
+        [Tooltip("Plays the charged sound's loop, until it fires. On the Environment layer.")]
+        [SerializeField] private AudioSource _loopSource;
+        [Tooltip("Plays the shot. On the Environment layer.")]
+        [SerializeField] private AudioSource _fireSource;
 
         // The charged sound cut into its intro and loop, once per clip and settings, shared by every gun.
         private static readonly Dictionary<(AudioClip, float, float), (AudioClip intro, AudioClip loop)> Cuts =
@@ -91,9 +93,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private Vector2 _aim = new Vector2(0.5f, 0.5f);
         private bool _shownReady;
         private bool _lampKnown;
-        private AudioSource _introSource;
-        private AudioSource _loopSource;
-        private AudioSource _fireSource;
         private AudioClip _intro;
         private AudioClip _loop;
 
@@ -118,25 +117,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private void Awake()
         {
             if (_beam != null) _beam.enabled = false;
-            _introSource = MakeSource("Charged");
-            _loopSource = MakeSource("Charged Loop");
-            _loopSource.loop = true;
-            _fireSource = MakeSource("Fire");
+            if (_loopSource != null) _loopSource.loop = true;
             if (_chargedClip != null) (_intro, _loop) = Cut(_chargedClip, _loopStart, _loopLength);
-        }
-
-        private AudioSource MakeSource(string name)
-        {
-            var holder = new GameObject(name);
-            holder.transform.SetParent(_muzzle != null ? _muzzle : transform, false);
-            var source = holder.AddComponent<AudioSource>();
-            source.playOnAwake = false;
-            source.spatialBlend = 1f;
-            source.rolloffMode = AudioRolloffMode.Linear;
-            source.minDistance = 1f;
-            source.maxDistance = _soundMaxDistance;
-            source.volume = _volume;
-            return source;
         }
 
         /// The charged sound's intro (start to the loop) and loop, each cut on a rising zero crossing so the loop
@@ -189,7 +171,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// Charged: the intro once, then the loop from exactly where it ends, until it is fired.
         private void StartChargedSound()
         {
-            if (_intro == null || _loop == null) return;
+            if (_intro == null || _loop == null || _introSource == null || _loopSource == null) return;
             double at = AudioSettings.dspTime + 0.05;
             _introSource.clip = _intro;
             _introSource.PlayScheduled(at);
@@ -335,7 +317,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         public void ShowShot()
         {
             StopChargedSound();
-            if (_fireClip != null) _fireSource.PlayOneShot(_fireClip);
+            if (_fireClip != null && _fireSource != null) _fireSource.PlayOneShot(_fireClip);
             if (_beam != null && _muzzle != null) StartCoroutine(Beam());
         }
 

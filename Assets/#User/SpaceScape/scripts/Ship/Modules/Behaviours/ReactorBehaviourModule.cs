@@ -2,6 +2,7 @@ using System;
 using SomniumSpace.Worlds.SpaceScape.Power;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
@@ -19,8 +20,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private double _heatRatio = 2.0;          // ~15 RTG, ~2 fission, <1 fusion
         [Tooltip("Temperature it settles at with the rods fully out; lower output sits proportionally lower. It is never damaged for sitting at it.")]
         [SerializeField] private double _workingCelsius = 400.0;
-        [Tooltip("Seconds of running at full output. It burns proportionally slower with the rods part way.")]
-        [SerializeField] private double _fuelSeconds = 3600.0;
+        [Tooltip("Seconds one fuel rod runs at full output. It burns proportionally slower with the rods part way. The reactor starts with one rod in; the next comes from its LoadingModule for fuel rods (loading.md).")]
+        [FormerlySerializedAs("_fuelSeconds")]
+        [SerializeField] private double _fuelSecondsPerRod = 3600.0;
 
         [Header("Rods")]
         [Tooltip("The crew's dial: 0 is rods fully in (off), 1 fully out (full power). The rods head for it while the magnets grip.")]
@@ -45,7 +47,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private double _flow;                     // nobody turns this down for you
 
         [Header("Readout")]
-        [Tooltip("Text showing output, rods, core temperature against its working baseline, fuel and coolant. Optional.")]
+        [Tooltip("Text showing output, rods, core temperature against its working baseline, fuel left in the rod, and coolant. Optional.")]
         [SerializeField] private TMP_Text _readout;
 
         private ReactorBehaviour _reactor;
@@ -64,7 +66,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                         Cores = _cores,
                         HeatRatio = _heatRatio,
                         WorkingCelsius = _workingCelsius,
-                        FuelSeconds = _fuelSeconds,
+                        FuelSecondsPerRod = _fuelSecondsPerRod,
+                        FuelSeconds = _fuelSecondsPerRod,
+                        Refuel = TakeRod,
                         RaisePerSecond = _raisePerSecond,
                         DropPerSecond = _dropPerSecond,
                     };
@@ -81,6 +85,25 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 return _reactor;
             }
         }
+
+        private LoadingModule _fuel;
+        private bool _fuelFound;
+
+        /// The LoadingModule holding the next fuel rod, or null when the reactor has none.
+        public LoadingModule Fuel
+        {
+            get
+            {
+                if (_fuelFound) return _fuel;
+                foreach (var loading in GetComponents<LoadingModule>())
+                    if (loading.Takes<LoadableFuelRodItem>()) { _fuel = loading; break; }
+                _fuelFound = true;
+                return _fuel;
+            }
+        }
+
+        /// The core is spent: takes the next rod, consuming it now, if there is one.
+        private bool TakeRod() => Fuel != null && Fuel.Consume();
 
         /// The crew's dial, from rods fully in (0) to fully out (1).
         public float TargetWithdrawal
@@ -158,6 +181,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _reactor.Core.TargetWithdrawal = _targetWithdrawal;
             _reactor.Core.OutputPerCore = _outputPerCore;
             _reactor.Core.Cores = _cores;
+            _reactor.Core.FuelSecondsPerRod = _fuelSecondsPerRod;
             _reactor.Core.HeatRatio = _heatRatio;
             _reactor.Core.WorkingCelsius = _workingCelsius;
             _reactor.Control.DrawWatts = _controlWatts;
@@ -185,7 +209,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 $"{r.Core.WattsProduced:0} W\n" +
                 $"rods {r.Core.Withdrawal:P0} of {_targetWithdrawal:P0}{(r.RodsHeld ? "" : "  NO GRIP")}\n" +
                 $"{celsius:0} / {r.Core.BaselineCelsius:0} C\n" +
-                $"fuel {r.Core.FuelSeconds:0} s\n" +
+                $"fuel {r.Core.FuelLevel:P0}\n" +
                 $"{r.Coolant.Litres:0} L @ {r.Coolant.ActualFlow:0.#}/s{(r.Coolant.AtCeiling ? " MAX" : "")}";
         }
 

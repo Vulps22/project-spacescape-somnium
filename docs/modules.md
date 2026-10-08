@@ -403,15 +403,4 @@ worked out by every client running the same sim (`networking.md`, rule 11).
 
 ## Loading: a LoadingModule (planned)
 
-
-A way to physically load consumables into a component: fuel and coolant into the reactor first. It
-is the fuel rack and coolant pad that `reactor.md` lists as not built; today the fuel seconds and
-coolant litres are preset numbers in the Inspector.
-
-- **a `LoadingModule`**, not a reactor feature, so anything that consumes something loadable can use
-  it: missiles and gatling guns taking ammunition, if they are added
-- it owns what has been loaded and hands it to the behaviour as the behaviour uses it up; the
-  behaviour decides what it accepts and how fast it burns through it, the way the capacitor holds
-  power and the behaviour decides what to do with it
-- **one `LoadingModule` holds one kind of thing.** A component that takes several carries one per
-  kind, so the reactor has two: one for fuel, one for coolant
+Moved to `loading.md`.

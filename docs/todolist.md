@@ -21,8 +21,10 @@ in the topic docs, never here; an item is removed once it is done. Build everyth
 - Open: should a running reactor's input take a cell's full discharge as heat? `power.md`
 - Open: the battery tier ladder. `power.md`
 - Coolant consumption, and the coolant upgrade for branches. `reactor.md`, `conduits.md`
-- Loading: a `LoadingModule` for fuel, coolant and ammunition. `modules.md`
+- Loading: hand-fed fuel, then the loader, then the item upgrade. `loading.md`
+- Fuel rod glass: binocular luster shader, once the loading work is done. `loading.md`
 - Weight, and carrying together. `grid.md`
+- Sounds ignore Somnium's volume controls, even on the Environment layer (pinned). `README.md`
 
 ## Conduits
 

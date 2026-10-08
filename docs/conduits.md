@@ -154,8 +154,8 @@ The hologram also has two slots:
   - **Junction +1 to +4**: one to four extra segments (3 to 6 in all), shown by a small box on the
     conduit. Splitters and mergers are gone: a junction's arrows make it a split, a merge, or
     anything else.
-- **an upgrade circle** above it: applies to the **whole branch**. Coolant is the only one planned
-  (see *Coolant upgrade for branches*).
+- **an upgrade circle** above it: applies to the **whole branch**. Planned: coolant (see *Coolant upgrade for
+  branches*), data (`data.md`) and items (`loading.md`).
 
 **How an addon is built (2026-09-26, slot flow 2026-09-27).** An addon only ever *adds* to the cable,
 never replaces it. Every conduit carries an `AddonModule`: the addon slot. Its **Installed** field is
@@ -204,10 +204,10 @@ shows the watts its conduit carries (`Inflow`), scaled to three digits and a uni
 (`modules.md` → *Readouts*). Conduits themselves no longer carry text; a meter is how you read one. Its item is
 `Conduit Addons/Voltmeter Addon.prefab`, built like the switch's; it is addon 3 in `ConduitLayout`'s list.
 
-**Item dispensers (written 2026-10-07, untested).** `ItemDispenser` (scripts/Networking) puts an addon item
-in its box collider whenever nothing solid is in the box: take one out and another appears. A new item hangs
+**Item dispensers (written 2026-10-07, untested).** `ItemDispenser` (scripts/Networking) puts an item
+(any `Item`: an addon item, or a loadable item like a fuel rod, `loading.md`) in its box collider whenever nothing solid is in the box: take one out and another appears. A new item hangs
 where it appears, out of physics (kinematic), until a hand first lets go of it; from then on it is an
-ordinary physics object for good (`AddonItem.OnLetGo`). The item is a
+ordinary physics object for good (`Item.OnLetGo`). The item is a
 prefab set on the dispenser in the scene, and must be registered on SceneNetworking. A variant, like a +4
 junction, is the same prefab with the dispenser's **State** set (-1 keeps the prefab's own): the master
 spawns it and so holds its authority, and `AddonItemStateNetwork` carries the state to everyone. Only the master looks
@@ -390,7 +390,7 @@ accumulate along that branch.
 - open: where the coolant comes from (the reactor's drum, a separate tank, both), and whether flow
   follows the power's direction or just any adjacent coolant module
 
-A branch takes one upgrade: coolant or data (`data.md`), not both.
+A branch takes one upgrade: coolant, data (`data.md`) or items (`loading.md`), only one.
 
 ## Logic gates (idea, 2026-10-03)
 

@@ -8,7 +8,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// at most one per cell face. Power crosses nowhere else, so a conduit touching the component anywhere
     /// but a port does not join it. Each port shows as a Port prefab on its cell face, its ring blue for In,
     /// green for Out and red for Data. A Data port carries no power: a conduit with a segment on it joins the
-    /// component to the data network, whichever way the segment's arrow points (data.md).
+    /// component to the data network, whichever way the segment's arrow points (data.md). An Item port carries
+    /// no power either: it shows as the Item Port prefab instead, an amber square filling its cell face, where
+    /// loadable items go in (loading.md).
     ///
     /// Ports are the component's own: faces and cells turn with it, in quarter turns, so a port stays on
     /// the same spot of the model however the component is placed. A port's cell is counted from the face's
@@ -23,7 +25,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             [Tooltip("The cell on the face, counted from its bottom left looking at it from outside: x right, y up. On the top and bottom faces, up is toward the component's front.")]
             public Vector2Int Cell;
-            [Tooltip("In takes power from a neighbour's Out; Out sends to a neighbour's In; Data joins a conduit's segment to the data network, and carries no power.")]
+            [Tooltip("In takes power from a neighbour's Out; Out sends to a neighbour's In; Data joins a conduit's segment to the data network, and carries no power; Item is where loadable items go in, and carries no power.")]
             public FlowDirection Flow;
         }
 
@@ -38,6 +40,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         [Tooltip("The Port prefab shown on each port.")]
         [SerializeField] private PortVisual _portPrefab;
+        [Tooltip("The Item Port prefab shown on each Item port, in place of the Port prefab.")]
+        [SerializeField] private ItemPort _itemPortPrefab;
 
         private static readonly GridDirection[] AllFaces =
         {
@@ -108,6 +112,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         /// The Port prefab shown on each port.
         public PortVisual PortPrefab => _portPrefab;
+
+        /// The model shown on a port of this kind: the Item Port prefab on an Item port, else the Port prefab.
+        /// Null when that prefab is not set.
+        public GameObject PrefabFor(FlowDirection flow) =>
+            flow == FlowDirection.Item ? (_itemPortPrefab != null ? _itemPortPrefab.gameObject : null)
+            : _portPrefab != null ? _portPrefab.gameObject : null;
 
         /// Every port that counts (In or Out, on its face, first on its cell face), as world face, cell and
         /// flow, were the component centred and turned as given. For drawing a component that is not there
@@ -233,6 +243,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         public override bool DataAt(GridDirection face, Vector3Int cell) => FlowAt(face, cell) == FlowDirection.Data;
 
+        /// True where this cell face is an Item port.
+        public bool ItemAt(GridDirection face, Vector3Int cell) => FlowAt(face, cell) == FlowDirection.Item;
+
         private IEnumerable<GridDirection> FacesWith(FlowDirection flow)
         {
             foreach (var local in AllFaces)
@@ -283,7 +296,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             foreach (var face in AllFaces) count += Packed(face)?.Length ?? 0;
             Debug.Log($"ComponentEdgeModule: '{name}' has {count} port(s)", this);
             Index(true);
-            if (_portPrefab == null) return;
 
             // Placed against the model in the component's own axes, never from grid cells: a networked
             // component wakes wherever Fusion makes it, before it is seated, and cells worked out there
@@ -296,11 +308,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 {
                     if (ported.Flow == FlowDirection.None || !OnFace(local, ported.Cell)) continue;
                     if (!taken.Add((local, ported.Cell))) continue;
-                    var port = Instantiate(_portPrefab, transform.position + transform.rotation * LocalPointOf(local, ported.Cell),
+                    var prefab = PrefabFor(ported.Flow);
+                    if (prefab == null) continue;
+                    var port = Instantiate(prefab, transform.position + transform.rotation * LocalPointOf(local, ported.Cell),
                         transform.rotation * Quaternion.LookRotation(normal, up));
                     port.transform.SetParent(transform, true);
                     port.name = $"Port {local} {ported.Flow}";
-                    port.Show(ported.Flow);
+                    if (port.TryGetComponent<PortVisual>(out var visual)) visual.Show(ported.Flow);
                 }
             }
         }
@@ -316,10 +330,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 foreach (var port in PortsOn(local))
                 {
                     if (port.Flow == FlowDirection.None) continue;
-                    // Blue In, green Out, red Data, as the port rings are; magenta for a port off its face.
+                    // Blue In, green Out, red Data, amber Item, as the ports are; magenta for a port off its face.
                     Gizmos.color = !OnFace(local, port.Cell) ? Color.magenta
                         : port.Flow == FlowDirection.In ? new Color(0.3f, 0.55f, 1f)
                         : port.Flow == FlowDirection.Data ? new Color(0.9f, 0.1f, 0.08f)
+                        : port.Flow == FlowDirection.Item ? new Color(1f, 0.6f, 0.05f)
                         : new Color(0.3f, 0.9f, 0.4f);
                     Vector3 at = PointOf(local, port.Cell);
                     Gizmos.DrawSphere(at, GridCell.Size * 0.06f);

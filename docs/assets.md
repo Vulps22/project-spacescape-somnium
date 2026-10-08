@@ -6,6 +6,8 @@ that needs crediting in-world goes in `credits.md` (and the `Credits` prefab) as
 | Pack | Source | In the project | Used for |
 |---|---|---|---|
 | UI Mechanical (Free Sample Pack) | https://assetstore.unity.com/packages/audio/sound-fx/ui-mechanical-free-sample-pack-148704 | not imported yet | |
+| Energy Cells (Free) | https://assetstore.unity.com/packages/3d/environments/sci-fi/energy-cells-free-166830 | not imported yet | the jump drive's fuel cells, when the jump drive is built (`the-loop.md` → Jump fuel) |
+| Vehicle Essentials | store link to add | `Assets/Vehicle_Essentials` | the item port's doors: `Vehicle_Car_Trunk_Open_Button` and `Vehicle_Car_Trunk_Close_Impact` (`loading.md`) |
 | Sci-Fi Guns SFX Pack | https://assetstore.unity.com/packages/audio/sound-fx/sci-fi-guns-sfx-pack-181144 | `Assets/Scifi Guns SFX Pack` | |
 | ProBuilder (Unity package `com.unity.probuilder` 6.1.2, added 2026-10-07) | Package Manager | `Packages/manifest.json` | shaping simple meshes by hand, like the Disruptor's screen. **Before an upload**, export each ProBuilder mesh as an asset (ProBuilder → Export → Asset) or strip its scripts (Tools → ProBuilder → Actions → Strip ProBuilder Scripts): Somnium has no ProBuilder, so a `ProBuilderMesh` arrives as a missing script |
 | Modern ProBuilder Window | Asset Store | `Assets/Modern ProBuilder Window` | a replacement ProBuilder window; needs the ProBuilder package above, and without it fails to compile, which blocks every Editor script and Play mode |

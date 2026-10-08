@@ -53,6 +53,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             PlayerManager.OtherPlayerJoined += SayHello;
             PlayerManager.PlayerLeft += OnPlayerLeft;
             CarriedComponent.Bumped += OnComponentBumped;
+            LoadableItem.Remove = LoadableItemNetwork.Remove;
             if (_holograms != null)
             {
                 _holograms.Opened += OnHologramOpened;
@@ -74,6 +75,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             PlayerManager.OtherPlayerJoined -= SayHello;
             PlayerManager.PlayerLeft -= OnPlayerLeft;
             CarriedComponent.Bumped -= OnComponentBumped;
+            if (LoadableItem.Remove == LoadableItemNetwork.Remove) LoadableItem.Remove = null;
             if (_holograms != null)
             {
                 _holograms.Opened -= OnHologramOpened;

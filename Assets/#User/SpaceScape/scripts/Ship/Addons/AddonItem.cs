@@ -8,9 +8,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// An addon as something to carry: picked up, and let go inside an open conduit's addon slot to
     /// install what it stands for. It stays where it was put until a hand first takes it.
-    [RequireComponent(typeof(Rigidbody))]
-    [RequireComponent(typeof(XRGrabInteractable))]
-    public sealed class AddonItem : MonoBehaviour
+    public sealed class AddonItem : Item
     {
         [Tooltip("The addon prefab this installs on a conduit: the part that goes on the cable, like the rocker.")]
         [SerializeField] private ConduitAddon _installs;
@@ -88,9 +86,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (transform.localScale == target) _targetScale = null;
         }
 
-        private XRGrabInteractable _grab;
-        private Rigidbody _body;
-
         /// Raised when a hand lets go of any addon item, for an open addon slot to take it.
         public static event Action<AddonItem> Released;
 
@@ -119,36 +114,31 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private void Start() => ShowState();
 
-        /// What a hand grabs.
-        public XRGrabInteractable Grab => _grab != null ? _grab : _grab = GetComponent<XRGrabInteractable>();
-
         /// Pins it where it is, for sitting in a slot until it is taken.
         public void Hold()
         {
             _displayed = true;
-            if (_body == null) _body = GetComponent<Rigidbody>();
-            _body.isKinematic = true;
+            Body.isKinematic = true;
         }
 
-        private void OnEnable()
+        protected override void OnEnable()
         {
             Items.Add(this);
-            Grab.selectExited.AddListener(OnLetGo);
+            base.OnEnable();
         }
 
-        private void OnDisable()
+        protected override void OnDisable()
         {
             Items.Remove(this);
-            Grab.selectExited.RemoveListener(OnLetGo);
+            base.OnDisable();
         }
 
         /// Lets it fall once a hand has had it, then offers it to any slot it was dropped in.
-        private void OnLetGo(SelectExitEventArgs args)
+        protected override void OnLetGo(SelectExitEventArgs args)
         {
             if (Grab.isSelected || _retired) return;
             _displayed = false;
-            if (_body == null) _body = GetComponent<Rigidbody>();
-            _body.isKinematic = false;
+            base.OnLetGo(args);
             Released?.Invoke(this);
         }
     }

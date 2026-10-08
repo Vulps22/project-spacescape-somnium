@@ -6587,6 +6587,100 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: bd5ce9a37b11ea0ee9a9ee1f4f734940, type: 3}
+--- !u!1001 &1046400590
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8423750402169478118, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: _item
+      value: 
+      objectReference: {fileID: 591147961133513054, guid: 6abb3d94c23a42efabb34d1f3e2cbccf,
+        type: 3}
+    - target: {fileID: -8423750402169478118, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: _state
+      value: -1
+      objectReference: {fileID: 0}
+    - target: {fileID: -1043354365834229561, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_Size.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -1043354365834229561, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_Size.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -1043354365834229561, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_Size.z
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 19.703
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.2071536
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -12.661
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -90
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 913172536640140525, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_Name
+      value: FuelRodPack Dispenser
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 9ecde63cd3d1563c39287102f42bdc2e, type: 3}
 --- !u!1001 &1064633364
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6667,6 +6761,100 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1184032529}
   m_PrefabAsset: {fileID: 0}
+--- !u!1001 &1101831586
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8423750402169478118, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: _item
+      value: 
+      objectReference: {fileID: 6870322651395437057, guid: 40eaba58f876e0fb08a8f9fd1172c6e1,
+        type: 3}
+    - target: {fileID: -8423750402169478118, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: _state
+      value: -1
+      objectReference: {fileID: 0}
+    - target: {fileID: -1043354365834229561, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_Size.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -1043354365834229561, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_Size.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -1043354365834229561, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_Size.z
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 19.703
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.2071536
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -8.661
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -90
+      objectReference: {fileID: 0}
+    - target: {fileID: 154866779826162105, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 913172536640140525, guid: 9ecde63cd3d1563c39287102f42bdc2e,
+        type: 3}
+      propertyPath: m_Name
+      value: FuelRod Dispenser
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 9ecde63cd3d1563c39287102f42bdc2e, type: 3}
 --- !u!1 &1147292834
 GameObject:
   m_ObjectHideFlags: 0
@@ -9672,16 +9860,20 @@ MonoBehaviour:
   - {fileID: 4687426168042295669, guid: 1c79a4f1c06e4947187334a79d2fd3f4, type: 3}
   - {fileID: 8652818633877038783, guid: 80851be476c4351a8ba8bf0d0f6f0dfa, type: 3}
   - {fileID: 4677307411301874250, guid: 90bbfcf023b72b2699146a0049a51876, type: 3}
+  - {fileID: 7379469655058450103, guid: 40eaba58f876e0fb08a8f9fd1172c6e1, type: 3}
+  - {fileID: 1942635837386410653, guid: 6abb3d94c23a42efabb34d1f3e2cbccf, type: 3}
   _networkPrefabsGuid:
-  - a6651638-56bf-48cb-8c2e-67b81965bfc5
-  - 28a5312f-91bd-439e-b290-ec2fb9dd6701
-  - c665e7de-e6fc-4127-bead-67d84be8ec64
-  - 6edf926c-9ff2-4c26-966b-a292f07c9099
-  - 9e10c4a4-cb3a-4abd-8452-50ee9b8da24f
-  - 9f15eddb-f5a2-4dbc-bec1-11de478bafa7
-  - 44b8f2d1-8eaa-4f24-83a5-d5f0f277b4e2
-  - 7fd405d6-e01d-42b7-a24c-9f5c19ec0bdf
-  - 5e29ce70-da05-4fe7-876a-b36a3db9c850
+  - 2540db91-3921-41f9-98f1-43245145315d
+  - afd85e8f-e5c7-4eac-9afb-b2f6c37a1704
+  - 1ca780fe-e7c2-4ae1-9b62-bd493309098b
+  - fbb199a1-a4c8-4cf5-8017-60986204a9a9
+  - f7730002-68ba-4d90-a836-25c2df5b12a3
+  - 4d1e394d-a1ec-425a-9979-89f8a480d563
+  - 4ad0e10d-350b-444c-89cc-e1c6308e2711
+  - c9b9d853-919e-4ad6-ab75-ac01a78271cc
+  - a350efca-d0d2-4691-b527-1cc106abe0db
+  - ab93f060-a77d-41e1-8b02-60110d97e603
+  - a318a584-0584-4133-9339-c6255e2a025e
 --- !u!4 &1769002078
 Transform:
   m_ObjectHideFlags: 0
@@ -11673,7 +11865,7 @@ MonoBehaviour:
   AssetDescription: 'HEAVY WORK IN PROGRESS! DO NOT EXPECT MUCH                               '
   PreviewPicturePath: 
   PreviewTexture: {fileID: 2800000, guid: acf8c4ecc0b2b52d2bafbbf574f7af82, type: 3}
-  LastBuildSizeBytes: 4725472
+  LastBuildSizeBytes: 4743984
   BoundsIsDisplay: 0
   IsOpen360Preview: 0
   IsEditSpawnPos: 0
@@ -11701,7 +11893,7 @@ MonoBehaviour:
     Free:
       Count: 4
       MaxCount: 10
-      AvailableSize: 244673008
+      AvailableSize: 244654496
     Paid:
       Entries: []
   OwnedTokens: []
@@ -13266,3 +13458,5 @@ SceneRoots:
   - {fileID: 284159102}
   - {fileID: 816436759}
   - {fileID: 339816935}
+  - {fileID: 1101831586}
+  - {fileID: 1046400590}

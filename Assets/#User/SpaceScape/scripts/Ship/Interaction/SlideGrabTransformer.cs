@@ -5,8 +5,8 @@ using UnityEngine.XR.Interaction.Toolkit.Transformers;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
-    /// Keeps a grabbed object on a short straight track: from where it rests, up along its parent's up,
-    /// no further than Travel, and never turned. It follows the hand that holds it itself, from where the hand
+    /// Keeps a grabbed object on a short straight track: from where it rests, up along its parent's up no
+    /// further than Travel, and down no further than Travel Down, and never turned. It follows the hand that holds it itself, from where the hand
     /// took hold, so it needs no other grab transformer before it.
     ///
     /// XRGrabInteractable unparents whatever it grabs until it is let go, so the track is the parent it had at
@@ -15,6 +15,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     {
         [Tooltip("How far it can be pulled up along its parent's up, in metres.")]
         [SerializeField] private float _travel = 0.1f;
+        [Tooltip("How far it can be pushed down along its parent's up, in metres. 0: not at all.")]
+        [SerializeField] private float _travelDown;
 
         private Transform _track;      // the parent it slides along, kept while XRI has it unparented
         private Vector3 _restPosition;
@@ -28,7 +30,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// How far it can be pulled.
         public float Travel => _travel;
 
-        /// How far out it is now, 0 at rest to Travel.
+        /// How far it can be pushed.
+        public float TravelDown => _travelDown;
+
+        /// How far out it is now: 0 at rest, up to Travel pulled, down to -Travel Down pushed.
         public float Pulled => _track == null ? 0f : _track.InverseTransformPoint(transform.position).y - _restPosition.y;
 
         private void Awake() => Capture();
@@ -58,7 +63,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (_track == null || hand == null) return;
 
             Vector3 local = _track.InverseTransformPoint(hand.position) + _handOffset;
-            float out_ = Mathf.Clamp(local.y - _restPosition.y, 0f, _travel);
+            float out_ = Mathf.Clamp(local.y - _restPosition.y, -_travelDown, _travel);
             targetPose.position = _track.TransformPoint(new Vector3(_restPosition.x, _restPosition.y + out_, _restPosition.z));
             targetPose.rotation = _track.rotation * _restRotation;
         }

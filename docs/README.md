@@ -91,6 +91,15 @@ The `unity` CLI drives the running Editor. Two things that have cost real time:
 - **`RevertPrefabInstance` destroys added children.** It wiped a `SplitterModule` off a conduit.
 - Editor state read *after* a scene restart says nothing about what was on screen *before* it.
 
+**Sounds go on the Environment layer.** Somnium sets a sound's volume by its GameObject's layer, so every
+AudioSource is a dedicated child object **in the prefab**, on the **Environment** layer, with its volume and
+distance set there, and the script holds it in an `AudioSource` field (Item Port's Doors Sound, the Disruptor's
+three under its Muzzle, RockerSwitch's Toggle Sound). A source on Default ignores the player's volume controls.
+Only the conduit hologram, built in code, still makes its source in code (`EnvironmentSound.Make`), on the
+same layer.
+**Pinned (2026-10-08): this did not fix it.** Uploaded with every source on Environment, the sounds still
+ignore Somnium's volume controls. The cause is unknown; the layer rule stays until it is found.
+
 ## The MVP
 
 **The current scene, in VR, interactable.** The wiring stays fixed; what a hand can do is operate

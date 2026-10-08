@@ -435,16 +435,19 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     if (materials[i] != null) Graphics.DrawMesh(mesh, matrix, materials[i], gameObject.layer, camera, i);
             }
 
-            // Its ports, as Play mode will place them: the Port model on each cell face, ringed by direction.
-            if (!_startsWith.TryGetComponent<ComponentEdgeModule>(out var edges) || edges.PortPrefab == null) return;
-            var port = edges.PortPrefab;
+            // Its ports, as Play mode will place them: the Port model on each cell face, ringed by direction, or
+            // the Item Port model on an Item port.
+            if (!_startsWith.TryGetComponent<ComponentEdgeModule>(out var edges)) return;
             foreach (var (face, cell, flow) in edges.PortsAt(transform.position, SeatFor(_startsWith)))
             {
+                var model = edges.PrefabFor(flow);
+                if (model == null) continue;
+                model.TryGetComponent<PortVisual>(out var port);
                 Vector3 outward = face.Vector();
                 Vector3 up = Mathf.Abs(outward.y) > 0.5f ? Vector3.forward : Vector3.up;
                 var at = Matrix4x4.TRS(GridCell.ToWorld(cell) + outward * GridCell.Half, Quaternion.LookRotation(outward, up), Vector3.one)
-                    * port.transform.worldToLocalMatrix;
-                foreach (var filter in port.GetComponentsInChildren<MeshFilter>())
+                    * model.transform.worldToLocalMatrix;
+                foreach (var filter in model.GetComponentsInChildren<MeshFilter>())
                 {
                     var mesh = filter.sharedMesh;
                     if (mesh == null || !filter.TryGetComponent<MeshRenderer>(out var renderer)) continue;
@@ -452,7 +455,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     var materials = renderer.sharedMaterials;
                     for (int i = 0; i < mesh.subMeshCount && i < materials.Length; i++)
                     {
-                        var material = renderer == port.Ring ? port.MaterialFor(flow) : materials[i];
+                        var material = port != null && renderer == port.Ring ? port.MaterialFor(flow) : materials[i];
                         if (material != null) Graphics.DrawMesh(mesh, matrix, material, gameObject.layer, camera, i);
                     }
                 }

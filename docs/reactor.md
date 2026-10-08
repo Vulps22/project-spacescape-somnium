@@ -1,8 +1,8 @@
 # The reactor
 
 **Built and running in the scene.** `FissionCore`, `CoolantLoop`, `ReactorBehaviour`, and the Unity
-`ReactorBehaviourModule` + `CapacitorModule` + `ReactorLamp`, all covered by the sim tests. Fuel and coolant quantities are preset
-stand-ins; the rack and the pad are not built.
+`ReactorBehaviourModule` + `CapacitorModule` + `ReactorLamp`, all covered by the sim tests. Coolant is a preset
+stand-in, and fuel comes a rod at a time from a `LoadingModule` (`loading.md`); the coolant pad is not built.
 
 Cold-started in-world on 2026-09-18: a battery through a switch lights the magnets, the rods come up
 over twenty seconds, and the core sits at 401 °C against a 400 °C nominal while exporting to two
@@ -179,13 +179,8 @@ lazy.
 
 Both consumables are placed by hand, and the animation *is* the readout:
 
-- **fuel rack** — a **slot per rod**, and **each rod carries its own fuel level**. Players place
-  rods into the rack and it feeds them to the reactor; the rack is the queue, and watching it empty
-  is how you know your endurance. Because a rod is an item with a level rather than a number in a
-  tank, a part-spent rod can be pulled out and kept, and scavenged rods arrive part-used.
-
-  *Currently faked.* `FissionCore.FuelSeconds` is a single preset number standing in for the sum of
-  what is loaded. Slots are the real design and they are not first pass.
+- **fuel** — rod packs, fed in one rod at a time by hand or from a loader: `loading.md`. The core burns
+  one rod and takes the next from its `LoadingModule` when spent; nothing loads the module yet.
 - **coolant pad** — a metal drum set on a pad, draining as it is used.
 
 No inventory screen, no gauge required. Consistent with the contract wall and the conduit run: the

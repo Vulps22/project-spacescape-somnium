@@ -37,13 +37,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Header("Sound")]
         [Tooltip("Played whenever it flips over, by a hand here or because the switch changed for everyone. Optional.")]
         [SerializeField] private AudioClip _toggleClip;
-        [Tooltip("Volume of the flip, 0 to 1.")]
-        [SerializeField, Range(0f, 1f)] private float _toggleVolume = 1f;
-        [Tooltip("Distance, in metres, beyond which the flip cannot be heard.")]
-        [SerializeField] private float _toggleMaxDistance = 10f;
+        [Tooltip("Plays the flip. A child object on the Environment layer, so the player's volume controls apply.")]
+        [SerializeField] private AudioSource _audio;
 
         private readonly Collider[] _overlaps = new Collider[MaxOverlaps];
-        private AudioSource _audio;
 
         // A late joiner's switches take up how they stand over the first moments; that is not a flip to hear.
         private const float QuietAfterLoadSeconds = 5f;
@@ -65,20 +62,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (_switch != null) _topIn = _switch.Closed == _topInMeansClosed;
             _angle = RestAngle;
             Apply();
-            if (_toggleClip != null)
-            {
-                _audio = gameObject.AddComponent<AudioSource>();
-                _audio.playOnAwake = false;
-                _audio.spatialBlend = 1f;
-                _audio.rolloffMode = AudioRolloffMode.Linear;
-                _audio.minDistance = 0.5f;
-                _audio.maxDistance = _toggleMaxDistance;
-            }
         }
 
         private void Click()
         {
-            if (_audio != null) _audio.PlayOneShot(_toggleClip, _toggleVolume);
+            if (_audio != null && _toggleClip != null) _audio.PlayOneShot(_toggleClip);
         }
 
         private void FixedUpdate()

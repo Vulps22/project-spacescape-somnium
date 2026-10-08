@@ -43,6 +43,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private GridNode _tile;
         private XRGrabInteractable _grab;
         private Rigidbody _body;
+        private BoxCollider _box;
         private IgnoresPlayerBody _ignoresPlayer;
         private ComponentSlot _guided;
         private ComponentSlot.Guide _shown;
@@ -81,7 +82,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// with a hand interaction of its own (the reactor's lever), so the box never covers them.
         private void FitCollider()
         {
-            if (!TryGetComponent<BoxCollider>(out var box)) return;
+            if (!TryGetComponent(out _box)) return;
+            var box = _box;
             GetComponentsInChildren(false, Renderers);
             var bounds = new Bounds();
             bool any = false;
@@ -131,9 +133,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 return;
             }
 
-            // Never switched off in a hand: that would drop it.
+            // Never switched off in a hand: that would drop it. Locked in, the carry box goes too, so it never
+            // stands between a hand and the component's own controls.
             var slot = _slotted.Slot;
             bool free = slot == null || slot.Unlocked;
+            if (_box != null && _box.enabled != free) _box.enabled = free;
             if (_grab.enabled != free) _grab.enabled = free;
         }
 

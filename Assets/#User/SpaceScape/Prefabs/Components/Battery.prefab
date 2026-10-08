@@ -454,6 +454,8 @@ MonoBehaviour:
   _packedZMinus: 0300000000000000
   _portPrefab: {fileID: 1330740377116229456, guid: b89cfadafc5969556899f78cbe0b4c20,
     type: 3}
+  _itemPortPrefab: {fileID: 2710413414608572788, guid: 0540d7d948db5e4f9815bb868b3f70ec,
+    type: 3}
 --- !u!114 &7415347714470690146
 MonoBehaviour:
   m_ObjectHideFlags: 0
