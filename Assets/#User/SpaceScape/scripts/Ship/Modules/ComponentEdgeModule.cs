@@ -116,7 +116,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// The model shown on a port of this kind: the Item Port prefab on an Item port, else the Port prefab.
         /// Null when that prefab is not set.
         public GameObject PrefabFor(FlowDirection flow) =>
-            flow == FlowDirection.Item ? (_itemPortPrefab != null ? _itemPortPrefab.gameObject : null)
+            IsItem(flow) ? (_itemPortPrefab != null ? _itemPortPrefab.gameObject : null)
             : _portPrefab != null ? _portPrefab.gameObject : null;
 
         /// Every port that counts (In or Out, on its face, first on its cell face), as world face, cell and
@@ -243,8 +243,18 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         public override bool DataAt(GridDirection face, Vector3Int cell) => FlowAt(face, cell) == FlowDirection.Data;
 
-        /// True where this cell face is an Item port.
-        public bool ItemAt(GridDirection face, Vector3Int cell) => FlowAt(face, cell) == FlowDirection.Item;
+        /// True where this cell face is an item port, in or out.
+        public bool ItemAt(GridDirection face, Vector3Int cell) => IsItem(FlowAt(face, cell));
+
+        /// Item or ItemOut where this cell face is an item port, else None.
+        public FlowDirection ItemFlowAt(GridDirection face, Vector3Int cell)
+        {
+            var flow = FlowAt(face, cell);
+            return IsItem(flow) ? flow : FlowDirection.None;
+        }
+
+        /// True for an item port's flow, in or out.
+        public static bool IsItem(FlowDirection flow) => flow == FlowDirection.Item || flow == FlowDirection.ItemOut;
 
         private IEnumerable<GridDirection> FacesWith(FlowDirection flow)
         {
@@ -315,6 +325,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     port.transform.SetParent(transform, true);
                     port.name = $"Port {local} {ported.Flow}";
                     if (port.TryGetComponent<PortVisual>(out var visual)) visual.Show(ported.Flow);
+                    if (port.TryGetComponent<ItemPort>(out var item)) item.Show(ported.Flow);
                 }
             }
         }
@@ -330,14 +341,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 foreach (var port in PortsOn(local))
                 {
                     if (port.Flow == FlowDirection.None) continue;
-                    // Blue In, green Out, red Data, amber Item, as the ports are; magenta for a port off its face.
+                    // Blue In, green Out, red Data, as the ports are; items the same, larger; magenta for a port off its face.
                     Gizmos.color = !OnFace(local, port.Cell) ? Color.magenta
-                        : port.Flow == FlowDirection.In ? new Color(0.3f, 0.55f, 1f)
+                        : port.Flow == FlowDirection.In || port.Flow == FlowDirection.Item ? new Color(0.3f, 0.55f, 1f)
                         : port.Flow == FlowDirection.Data ? new Color(0.9f, 0.1f, 0.08f)
-                        : port.Flow == FlowDirection.Item ? new Color(1f, 0.6f, 0.05f)
                         : new Color(0.3f, 0.9f, 0.4f);
                     Vector3 at = PointOf(local, port.Cell);
-                    Gizmos.DrawSphere(at, GridCell.Size * 0.06f);
+                    Gizmos.DrawSphere(at, GridCell.Size * (IsItem(port.Flow) ? 0.12f : 0.06f));
                     Gizmos.DrawLine(at, at + outward * (GridCell.Size * 0.2f));
                 }
             }

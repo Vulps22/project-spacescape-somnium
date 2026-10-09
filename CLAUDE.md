@@ -23,11 +23,13 @@ A feature that works for one player and has not had that conversation is not rea
 - `docs/networking.md`: the networking plan: authority rules, steps, and notes as we go.
 - `docs/2d.md`: how a mouse-and-keyboard player does everything a VR player does. Draft.
 - `docs/polish.md`: **the current focus**: what the first many-player test turned up, and why.
+- **Next, and to be insisted on (2026-10-09): `docs/component-models.md`**, replacing every component model in the
+  loader's look. Only a major bug comes before it.
 - `docs/todolist.md`: what is queued, one line per item pointing to its topic doc. Removed when done.
 - **One topic, one doc.** Everything about a topic, including what was tried and failed, lives in its doc:
   `conduits.md` (conduits, holograms, addons, rings, cost), `data.md` (data, logic boards), `radar.md`,
   `ship-structure.md` (containers, access panels, GridPin, rooms, corridors), `weapons.md`, `repair.md`,
   `reactor.md`, `loading.md`, `power.md`, `grid.md` (slots, components, carrying), `component-hologram.md`, `modules.md`, `interaction.md`,
-  `training-room.md`, `felix.md`. When an item is refined, its notes go into its topic doc, never the to-do list.
+  `training-room.md`, `felix.md`, `component-models.md`. When an item is refined, its notes go into its topic doc, never the to-do list.
 - Scene: `Assets/#User/SpaceScape/SpaceScape.unity`. Code: `Assets/#User/SpaceScape/scripts/`.
   Editor-only tools: `Packages/com.spacescape.editor` (never uploaded).

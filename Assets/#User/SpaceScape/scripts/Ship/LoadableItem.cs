@@ -11,10 +11,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// open pack of its type takes one back the same way.
     public abstract class LoadableItem : Item
     {
-        /// Removes an item that has gone into a port or back into a pack, for everyone. Set by the networking;
-        /// false when it could not, and the caller then destroys the item itself (the Editor with no network).
-        public static Func<LoadableItem, bool> Remove;
-
         /// Raised when the last hand on this client lets go of a loadable item.
         public static event Action<LoadableItem> LetGo;
 
@@ -26,12 +22,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             base.OnLetGo(args);
             if (!Grab.isSelected) LetGo?.Invoke(this);
-        }
-
-        /// Removes it for everyone, or destroys it here when there is no network.
-        public void RemoveForEveryone()
-        {
-            if (Remove == null || !Remove(this)) Destroy(gameObject);
         }
     }
 }

@@ -52,7 +52,8 @@ namespace SomniumSpace.Worlds.SpaceScape.EditorTools
                 if (GUILayout.Button("Add In")) Add(list, FlowDirection.In);
                 if (GUILayout.Button("Add Out")) Add(list, FlowDirection.Out);
                 if (GUILayout.Button("Add Data")) Add(list, FlowDirection.Data);
-                if (GUILayout.Button("Add Item")) Add(list, FlowDirection.Item);
+                if (GUILayout.Button("Add Item In")) Add(list, FlowDirection.Item);
+                if (GUILayout.Button("Add Item Out")) Add(list, FlowDirection.ItemOut);
                 EditorGUILayout.EndHorizontal();
                 EditorGUILayout.Space(4f);
             }

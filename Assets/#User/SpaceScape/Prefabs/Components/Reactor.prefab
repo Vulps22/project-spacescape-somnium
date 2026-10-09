@@ -126,7 +126,7 @@ MonoBehaviour:
   _cores: 1
   _heatRatio: 2
   _workingCelsius: 400
-  _fuelSecondsPerRod: 10
+  _fuelSecondsPerRod: 30
   _targetWithdrawal: 0
   _raisePerSecond: 0.05
   _dropPerSecond: 0.5

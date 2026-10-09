@@ -100,6 +100,33 @@ same layer.
 **Pinned (2026-10-08): this did not fix it.** Uploaded with every source on Environment, the sounds still
 ignore Somnium's volume controls. The cause is unknown; the layer rule stays until it is found.
 
+## Models (Blender, by script)
+
+Script-built models live in `Blender/` at the repo root, tracked in git, so changes to them can be followed and
+redone. Convention (decided 2026-10-09, from the loaders):
+
+- **One folder per family** of models: `Blender/Loaders/`, and the components to come
+  (`component-models.md`) get theirs.
+- **One script per prefab, named after it without the space:** prefab `Loader S3` → `LoaderS3.py`. It saves
+  `LoaderS3.blend` next to itself and exports `Assets/#User/SpaceScape/Meshes/LoaderS3.fbx`, with the same name
+  throughout. Delete Blender's `.blend1` backups.
+- **Shared parts in one module per family** (`Blender/Loaders/loader_parts.py`): materials, boxes, beams,
+  rollers, legs, **the one brace rule** (a brace meets its leg halfway between the floor and the leg's top; its foot lands
+  at 45° unless that would leave the volume, when it lands at the edge and the brace is steeper; floor beams run
+  out to the feet), the power port panel, and the export. Every script in the family imports it, so all sizes are built
+  the same way. A detail that looks right on one size goes into the shared module, not into one script.
+- **After re-exporting, check the prefab's material order against the FBX's.** Blender orders a mesh's materials
+  by first use, so changing the order parts are built in can reorder them. The prefab keeps the order it was
+  made with, and every part then draws in the wrong colour (S3's dark guides all drew amber, 2026-10-09). Copy
+  each renderer's `sharedMaterials` from the FBX into the prefab.
+- **Run:** `blender -b --python Blender/Loaders/LoaderS3.py -- Blender/Loaders/LoaderS3.blend "Assets/#User/SpaceScape/Meshes/LoaderS3.fbx"`.
+- **Axes and materials:**
+  - Origin at the centre of the slot volume. Blender is Z up with the front at −Y; after export that is Unity
+    +Z, and Blender +X becomes Unity −X.
+  - Materials are named `FuelPackMetal`, `FuelPackDark` and `ComponentItem`, and remapped in Unity on import.
+- **The power port** is 8.4 cm square and sinks 4 cm. **The item port** is 0.56 m square and sinks 0.29 m. Model
+  solid geometry behind every port so it sits on the model.
+
 ## The MVP
 
 **The current scene, in VR, interactable.** The wiring stays fixed; what a hand can do is operate

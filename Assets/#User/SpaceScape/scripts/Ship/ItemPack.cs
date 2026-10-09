@@ -72,6 +72,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private int _shownFilled = -1;
         private float _shownRaised = -1f;
 
+        /// Raised when the last hand on this client lets go of a pack, for a loader's intake.
+        public static event Action<ItemPack> LetGo;
+
         /// Raised on the client whose hand opened or shut the lid, or took or put back an item.
         public event Action ChangedByHand;
 
@@ -87,6 +90,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         /// Which places are filled, one bit each from the first.
         public int Filled => _filled < 0 ? StartingFilled : _filled;
+
+        /// How many places it has.
+        public int Capacity => _places.Length;
+
+        /// The count lamps, lit from the first, for a picture of the pack to copy (ItemPackPicture).
+        public Renderer[] Lamps => _lamps;
+
+        /// A lamp's material while unlit.
+        public Material LampOff => _lampOff;
 
         /// True while the lid is open or opening.
         public bool Open => _open;
@@ -142,6 +154,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             base.OnDisable();
             LoadableItem.LetGo -= OnItemLetGo;
+        }
+
+        protected override void OnLetGo(SelectExitEventArgs args)
+        {
+            base.OnLetGo(args);
+            if (!Grab.isSelected) LetGo?.Invoke(this);
         }
 
         private void Update()

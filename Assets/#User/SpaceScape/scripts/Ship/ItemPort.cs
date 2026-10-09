@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,14 +7,15 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
-    /// A component's item port: an amber square filling one cell face, where loadable items go in (loading.md).
+    /// A component's item port: a square filling one cell face, its border blue for In and green for Out, where
+    /// loadable items go in or come out (loading.md).
     ///
     /// Its doors open while an item one of the component's LoadingModules would take is inside the intake (a box in
-    /// front of the face), and close when there is none. Every client works that out from where it sees the item,
+    /// front of the face), and close when there is none. While an item conduit is wired to it, they stay open. Every client works that out from where it sees the item,
     /// so nothing is sent for the doors, nor for their sounds (one as they start to open, one as they land shut). When a hand on this client lets go of such an item in the intake, this
     /// client (which holds the item, so moves it for everyone) lines it up with the port and draws it in, loads
     /// it into the LoadingModule, waits for the doors to shut, and removes it. Once a conduit is wired to the port
-    /// the intake is turned off and items arrive along the conduit instead (not built).
+    /// the intake is turned off and items arrive along the conduit instead (Wired, set by ItemConduits).
     public sealed class ItemPort : MonoBehaviour
     {
         [Tooltip("The trigger in front of the face where an item is noticed.")]
@@ -31,6 +33,14 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private float _drawInSeconds = 5f;
         [Tooltip("Seconds between looks inside the intake.")]
         [SerializeField] private float _checkSeconds = 0.1f;
+
+        [Header("Border")]
+        [Tooltip("The bars round the opening, coloured by which way items go.")]
+        [SerializeField] private Renderer[] _border = new Renderer[0];
+        [Tooltip("The border's material on an In port: blue, as a power input's ring.")]
+        [SerializeField] private Material _inMaterial;
+        [Tooltip("The border's material on an Out port: green, as a power output's ring.")]
+        [SerializeField] private Material _outMaterial;
 
         [Header("Sound")]
         [Tooltip("Played as the doors start to open.")]
@@ -52,6 +62,21 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// The trigger in front of the face where an item is noticed.
         public Collider Intake => _intake;
 
+        /// True while an item conduit is wired to this port: the intake takes nothing by hand. Set by ItemConduits.
+        public static Func<ItemPort, bool> Wired;
+
+        /// Which way items go here: Item (in) or ItemOut.
+        public FlowDirection Flow { get; private set; } = FlowDirection.Item;
+
+        /// Colours the border for which way items go.
+        public void Show(FlowDirection flow)
+        {
+            Flow = flow;
+            var material = flow == FlowDirection.ItemOut ? _outMaterial : _inMaterial;
+            if (material == null) return;
+            foreach (var bar in _border) if (bar != null) bar.sharedMaterial = material;
+        }
+
         private void Start() => _loading = GetComponentsInParent<LoadingModule>();
 
         private void OnDisable()
@@ -65,10 +90,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (_intake != null && _intake.enabled && Time.time >= _nextCheck)
             {
                 _nextCheck = Time.time + _checkSeconds;
-                Look();
+                if (Flow == FlowDirection.Item && (Wired == null || !Wired(this))) Look();
+                else _inside.Clear();
             }
 
-            bool wanted = _drawing != null;
+            // Wired to an item conduit, the doors stand open for as long as it is there.
+            bool wanted = _drawing != null || (Wired != null && Wired(this));
             foreach (var item in _inside) wanted |= item != null && LoaderFor(item) != null;
             // The open sound as they start to open; the close sound as they land shut, not if they reopen first.
             if (wanted && !_opening) Play(_openClip);

@@ -4,7 +4,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
     /// Makes a conduit a switch. Open, the whole tile is out of the grid, so where you fit one decides
     /// what it costs: beside a source the source stops, further along the cable before it cooks.
-    public sealed class SwitchAddon : ConduitAddon
+    public sealed class SwitchAddon : ConduitAddon, ISwitch
     {
         [Tooltip("Ticked: part of the grid. Unticked: the whole tile is off, and whatever feeds it has nowhere to go.")]
         [SerializeField] private bool _closed = true;

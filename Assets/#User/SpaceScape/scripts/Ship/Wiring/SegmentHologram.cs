@@ -47,6 +47,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// Distance from the centre to a face at scale 1, in metres.
         public float FaceDistance => _faceDistance;
 
+        /// False to never show the flow arrow, for a segment whose flow means nothing (an item conduit's).
+        public bool HasArrow { get; set; } = true;
+
         /// True while a hand is moving the handle, so posing leaves it where the hand put it.
         public bool TipHeld { get; set; }
 
@@ -60,7 +63,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _side = side.sqrMagnitude > 1e-6f ? side.normalized : Vector3.forward;
             _outward = outward;
             _parked = false;
-            if (_arrow != null) _arrow.gameObject.SetActive(true);
+            if (_arrow != null) _arrow.gameObject.SetActive(HasArrow);
         }
 
         /// Lets go of the handle where the hand left it, and glides it home from there over the given time.
@@ -102,7 +105,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 }
                 else _tip.localPosition = home;
             }
-            if (_parked || _arrow == null) return;
+            if (_parked || _arrow == null || !HasArrow) return;
 
             _arrow.localPosition = Vector3.up * _arrowAlong + _side * (_arrowAbove * open);
             var rest = Quaternion.LookRotation(_side, _outward ? Vector3.up : Vector3.down);

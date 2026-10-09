@@ -13,8 +13,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     {
         private const int MaxOverlaps = 16;
 
-        [Tooltip("The switch addon this rocker throws. Found automatically on this object or above it.")]
-        [SerializeField] private SwitchAddon _switch;
+        [Tooltip("What this rocker throws: a switch addon, or a component's own switch (an ISwitch). Found automatically on this object or above it.")]
+        [SerializeField] private MonoBehaviour _switch;
         [Tooltip("The part that tilts, about its X axis. Carries the two pads.")]
         [SerializeField] private Transform _paddle;
         [Tooltip("The solid box covering the top half of the paddle.")]
@@ -44,6 +44,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         // A late joiner's switches take up how they stand over the first moments; that is not a flip to hear.
         private const float QuietAfterLoadSeconds = 5f;
+        private ISwitch _thrown;
         private bool _topIn;
         private float _angle;
 
@@ -57,9 +58,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// The half that stands proud, and so the one that can be pushed.
         private BoxCollider Raised => _topIn ? _bottomPad : _topPad;
 
+        private void Awake() => _thrown = _switch as ISwitch;
+
         private void Start()
         {
-            if (_switch != null) _topIn = _switch.Closed == _topInMeansClosed;
+            if (_thrown != null) _topIn = _thrown.Closed == _topInMeansClosed;
             _angle = RestAngle;
             Apply();
         }
@@ -127,14 +130,14 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _angle = RestAngle;
             Apply();
             Click();
-            if (_switch != null) _switch.Press(_topIn == _topInMeansClosed);
+            _thrown?.Press(_topIn == _topInMeansClosed);
         }
 
         /// Takes the switch's state when something other than a push changed it.
         private void FollowSwitch()
         {
-            if (_switch == null) return;
-            bool wantTopIn = _switch.Closed == _topInMeansClosed;
+            if (_thrown == null) return;
+            bool wantTopIn = _thrown.Closed == _topInMeansClosed;
             if (wantTopIn == _topIn) return;
             _topIn = wantTopIn;
             _angle = RestAngle;
@@ -149,7 +152,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private void OnValidate()
         {
-            if (_switch == null) _switch = GetComponentInParent<SwitchAddon>();
+            if (!(_switch is ISwitch)) _switch = GetComponentInParent<ISwitch>() as MonoBehaviour;
         }
     }
 }

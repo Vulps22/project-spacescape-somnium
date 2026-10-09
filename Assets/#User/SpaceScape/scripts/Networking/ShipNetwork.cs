@@ -18,6 +18,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
     /// Conduit edits: a hand on a non-master client that changes a conduit sends the conduit as it now
     /// stands to the master, which makes its own copy match; the conduit chunks carry it to everyone.
     ///
+    /// Item conduit edits: as conduit edits, a hand on a non-master sends what it did to a run to the master,
+    /// which does the same and writes the runs out (ItemConduitNetwork). Opening and closing an item conduit's
+    /// hologram is told to everyone by cell, as a conduit's is by slot, with the same rule when two open at once.
+    ///
     /// Addon items: spawned when taken out of a conduit, despawned when put in (AddonItemNetwork).
     ///
     /// Components shoving each other: a loose component's physics runs on whoever has its authority, so when
@@ -33,17 +37,30 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             HologramOpened = 1,
             HologramClosed = 2,
             ConduitEdited = 3,
+            ItemRunEdited = 4,   // an item conduit grown, turned or cut elsewhere: edit, x, y, z, entry, exit as ints
+            ItemHologramOpened = 5,  // a player opened an item conduit's hologram: x, y, z as ints, then their id
+            ItemHologramClosed = 6,
         }
 
         [SerializeField] private NetworkMessenger _messenger;
 
         private ConduitHolograms _holograms;
+        private ItemConduits _itemConduits;
+        private ItemConduitHolograms _itemHolograms;
         private AddonItemNetwork _addonItems;
 
         private void Awake()
         {
             if (_messenger == null) _messenger = GetComponent<NetworkMessenger>();
             _holograms = FindFirstObjectByType<ConduitHolograms>();
+            _itemConduits = FindFirstObjectByType<ItemConduits>();
+            _itemHolograms = FindFirstObjectByType<ItemConduitHolograms>();
+            if (_itemConduits != null) _itemConduits.EditedByHand += OnItemRunEdited;
+            if (_itemHolograms != null)
+            {
+                _itemHolograms.Opened += OnItemHologramOpened;
+                _itemHolograms.Closed += OnItemHologramClosed;
+            }
 
             // OnSpawned can run before Start, so everything is subscribed here.
             _messenger.OnSpawned += SayHello;
@@ -53,7 +70,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             PlayerManager.OtherPlayerJoined += SayHello;
             PlayerManager.PlayerLeft += OnPlayerLeft;
             CarriedComponent.Bumped += OnComponentBumped;
-            LoadableItem.Remove = LoadableItemNetwork.Remove;
+            Item.Remove = ItemNetwork.Remove;
             if (_holograms != null)
             {
                 _holograms.Opened += OnHologramOpened;
@@ -75,7 +92,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             PlayerManager.OtherPlayerJoined -= SayHello;
             PlayerManager.PlayerLeft -= OnPlayerLeft;
             CarriedComponent.Bumped -= OnComponentBumped;
-            if (LoadableItem.Remove == LoadableItemNetwork.Remove) LoadableItem.Remove = null;
+            if (Item.Remove == ItemNetwork.Remove) Item.Remove = null;
+            if (_itemConduits != null) _itemConduits.EditedByHand -= OnItemRunEdited;
+            if (_itemHolograms != null)
+            {
+                _itemHolograms.Opened -= OnItemHologramOpened;
+                _itemHolograms.Closed -= OnItemHologramClosed;
+            }
             if (_holograms != null)
             {
                 _holograms.Opened -= OnHologramOpened;
@@ -129,10 +152,55 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             _messenger.SendToController((byte)ShipMessageType.ConduitEdited, payload);
         }
 
+        private void OnItemHologramOpened(Vector3Int cell) => SendItemHologram(ShipMessageType.ItemHologramOpened, cell);
+        private void OnItemHologramClosed(Vector3Int cell) => SendItemHologram(ShipMessageType.ItemHologramClosed, cell);
+
+        private void SendItemHologram(ShipMessageType type, Vector3Int cell)
+        {
+            var me = PlayerManager.LocalPlayer;
+            if (!me.Exists || !_messenger.CanSend) return;
+            byte[] id = Encoding.UTF8.GetBytes(me.Id);
+            byte[] payload = new byte[12 + id.Length];
+            Buffer.BlockCopy(new[] { cell.x, cell.y, cell.z }, 0, payload, 0, 12);
+            Buffer.BlockCopy(id, 0, payload, 12, id.Length);
+            _messenger.SendToAll((byte)type, payload);
+        }
+
+        private void OnItemHologramMessage(bool opened, byte[] data)
+        {
+            if (_itemHolograms == null || data.Length < 12) return;
+            int[] xyz = new int[3];
+            Buffer.BlockCopy(data, 0, xyz, 0, 12);
+            var cell = new Vector3Int(xyz[0], xyz[1], xyz[2]);
+            string player = Encoding.UTF8.GetString(data, 12, data.Length - 12);
+            string me = PlayerManager.LocalPlayer.Id;
+            if (string.IsNullOrEmpty(player) || player == me) return;
+
+            // Both opened it at once: the lower id keeps it.
+            if (opened && _itemHolograms.Open == cell && string.CompareOrdinal(me, player) < 0) return;
+            _itemHolograms.SetOpenElsewhere(cell, player, opened);
+        }
+
+        private void OnItemRunEdited(ItemConduits.Edit edit, Vector3Int cell, GridDirection entry, GridDirection exit)
+        {
+            if (PlayerManager.IsMaster || !WorldManager.IsNetworkReady || !_messenger.CanSend) return;
+            int[] message = { (int)edit, cell.x, cell.y, cell.z, (int)entry, (int)exit };
+            byte[] payload = new byte[message.Length * 4];
+            Buffer.BlockCopy(message, 0, payload, 0, payload.Length);
+            _messenger.SendToController((byte)ShipMessageType.ItemRunEdited, payload);
+        }
+
         private void OnMessageToController(byte id, byte[] data)
         {
             switch ((ShipMessageType)id)
             {
+                case ShipMessageType.ItemRunEdited:
+                    if (data.Length < 24 || _itemConduits == null || !PlayerManager.IsMaster) return;
+                    int[] run = new int[6];
+                    Buffer.BlockCopy(data, 0, run, 0, 24);
+                    _itemConduits.Apply((ItemConduits.Edit)run[0], new Vector3Int(run[1], run[2], run[3]),
+                        (GridDirection)run[4], (GridDirection)run[5]);
+                    break;
                 case ShipMessageType.ConduitEdited:
                     if (data.Length % 4 != 0) return;
                     int[] edit = new int[data.Length / 4];
@@ -158,6 +226,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
                 case ShipMessageType.HologramClosed:
                     OnHologramMessage((ShipMessageType)id == ShipMessageType.HologramOpened, data);
                     break;
+                case ShipMessageType.ItemHologramOpened:
+                case ShipMessageType.ItemHologramClosed:
+                    OnItemHologramMessage((ShipMessageType)id == ShipMessageType.ItemHologramOpened, data);
+                    break;
                 default:
                     Debug.LogWarning($"ShipNetwork: unknown message {id}", this);
                     break;
@@ -181,6 +253,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         private void OnPlayerLeft(PlayerIdentity who)
         {
             if (_holograms != null) _holograms.ClearOpenElsewhere(who.Id);
+            if (_itemHolograms != null) _itemHolograms.ClearOpenElsewhere(who.Id);
         }
 
         private void OnValidate()

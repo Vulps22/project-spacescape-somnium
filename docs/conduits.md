@@ -36,6 +36,10 @@ conduits anywhere. Eventually no drawn run exists outside the cells the definiti
 
 Whether a slot's shell is exposed or behind housing panels is not decided.
 
+**Grown instead of pre-placed (idea, 2026-10-08).** Item conduits (`loading.md` → Item conduits) are not
+placed in every cell: a run grows from a port, and only its open tip has a parked node. If that works well, it
+could one day replace pre-placing parked conduits everywhere.
+
 ## Parked and wired
 
 **A parked conduit is still there:** an object, a grid node, a network slot, like any other conduit. It just
@@ -155,7 +159,7 @@ The hologram also has two slots:
     conduit. Splitters and mergers are gone: a junction's arrows make it a split, a merge, or
     anything else.
 - **an upgrade circle** above it: applies to the **whole branch**. Planned: coolant (see *Coolant upgrade for
-  branches*), data (`data.md`) and items (`loading.md`).
+  branches*) and data (`data.md`). Items are not an upgrade: they travel in item conduits (`loading.md`).
 
 **How an addon is built (2026-09-26, slot flow 2026-09-27).** An addon only ever *adds* to the cable,
 never replaces it. Every conduit carries an `AddonModule`: the addon slot. Its **Installed** field is

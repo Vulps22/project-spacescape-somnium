@@ -128,6 +128,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// this client decides every item's.
         public Func<AddonItem, bool> SizesItem;
 
+        /// True for a cell an item conduit holds, or could grow into from its tip: its power conduit does not open
+        /// here. Set by ItemConduits.
+        public Func<Vector3Int, bool> Claimed;
+
         private readonly Dictionary<GridNode, HashSet<string>> _openElsewhere = new Dictionary<GridNode, HashSet<string>>();
         private readonly Dictionary<GridNode, Transform> _boxes = new Dictionary<GridNode, Transform>();
         private GridNode _shown;
@@ -485,6 +489,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private GridNode ConduitAt(Vector3 point)
         {
             var cell = GridCell.ToCell(point);
+            if (Claimed != null && Claimed(cell)) return null;
             return _conduits.TryGetValue(cell, out var tile) ? tile : null;
         }
     }

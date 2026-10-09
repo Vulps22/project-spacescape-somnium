@@ -363,6 +363,14 @@ hook for damage stages), `Lost` (condition reached zero).
 Breakers, conduit capacity, fire, and the fuel rack and coolant pad as real inventory. The reactor
 **is** built — see `reactor.md`. See `open-questions.md` for what is undecided.
 
+## Open: the scale of every number (logged 2026-10-08)
+
+Every rating is far too small for what the parts are. A battery the size of a person putting out 100 W
+feeds a disruptor **cannon**; the reactor, the biggest component in the game, makes at most 1 MW. Watts,
+capacities and draws all need rebalancing and scaling up together, so the ratios that make the puzzle
+(duty cycle, heat, priority) survive. Until then new parts take numbers in today's scale: the loader draws
+50 W.
+
 ## Open: the battery tier ladder
 
 
