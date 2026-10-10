@@ -7,6 +7,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// scene while editing; they show as gizmos, and are built from the conduit prefab when the world
     /// starts, before the grid is. A hand-placed tile in a drawn cell wins, and the drawn conduit is skipped.
     /// Every other cell a ConduitLayoutDefinition holds is built too, as a plain conduit with nothing wired.
+    ///
+    /// A drawn conduit on a ring stays part of it: the ring is traced through it, and it takes the ring's two
+    /// faces on any face it leaves None. So a run is joined to a ring, or taken off one, by drawing the one cell
+    /// where they meet, with a junction for its third face.
     public sealed class ConduitLayout : MonoBehaviour
     {
         private const string RootName = "Conduits (drawn)";
@@ -107,6 +111,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             root.SetActive(false);
             root.transform.SetParent(transform, false);
 
+            var rings = WireRings(taken);
+
             foreach (var code in All)
             {
                 if (taken.Contains(code.Cell))
@@ -119,8 +125,16 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
                 var conduit = Instantiate(_conduitPrefab, GridCell.ToWorld(code.Cell), Quaternion.identity, root.transform);
                 if (conduit.TryGetComponent<NodeEdgeModule>(out var edges))
+                {
                     foreach (GridDirection face in System.Enum.GetValues(typeof(GridDirection)))
                         if (face != GridDirection.None) edges.SetFace(face, code.GetFace(face));
+                    // On a ring: the ring's faces too, wherever the drawing leaves a face None.
+                    if (rings.TryGetValue(code.Cell, out var through))
+                    {
+                        if (through.from != GridDirection.None && code.GetFace(through.from) == FlowDirection.None) edges.SetFace(through.from, FlowDirection.In);
+                        if (through.to != GridDirection.None && code.GetFace(through.to) == FlowDirection.None) edges.SetFace(through.to, FlowDirection.Out);
+                    }
+                }
 
                 if (code.Addon == 0) continue;
                 var addon = code.Addon <= _addons.Length ? _addons[code.Addon - 1] : null;
@@ -132,8 +146,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 if (conduit.TryGetComponent<AddonModule>(out var slot))
                     slot.Configure(addon, code.AddonFacing, code.AddonTurns, code.AddonParked);
             }
-
-            var rings = WireRings(taken);
 
             // Every other cell a definition holds gets a plain conduit, both segments parked, or its ring's
             // two faces when it is on one.
@@ -180,7 +192,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 {
                     if (!definition.CarriesRings || !definition.enabled || !definition.gameObject.activeInHierarchy) continue;
                     foreach (var cell in definition.Cells)
-                        if (cell.y == _ringHeights[h] && !taken.Contains(cell) && !Index.ContainsKey(cell)) cells.Add(cell);
+                        if (cell.y == _ringHeights[h] && !taken.Contains(cell)) cells.Add(cell);
                 }
 
                 var done = new HashSet<Vector3Int>();

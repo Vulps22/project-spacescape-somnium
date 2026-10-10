@@ -104,9 +104,14 @@ the reactor's refuelling, `LoadableItem`, the fuel rod, and the port drawing a l
     the master puts it back into the world as a spawned pack holding what it held, and it drops.
   - **The intake** (the **Intake** child, a 1.3 × 1.6 × 1.2 m box over the front runners): a pack a hand on
     this client lets go of in it settles onto **Entry** over 0.6 s, then becomes a picture there and is
-    removed (`Item.Remove`). It waits in the box, and goes in when there is room: powered, a place free, and
-    **Entry** clear. With the eject switch on it is still taken, and runs straight through and out. **Packs** lists the pack types it takes (Fuel Rod Pack); any other type is
-    left where it is.
+    removed (`Item.Remove`). **In it means any part of the pack in the box** (2026-10-10, Vulps found packs the
+    rails came out for being ignored): the same test that sends the rails out, so if they come out, letting go takes
+    it. A pack let go outside the box is watched for 3 s in case it falls or slides in; only the client whose hand
+    let go watches it. It waits in the box, and goes in when there is room: powered, a place free, and
+    **Entry** clear. With the eject switch on it is still taken, and runs straight through and out. **A loader takes any
+    type of pack** (Vulps's design: emergent "woopsies", which is what the eject switch is for). **Packs** lists every
+    pack type (Fuel Rod Pack, Addon Pack); a pack whose items nothing wants just rides the conveyor until ejected. A
+    pack's Contents (the addon pack's addons) ride through with it and come back out intact.
   - **The front rails** (decided and built 2026-10-08, untested): the sign that it is ready to take a pack.
     While a pack it would take now (powered, room, a type in **Packs**; held or not, eject on or off) is in the
     intake, an inner set of rails slides 1.1 m forward out from under the front runners at 0.8 m/s, as far
@@ -115,6 +120,12 @@ the reactor's refuelling, `LoadableItem`, the fuel rod, and the port drawing a l
     out from the packs it sees, as the item port's doors do, so nothing is sent. The intake box now reaches
     the end of the extended rails (1.3 × 1.6 × 1.8 m). The **Front Rails** model is drawn retracted, tucked
     under the place below every runner.
+  - **Riding the rails in** (Vulps, 2026-10-10, untested): the intake box is stretched in code along the rails to
+    Rails Reach past the path's first point (plus half its depth), so a pack can be put down anywhere from the
+    extended rails' end to just inside the frame. A pack let go there lines up on the rails where it lies (no
+    further out than they are), then the rails retract at their own speed and, once they reach it, carry it in
+    on their end to the path's first point, where it is taken in as before. That stretch is the path's first
+    stretch but not a place: never counted as room.
   - **Sound:** `Vehicle_Car_Engine_Idle_Interior_Loop_03` loops while any pack is moving, from the **Running
     Sound** child (Environment layer, heard to 15 m). Each client plays it from the packs it sees moving, so
     nothing is sent.
@@ -131,8 +142,29 @@ the reactor's refuelling, `LoadableItem`, the fuel rod, and the port drawing a l
     network prefabs** like every component.
   - Nothing draws from the pack in the mechanism yet: how the loader feeds a component is step 2's second half.
 
+## The addon pack (built 2026-10-10, untested in-world)
+
+For carrying addons from the dispensers to the work (a dozen trips was a dozen too many). `Prefabs/Items/Packs/Addon
+Pack` (`AddonPack`, an `ItemPack`), modelled by `Blender/AddonPack.py` → `Meshes/AddonPack.fbx`: the fuel pack's base
+and lid, **red** where it is blue (`AddonPackGlow`), with **eight count lamps**. Under the lid hangs a tray: **eight
+places in a lattice round a solid middle block** as tall as the addons, with a red ring round its top. Each place holds
+any addon item (switch, junction, voltmeter) **at full size, upright, its front facing out** so it can be read; the
+corners face out diagonally. It **starts empty**.
+
+- **In:** an addon item let go near an empty place in the open pack goes in, and is removed.
+- **Out:** a hand taking one is given a real, spawned item, its state included (a +3 junction stays +3).
+- **Contents:** each place's addon (its position in **Kinds**, at most four) and a junction's count, four bits a place,
+  in one int (`ItemPack.Contents`). A loader carries it (two values per pack in its state) and the networking shares
+  it: `ItemPackNetwork` writes it as a third int, so the pack has a `NetworkBridgeData4`. A pack fed by hand sends it
+  to the master in **PackFed** (now three ints).
+- **Getting one:** the **AddonPack Dispenser**, beside the fuel pack's. Registered on `SceneNetworking`.
+
 ## Decided
 
+- **One in use, one waiting: the standard for every loading behaviour** (decided 2026-10-09). Whatever an item
+  port feeds holds one unit in use and one spare in its `LoadingModule`, as the reactor does now. Each of the
+  S5 reactor's six chambers follows it, with its own port on the reactor's top face (`reactor.md` → Six
+  chambers). Loaders feeding top-face ports need their own behaviour: not designed yet.
 - **Units only.** Loading moves whole items: fuel rods, ammunition. **Coolant is out of scope:** it is a
   liquid, and stays the drum and pump in `CoolantLoop` (`reactor.md`) until liquids get their own design.
 - **A pack is an item with a kind and a quantity**: a fuel rod pack holding N rods, an ammo crate holding N
@@ -213,6 +245,9 @@ the reactor's refuelling, `LoadableItem`, the fuel rod, and the port drawing a l
 
 ## Item conduits (decided 2026-10-08; built 2026-10-09, stepped offline, untested in-world)
 
+> **Superseded in part (2026-10-09):** the runs, tips and run edits below are replaced by **Item conduit rules**
+> (further down). The tubes, clipping, items in the tube and the loader's sending still stand.
+
 **Built:**
 - **Ports:** `FlowDirection.ItemOut` (appended) beside `Item` (in). The port inspector has **Add Item In** and
   **Add Item Out**. `ItemPort.Show` colours the border `ComponentInput` (blue) or `ComponentOutput` (green). An
@@ -289,7 +324,7 @@ If they work well, the way they grow could one day replace the pre-placed parked
   conduit, it must be parked, and while the run is there that power conduit cannot be wired. Runs are not
   bound to the conduit grid. (Built at first as "only cells with a parked conduit", which kept runs to the
   slot faces; fixed 2026-10-09.)
-- **No branching** (for now): one loader's Out to one component's In. Splitting comes later.
+- ~~**No branching** (for now)~~: superseded 2026-10-09 by **Junctions**, below.
 - **The want travels along the item conduit, not the data network.** The receiving component's
   `LoadingModule` shows that it has room for an item of its type; the loader at the other end of the run
   reads that and decides for itself to send one, if its end pack holds that type. Nothing commands anything
@@ -314,6 +349,79 @@ If they work well, the way they grow could one day replace the pre-placed parked
 | A component wanting an item | nobody new | each client reads the receiving `LoadingModule`, already networked, at the far end of the run |
 | Sending one, and the item in the tube | the master, on the loader | the loader's networked state: what is in the tube and how far along; every client moves the picture, the master decides the arrival and loads it |
 | A cell's power conduit while a run holds it | the master | follows from the runs: it cannot be wired |
+
+## Item conduit rules (decided with Vulps 2026-10-09; built the same day, untested in-world; replaces the runs above)
+
+**An item conduit is a conduit.** Once installed it behaves exactly as a power conduit does: segments,
+parking, the hologram, addons. The only difference is where it can be installed. **This is likely the
+foundation of a refactor of every conduit**, so it is built as one conduit core (a cell's segments, addons,
+hologram, network state, installing from a neighbour), with items the first thing it carries and power to move
+onto it later. The runs (a chain from a port, edited only at its end) are what this replaces: they could not
+lose a cell in the middle.
+
+1. **Segments.** Two, more with a Junction addon. Each is on a face or parked. **No In/Out arrows for now**: which
+   way items go comes from the loader's end. Merges will need them (to-do).
+2. **Installing.** A cell can take an item conduit only beside an item port or an installed item conduit facing it.
+   **Any installed item conduit counts**, whether or not its section still reaches a port, so a break can be
+   rebuilt from either side.
+3. **Once installed it stays** until it is destroyed, or every segment is parked **and** no port or installed item
+   conduit is beside it to reconnect to. Fully parked but kept, it is **invisible, like a parked power conduit**,
+   and a hand in its cell opens its hologram.
+4. **Detaching in the middle:** parking a cell's segments splits a line in two. Both sections stay installed.
+   **Items travelling in a section cut off from its loader fall out of the open end as real items.**
+5. **Addons behave the same on any conduit**; the addon decides what happens when it is taken out. Taking a
+   Junction out parks its extra segments and gives the item back, in the hologram's addon slot as for power.
+6. **Destroyed** (later, with weapon damage): only that cell goes; its neighbours stay installed.
+7. **One kind per cell:** while an item conduit is installed there, that cell's power conduit stays parked.
+
+**Built (2026-10-09):**
+- **`ItemConduits`** keeps the installed cells: per cell, the faces its segments are on and its addon (an index in
+  its **Addons** list, which holds the Junction, and the addon's state). A cell can be installed where an item port
+  or an installed item conduit's segment points into it (rule 2 as built: *pointing into it*, so cells merely
+  beside a line stay ordinary power conduit cells). Those cells are claimed from `ConduitHolograms`.
+- **One hologram for every conduit:** `ConduitHologram` now works an `IConduit` (`scripts/Ship/Wiring/IConduit.cs`):
+  `TileConduit` for a power conduit, a cell of `ItemConduits` for an item conduit (no arrows). `ItemConduitHolograms`
+  gets its hologram from `ConduitHolograms.MakeHologram`, so the parts, settings and addon-item handling are the
+  power conduit's. An installable cell opens with one segment already on the face toward what points into it;
+  putting the other on a face installs it.
+- **Parity with power conduits (fixed 2026-10-09 after Vulps tried it):** an addon item shrinks to fit the item
+  conduit's addon slot as it does a power conduit's; a cell another player has open is boxed; each segment shows on
+  its own (one segment on a face is half a tube), so parking one side hides that side.
+- **While its hologram is open** a cell's tube smokes away in `PanelDissolve` (the access panels' dissolve) and a
+  power conduit's cable shows its segments, since nothing inside a solid one-cell tube can be seen.
+- **Tubes** from each cell's faces: half a tube for one face, straight, corner, and a junction block
+  with a mouth per face for three or more faces or a junction addon. Routes go through any cell with three or more
+  faces as a junction, taking turns.
+- **Networking:** `ItemConduitState` is now a chunk (stamp, index, length, thirty cells at two ints each); the
+  master spawns as many as needed (up to `Max Cells`, 240). A hand's edit is ship message 7, **ItemConduitEdited**
+  (edit, cell, two values); message 4 is retired.
+- **Falling out:** an item whose route to its port is gone is made, by the master, as a real item where it was last
+  shown in the tube (`LoaderBehaviourModule.DropOut`, spawned by `ComponentNetwork`). It drops where it is rather
+  than travelling on to the open end.
+
+## Junctions (decided with Vulps 2026-10-09; rebuilt the same day on the rules above, untested in-world)
+
+For the six-port reactor. **Split only**: one loader feeds a tree. Merging (several loaders onto one trunk,
+each port asking for its own type) is next and on the to-do list; every item already carries its destination,
+so it needs spacing on a shared trunk, routes from several senders and segment arrows, not a redesign.
+
+- **A Junction is an ordinary addon** (the same +1 to +4 items as power conduits): let go of it in an open item
+  conduit's addon slot, and lift it out of the slot to take it out, as on a power conduit. It gives the cell its
+  extra segments; taking it out parks every segment, as on a power conduit, and the item comes back in the hand.
+- **Items take turns, as Satisfactory's splitter:** each junction sends its next item down the side after the one
+  it last used (sides in face order), skipping a side where nothing wants the item. Up to five outputs (a +4).
+- **A stream, not one at a time:** the loader sends the next item once the last has fully left the Out port and
+  gone on for the **send gap** (1 s, balance later), as long as a port in the tree wants one it has nothing on the
+  way to. It never waits for an arrival. Six empty chambers: four sent, the empty crate ejected, two more. Up to
+  six items in the tube per loader.
+- **An item arriving where it is no longer wanted** (filled by hand meanwhile) is lost with a warning, as before.
+
+| State | Owner | How it travels |
+|---|---|---|
+| A cell's junction and its extra segments | the master | in the cell's entry in the `ItemConduitState` chunks |
+| Putting a junction in or taking it out | the hand's client | ship message 7 (Addon edit); the item taken out is spawned as for power (`AddonItemNetwork`) |
+| Each junction's turn | the master only | not sent: an item's destination is fixed when it leaves. A new master starts every junction at side 1 |
+| Items in the tube | the master, on the loader | the loader's state: per item its kind, distance, and destination cell (two halves); every loader has a `NetworkBridgeData64` (37 to 46 ints) |
 
 ## Bigger loaders: S3, S4, S5 (decided 2026-10-09; built the same day, awaiting Vulps's approval in the editor)
 

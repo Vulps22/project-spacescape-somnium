@@ -42,6 +42,8 @@ rules live.
 - **A slot's anchor is its centre** (a grid corner), and a component attaches there.
 - **A slot has one front,** picked like a conduit's face, and its own up. A slotted component always
   faces the slot's front with the slot's up as its up, so a component never turns within a slot.
+  By precedent (not a hard rule) a component's own front is +Z and its up +Y, models included:
+  `component-models.md` → The look.
 - **A slot's volume is reserved:** no conduits are generated inside it, empty or not. Cables run to its
   edge, where a component's ports meet them; to get past a slot, route round it.
 - **Slots are seen only as gizmos** while editing. Where they go on the ship is set by hand, by

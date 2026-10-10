@@ -418,11 +418,16 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             RenderPipelineManager.beginCameraRendering -= DrawPreview;
         }
 
+        /// Which cameras a slot's preview is drawn for: only those showing the slot's own scene, not a prefab open in
+        /// Prefab Mode. Set by the editor package (SlotPreviewCameras): world scripts may not touch editor code.
+        public static Func<GameObject, Camera, bool> PreviewShownTo;
+
         /// While editing, draws the starting component's meshes where it will sit. Drawn only: nothing is
         /// made in the scene.
         private void DrawPreview(ScriptableRenderContext context, Camera camera)
         {
             if (Application.isPlaying || _startsWith == null || this == null) return;
+            if (PreviewShownTo != null && !PreviewShownTo(gameObject, camera)) return;
             var root = _startsWith.transform;
             var place = Matrix4x4.TRS(transform.position, SeatFor(_startsWith), Vector3.one) * root.worldToLocalMatrix;
             foreach (var filter in _startsWith.GetComponentsInChildren<MeshFilter>())

@@ -3,6 +3,8 @@
 What the crew actually does. The ship is the content; this layer exists to point them somewhere and
 put a clock on them.
 
+How the ship gets from where it is now to flying round one procgen system, before any of this: `flight.md`.
+
 ## The loop
 
 **Decided.** The crew are basically couriers, crossing a largely empty galaxy station to station.

@@ -82,7 +82,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         [Header("Addons")]
         [Tooltip("How close to the addon slot's centre an addon item must be let go to install it, in metres.")]
-        [SerializeField] private float _installRadius = 0.1f;
+        [SerializeField] private float _installRadius = 0.2f;
         [Tooltip("How much of the addon slot's frame an installed addon's item fills, 0 to 1. It is centred in the frame.")]
         [SerializeField, Range(0.1f, 1f)] private float _addonItemFill = 0.85f;
 
@@ -185,8 +185,39 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 if (conduit) RefreshLock(tile);
             }
 
+            var motion = Motion();
+            motion.Commit = (conduit, faces, outward) => Commit(((TileConduit)conduit).Tile, faces, outward);
+            motion.CommitAddon = (conduit, face, turns, parked) => CommitAddon(((TileConduit)conduit).Tile, face, turns, parked);
+            motion.Removed = conduit => Edited?.Invoke(((TileConduit)conduit).Tile);
             _hologram = ConduitHologram.Create(_segmentPrefab, _addonHandlePrefab, _centrePrefab, _addonSlotPrefab, _upgradeSlotPrefab,
-                _addonHeight, _upgradeHeight, _slotSpread, new ConduitHologram.Motion
+                _addonHeight, _upgradeHeight, _slotSpread, motion);
+        }
+
+        /// Another conduit hologram built from the same parts and settings, for item conduits: what a hand does in it
+        /// goes to the callbacks given. Its addon slot's items are shown and taken out through this one's events, so
+        /// the network handles them the same.
+        public ConduitHologram MakeHologram(Action<IConduit, IReadOnlyList<GridDirection>, IReadOnlyList<bool>> commit,
+            Action<IConduit> removed)
+        {
+            var motion = Motion();
+            motion.Commit = commit;
+            motion.Removed = removed;
+            var made = ConduitHologram.Create(_segmentPrefab, _addonHandlePrefab, _centrePrefab, _addonSlotPrefab, _upgradeSlotPrefab,
+                _addonHeight, _upgradeHeight, _slotSpread, motion);
+            _made.Add(made);
+            return made;
+        }
+
+        /// How close to an open hologram's addon slot an addon item must be let go to install it, in metres.
+        public float InstallRadius => _installRadius;
+
+        /// The box drawn round a conduit another player has open, and how far it stands off the conduit, for item conduits.
+        public Material OpenElsewhereMaterial => _openElsewhereMaterial;
+        public float OpenElsewherePadding => _openElsewherePadding;
+
+        private ConduitHologram.Motion Motion()
+        {
+            return new ConduitHologram.Motion
                 {
                     OpenSeconds = _openSeconds,
                     SlotSpiralDegrees = _slotSpiralDegrees,
@@ -207,13 +238,29 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     BuzzSeconds = _buzzSeconds,
                     ParkGrow = _parkGrow,
                     AddonItemFill = _addonItemFill,
-                    TileAt = cell => _tiles.TryGetValue(cell, out var found) ? found : null,
-                    Commit = Commit,
-                    CommitAddon = CommitAddon,
-                    Removed = tile => Edited?.Invoke(tile),
                     ItemShown = item => ItemShown?.Invoke(item),
                     ItemTakenOut = (item, prefab) => ItemTakenOut?.Invoke(item, prefab),
-                });
+                };
+        }
+
+        private readonly Dictionary<GridNode, TileConduit> _wrapped = new Dictionary<GridNode, TileConduit>();
+        private readonly List<ConduitHologram> _made = new List<ConduitHologram>();
+
+        /// The open hologram, this one's or one made for item conduits, whose conduit takes up this cell, or null.
+        private ConduitHologram OpenOn(Vector3Int cell)
+        {
+            if (_hologram != null && _hologram.IsOpen && _hologram.Conduit.Occupies(cell)) return _hologram;
+            foreach (var made in _made)
+                if (made != null && made.IsOpen && made.Conduit.Occupies(cell)) return made;
+            return null;
+        }
+
+        /// The one IConduit for a power conduit, so the hologram knows it is the same conduit from frame to frame.
+        private TileConduit Wrap(GridNode tile)
+        {
+            if (!_wrapped.TryGetValue(tile, out var conduit))
+                _wrapped[tile] = conduit = new TileConduit(tile, cell => _tiles.TryGetValue(cell, out var found) ? found : null);
+            return conduit;
         }
 
         private void OnEnable() => AddonItem.Released += Install;
@@ -256,7 +303,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     || AccessPanel.Blocks(conduit.Coordinate)) continue;
                 _holder = i;
                 _hologram.Holder = i;
-                _hologram.Show(conduit);
+                _hologram.Show(Wrap(conduit));
                 Shown(conduit);
                 return;
             }
@@ -265,8 +312,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             Shown(null);
         }
 
-        /// A held addon item shrinks to fit the addon slot while it is inside the open conduit's cell, and grows
-        /// back to full size once it leaves, easing rather than snapping. One let go anywhere but a slot grows
+        /// A held addon item shrinks to fit the addon slot while it is inside an open conduit's cell (a power conduit's
+        /// or an item conduit's), and grows back to full size once it leaves, easing rather than snapping. One let go anywhere but a slot grows
         /// back too. Only whoever decides an item's size resizes it; everyone else is sent its size.
         private void ResizeHeldItems()
         {
@@ -278,14 +325,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     if (!item.Displayed && item.transform.localScale != item.FullScale) item.ResizeTo(item.FullScale);
                     continue;
                 }
-                var open = _hologram != null && _hologram.IsOpen ? _hologram.Tile : null;
-                bool inside = open != null && open.Occupies(GridCell.ToCell(item.transform.position));
-                if (!inside) { item.ResizeTo(item.FullScale); continue; }
+                var open = OpenOn(GridCell.ToCell(item.transform.position));
+                if (open == null) { item.ResizeTo(item.FullScale); continue; }
 
-                var frame = _hologram.AddonSlotSize;
+                var frame = open.AddonSlotSize;
                 float across = item.UnitAcross;
                 if (across <= 1e-6f || frame.x <= 0f) continue;
-                item.ResizeTo(Vector3.one * (_hologram.AddonItemFill * Mathf.Min(frame.x, frame.y) / across));
+                item.ResizeTo(Vector3.one * (open.AddonItemFill * Mathf.Min(frame.x, frame.y) / across));
             }
         }
 

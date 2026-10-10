@@ -127,6 +127,17 @@ redone. Convention (decided 2026-10-09, from the loaders):
 - **The power port** is 8.4 cm square and sinks 4 cm. **The item port** is 0.56 m square and sinks 0.29 m. Model
   solid geometry behind every port so it sits on the model.
 
+## Driving the open editor from outside (Unity CLI)
+
+`~/.local/bin/unity` talks to the running editor through the Pipeline package (port 7800). It works while the editor is
+unfocused, which a window switch from outside does not (on Wayland it never refreshes):
+
+- `unity command menu --path "Assets/Refresh"` imports new files; `unity command recompile_status` until completed.
+- `unity command menu --path "SpaceScape/..."` runs our editor tools; `unity command console --level error` reads errors.
+- `unity command eval --code '...'` runs C# in the editor; `unity list` shows every command.
+- **`capture_scene_view --save_path` writes under `Assets/`** (`Temp/x.png` lands in `Assets/Temp/`). Move the file out
+  and delete the folder and its `.meta` afterwards.
+
 ## The MVP
 
 **The current scene, in VR, interactable.** The wiring stays fixed; what a hand can do is operate

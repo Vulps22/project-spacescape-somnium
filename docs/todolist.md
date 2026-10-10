@@ -20,6 +20,9 @@ in the topic docs, never here; an item is removed once it is done. Build everyth
 - Addon slots on components, wired to the component's functions in its hologram. `component-hologram.md`
 - Repair games, in the component hologram. `repair.md`
 - Repairing popped conduits. `repair.md`
+- Item conduit merges: several loaders onto one trunk, segment arrows, then splitters. `loading.md` → Junctions
+- Item conduits: test in-world (installing, parking in the middle, junctions, items falling out, two players). `loading.md` → Item conduit rules
+- Reactor chambers: test in play and with a second player. `reactor.md`
 - Reactor hum, generated in code. `reactor.md`
 - Open: an overproducing reactor bakes its own cables. `reactor.md`
 - Open: should a running reactor's input take a cell's full discharge as heat? `power.md`
@@ -35,6 +38,12 @@ in the topic docs, never here; an item is removed once it is done. Build everyth
 ## Conduits
 
 - Measure the cost: the world with every conduit wired in a line, and the frame rate. `conduits.md`
+
+## Flight (`flight.md`, in order)
+
+- Leg 0, the space frame: the ship on a floating origin, the universe drawn around it; check Somnium's far clip, double precision, the sun as a turning light, and outside things in the ship's frame. `flight.md`
+- Leg 1: Conduits V2 (every conduit on the item conduit core) and layout saving through SpacetimeDB. `flight.md`, `loading.md`
+- Legs 2 to 5: a procgen system, propulsion and the helm, flying around it, then the ship itself. `flight.md`
 
 ## The ship
 

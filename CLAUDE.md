@@ -30,6 +30,6 @@ A feature that works for one player and has not had that conversation is not rea
   `conduits.md` (conduits, holograms, addons, rings, cost), `data.md` (data, logic boards), `radar.md`,
   `ship-structure.md` (containers, access panels, GridPin, rooms, corridors), `weapons.md`, `repair.md`,
   `reactor.md`, `loading.md`, `power.md`, `grid.md` (slots, components, carrying), `component-hologram.md`, `modules.md`, `interaction.md`,
-  `training-room.md`, `felix.md`, `component-models.md`. When an item is refined, its notes go into its topic doc, never the to-do list.
+  `training-room.md`, `felix.md`, `component-models.md`, `flight.md`. When an item is refined, its notes go into its topic doc, never the to-do list.
 - Scene: `Assets/#User/SpaceScape/SpaceScape.unity`. Code: `Assets/#User/SpaceScape/scripts/`.
   Editor-only tools: `Packages/com.spacescape.editor` (never uploaded).

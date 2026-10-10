@@ -13,6 +13,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// per segment, a centre marker, and the addon and upgrade slots above it facing the player. Opens and
     /// closes with an animation; closing plays it backwards and then hides. The configuring hand moves
     /// segments between faces and sets their flow, as a preview the conduit does not take yet.
+    ///
+    /// It works any conduit through IConduit: a power conduit, or an item conduit, whose segments have no arrows.
     public sealed class ConduitHologram : MonoBehaviour
     {
         /// Segments a plain conduit has. A junction addon will raise this.
@@ -40,10 +42,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             public float BuzzSeconds;
             public float ParkGrow;
             public float AddonItemFill;
-            public Func<Vector3Int, GridNode> TileAt;
-            public Action<GridNode, IReadOnlyList<GridDirection>, IReadOnlyList<bool>> Commit;
-            public Action<GridNode, GridDirection, int, bool> CommitAddon;
-            public Action<GridNode> Removed;
+            public Action<IConduit, IReadOnlyList<GridDirection>, IReadOnlyList<bool>> Commit;
+            public Action<IConduit, GridDirection, int, bool> CommitAddon;
+            public Action<IConduit> Removed;
             public Action<AddonItem> ItemShown;
             public Action<AddonItem, AddonItem> ItemTakenOut;
         }
@@ -102,10 +103,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private Vector3 _twistStartUp;
 
         /// The conduit the ghost is showing, or null once fully closed.
-        public GridNode Tile { get; private set; }
+        public IConduit Conduit { get; private set; }
+
+        /// The power conduit the ghost is showing, or null (closed, or an item conduit).
+        public GridNode Tile => (Conduit as TileConduit)?.Tile;
 
         /// True while it is open or opening, rather than closing or closed.
-        public bool IsOpen => _opening && Tile != null;
+        public bool IsOpen => _opening && Conduit != null;
 
         /// The hand holding the conduit open, by its index in PlayerHands. It can grab handles too: one hand can
         /// open a conduit and configure it.
@@ -154,14 +158,14 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         }
 
         /// Opens the ghost over a conduit, from wherever it has got to if it was already on this one.
-        public void Show(GridNode tile)
+        public void Show(IConduit conduit)
         {
-            if (tile != Tile)
+            if (conduit != Conduit)
             {
                 CancelDrag();
-                Tile = tile;
+                Conduit = conduit;
                 _open = 0f;
-                Layout(tile);
+                Layout(conduit);
             }
             _opening = true;
             gameObject.SetActive(true);
@@ -175,9 +179,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// Lays the ghost out again after the conduit changed under it, such as an addon going in or out.
         public void Refresh()
         {
-            if (Tile == null) return;
+            if (Conduit == null) return;
             CancelDrag();
-            Layout(Tile);
+            Layout(Conduit);
         }
 
         /// Starts closing. Any drag in progress is dropped; the animation plays backwards and the ghost hides.
@@ -188,22 +192,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         }
 
         /// Works out where every segment belongs from the conduit as it stands: on its face, or parked.
-        private void Layout(GridNode tile)
+        private void Layout(IConduit conduit)
         {
-            transform.SetPositionAndRotation(tile.transform.position, Quaternion.identity);
-            var size = tile.Size;
-            transform.localScale = Vector3.one * (GridCell.Size * Mathf.Min(size.x, Mathf.Min(size.y, size.z)));
+            transform.SetPositionAndRotation(conduit.Centre, Quaternion.identity);
+            transform.localScale = Vector3.one * (GridCell.Size * conduit.Across);
 
             _faceOf.Clear();
             _outward.Clear();
-            var edges = tile.Edges;
-            foreach (var face in tile.UsedFaces)
-            {
-                if (_faceOf.Contains(face)) continue;
-                _faceOf.Add(face);
-                _outward.Add(edges != null && edges.GetFace(face) == FlowDirection.Out);
-            }
-            int segments = tile.TryGetComponent<ConduitBehaviourModule>(out var conduit) ? conduit.Segments : PlainSegments;
+            conduit.GetSegments(_faceOf, _outward);
+            int segments = conduit.Segments;
             while (_faceOf.Count < segments) { _faceOf.Add(GridDirection.None); _outward.Add(true); }
             _segmentCount = _faceOf.Count;
 
@@ -213,18 +210,19 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             {
                 bool exists = i < _segmentCount;
                 _segments[i].gameObject.SetActive(exists);
+                _segments[i].HasArrow = conduit.HasArrows;
+                if (_segments[i].ArrowGrab != null) _segments[i].ArrowGrab.gameObject.SetActive(conduit.HasArrows);
                 if (exists) Apply(i);
             }
 
-            tile.TryGetComponent<AddonModule>(out var slot);
-            var addon = slot != null ? slot.Addon : null;
+            var addon = conduit.Addon;
             _addonPresent = addon != null;
             _hasHandle = _addonPresent && addon.Repositionable && _addonHandlePrefab != null;
             if (_addonPresent)
             {
-                _addonFace = slot.Facing;
-                _addonTurns = slot.Turns;
-                _addonParked = slot.Parked;
+                _addonFace = conduit.AddonFacing;
+                _addonTurns = conduit.AddonTurns;
+                _addonParked = conduit.AddonParked;
             }
             if (_hasHandle && _addonHandle == null) AddAddonHandle();
             if (_addonHandle != null)
@@ -286,7 +284,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             var frame = LocalBounds(slot, slot.GetComponentsInChildren<Renderer>());
             _display = Instantiate(_displayPrefab, slot, false);
             _display.Hold();
-            if (addon.StateTravelsWithItem) _display.State = addon.NetworkState;   // a junction's count comes out with it
+            if (addon.StateTravelsWithItem) _display.State = Conduit != null ? Conduit.AddonState : addon.NetworkState;   // a junction's count comes out with it
             _motion.ItemShown?.Invoke(_display);
             var t = _display.transform;
             t.localPosition = Vector3.zero;
@@ -342,15 +340,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _displayPrefab = null;
 
             item.transform.SetParent(null, true);   // keeps its slot size; it grows once out of the cell
-            if (Tile != null && Tile.TryGetComponent<AddonModule>(out var module))
+            if (Conduit != null)
             {
                 // A junction's extra segments go with it, and nothing says which faces were theirs: every
                 // segment parks, and the conduit is rewired from nothing. The commit tells the network.
-                bool hadExtra = module.Addon != null && module.Addon.GetExtraSegments() > 0;
-                if (module.Remove() != null)
+                bool hadExtra = Conduit.Addon != null && Conduit.Addon.GetExtraSegments() > 0;
+                if (Conduit.RemoveAddon())
                 {
-                    if (hadExtra) _motion.Commit?.Invoke(Tile, Array.Empty<GridDirection>(), Array.Empty<bool>());
-                    else _motion.Removed?.Invoke(Tile);
+                    if (hadExtra) _motion.Commit?.Invoke(Conduit, Array.Empty<GridDirection>(), Array.Empty<bool>());
+                    else _motion.Removed?.Invoke(Conduit);
                 }
             }
             Haptics.Pulse(args.interactorObject, _motion.BuzzAmplitude, _motion.BuzzSeconds);
@@ -396,12 +394,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private void Update()
         {
-            if (Tile == null) return;
+            if (Conduit == null) return;
             float step = _motion.OpenSeconds > 0f ? Time.deltaTime / _motion.OpenSeconds : 1f;
             _open = Mathf.MoveTowards(_open, _opening ? 1f : 0f, step);
             if (!_opening && _open <= 0f)
             {
-                Tile = null;
+                Conduit = null;
                 DropDisplay();
                 if (_ambience != null) _ambience.Stop();
                 gameObject.SetActive(false);
@@ -469,7 +467,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 ApplyAddon();
                 _addonHandle.SlideHome(letGo, _motion.OpenSeconds);
                 ClearDrag();
-                if (changed) _motion.CommitAddon?.Invoke(Tile, face, turns, parked);
+                if (changed) _motion.CommitAddon?.Invoke(Conduit, face, turns, parked);
                 return;
             }
             if (kind == Drag.Tip)
@@ -493,7 +491,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             }
 
             ClearDrag();
-            if (changed) _motion.Commit?.Invoke(Tile, _faceOf, _outward);
+            if (changed) _motion.Commit?.Invoke(Conduit, _faceOf, _outward);
         }
 
         /// Drops a drag without changing anything.
@@ -590,13 +588,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         /// The flow a segment pulled out onto a face should have: whatever meets the neighbour on that side,
         /// and out when there is no neighbour.
-        private bool PairWithNeighbour(GridDirection face)
-        {
-            var neighbour = _motion.TileAt?.Invoke(Tile.Coordinate + face.Offset());
-            var edges = neighbour != null ? neighbour.Edges : null;
-            if (edges == null) return true;
-            return edges.GetFace(GridNode.Opposite(face)) != FlowDirection.Out;
-        }
+        private bool PairWithNeighbour(GridDirection face) => Conduit == null || Conduit.PairsOutward(face);
 
         /// Where the dragging hand's grip is.
         private Vector3 Attach()
@@ -677,7 +669,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private void LateUpdate()
         {
-            if (Tile == null || _slots == null || !PlayerHands.TryHead(out var head)) return;
+            if (Conduit == null || _slots == null || !PlayerHands.TryHead(out var head)) return;
             Vector3 toHead = head - _slots.position;
             toHead.y = 0f;
             if (toHead.sqrMagnitude > 1e-4f) _slots.rotation = Quaternion.LookRotation(toHead);

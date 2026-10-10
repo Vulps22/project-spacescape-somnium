@@ -37,9 +37,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             HologramOpened = 1,
             HologramClosed = 2,
             ConduitEdited = 3,
-            ItemRunEdited = 4,   // an item conduit grown, turned or cut elsewhere: edit, x, y, z, entry, exit as ints
+            ItemRunEdited = 4,   // retired with item conduit runs (2026-10-09); ItemConduitEdited replaces it
             ItemHologramOpened = 5,  // a player opened an item conduit's hologram: x, y, z as ints, then their id
             ItemHologramClosed = 6,
+            ItemConduitEdited = 7,   // an item conduit cell changed elsewhere: edit, x, y, z, a, b as ints (ItemConduits.Edit)
         }
 
         [SerializeField] private NetworkMessenger _messenger;
@@ -181,25 +182,24 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             _itemHolograms.SetOpenElsewhere(cell, player, opened);
         }
 
-        private void OnItemRunEdited(ItemConduits.Edit edit, Vector3Int cell, GridDirection entry, GridDirection exit)
+        private void OnItemRunEdited(ItemConduits.Edit edit, Vector3Int cell, int a, int b)
         {
             if (PlayerManager.IsMaster || !WorldManager.IsNetworkReady || !_messenger.CanSend) return;
-            int[] message = { (int)edit, cell.x, cell.y, cell.z, (int)entry, (int)exit };
+            int[] message = { (int)edit, cell.x, cell.y, cell.z, a, b };
             byte[] payload = new byte[message.Length * 4];
             Buffer.BlockCopy(message, 0, payload, 0, payload.Length);
-            _messenger.SendToController((byte)ShipMessageType.ItemRunEdited, payload);
+            _messenger.SendToController((byte)ShipMessageType.ItemConduitEdited, payload);
         }
 
         private void OnMessageToController(byte id, byte[] data)
         {
             switch ((ShipMessageType)id)
             {
-                case ShipMessageType.ItemRunEdited:
+                case ShipMessageType.ItemConduitEdited:
                     if (data.Length < 24 || _itemConduits == null || !PlayerManager.IsMaster) return;
-                    int[] run = new int[6];
-                    Buffer.BlockCopy(data, 0, run, 0, 24);
-                    _itemConduits.Apply((ItemConduits.Edit)run[0], new Vector3Int(run[1], run[2], run[3]),
-                        (GridDirection)run[4], (GridDirection)run[5]);
+                    int[] cellEdit = new int[6];
+                    Buffer.BlockCopy(data, 0, cellEdit, 0, 24);
+                    _itemConduits.Apply((ItemConduits.Edit)cellEdit[0], new Vector3Int(cellEdit[1], cellEdit[2], cellEdit[3]), cellEdit[4], cellEdit[5]);
                     break;
                 case ShipMessageType.ConduitEdited:
                     if (data.Length % 4 != 0) return;

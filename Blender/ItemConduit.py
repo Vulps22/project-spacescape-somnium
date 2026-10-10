@@ -2,6 +2,8 @@
 #   Straight: a square glass tube along Unity Z (Blender Y), thin glass walls between metal edge bars, a metal
 #   ring at each end. Clear inside about 0.46 m.
 #   Corner: solid metal, open on Unity +Z and +X (Blender -Y and -X), dark inside.
+#   Junction: a solid metal block with an amber band round its middle; JunctionMouth is the dark opening on its
+#   Unity +Z face, placed on each face a tube leaves by.
 #   blender -b --python Blender/ItemConduit.py -- Blender/ItemConduit.blend "Assets/#User/SpaceScape/Meshes/ItemConduit.fbx"
 import bpy, bmesh, sys
 from mathutils import Vector
@@ -28,6 +30,7 @@ def material(name, colour, metallic, rough, alpha=1.0):
 metal = material("FuelPackMetal", (0.16, 0.17, 0.19), 1.0, 0.3)
 dark = material("FuelPackDark", (0.03, 0.03, 0.035), 0.8, 0.6)
 glass = material("ItemConduitGlass", (0.6, 0.85, 1.0), 0.0, 0.05, 0.15)
+amber = material("ComponentItem", (1.0, 0.55, 0.1), 0.2, 0.4)
 
 def box(bm, lo, hi, mat):
     r = bmesh.ops.create_cube(bm, size=1.0)
@@ -89,6 +92,18 @@ for f in bm.faces:
     c = f.calc_center_median()
     if max(abs(c.x), abs(c.y), abs(c.z)) < H - 0.001: f.material_index = 1
 finish(corner, bm)
+
+# Junction: solid, an amber band round its middle (Unity y), slightly proud.
+junction, bm = new_object("Junction", [metal, amber])
+box(bm, (-H, -H, -H), (H, H, H), 0)
+BAND, PROUD = 0.03, 0.004
+box(bm, (-H - PROUD, -H - PROUD, -BAND), (H + PROUD, H + PROUD, BAND), 1)
+finish(junction, bm)
+
+# A junction's mouth: the dark square opening on its Unity +Z face (Blender -Y), just proud of it.
+mouth, bm = new_object("JunctionMouth", [dark])
+box(bm, (-INNER, -H - 0.006, -INNER), (INNER, -H + 0.001, INNER), 0)
+finish(mouth, bm)
 
 for obj in bpy.data.objects:
     bpy.context.view_layer.objects.active = obj

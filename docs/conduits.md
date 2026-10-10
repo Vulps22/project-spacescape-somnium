@@ -308,6 +308,19 @@ The drawing tool is `ConduitLayoutEditor`, in the local package `Packages/com.sp
 - **Erase:** click or drag.
 - **Select:** click a conduit to set its six faces and its addon (facing, quarter turns, parked).
 
+**A drawn conduit on a ring joins it (2026-10-09).** Rings are traced through drawn cells, and a drawn cell on one
+takes the ring's two faces wherever its own drawing leaves a face None. So a run joins a ring, or leaves one, by
+drawing just the cell where they meet, with a Junction for its third face. Before this, drawing a ring cell took it
+out of the ring, splitting the ring into pieces whose first cell had no way in.
+
+**Engineering, rewired 2026-10-09 through the hall's wall rings:** the reactor's Out climbs the wall behind it into
+the y=4 ring (east, down the east wall, west along the south wall) and drops off it into batteries S1 (3),
+S1 (4) and S1 (5). Those three batteries' Outs all join **one trunk** along the battery room's back wall (floor
+level), which branches to the loaders just past the last battery and runs on to the radar and disruptor:
+everything but the reactor runs off it. Battery S1 (2)'s Out climbs into the y=2 ring (the other way round) and leaves it behind the reactor into the
+reactor's In, through a **switch on the east hall wall** (cell 80, 2, -15, facing the hall): the reactor's feed.
+The two floor runs that did this before are gone.
+
 #### What the current code forces on any generator
 
 - **Walls must sit on the lattice.** `GridNode.Coordinate` rounds to integers, so cells are centred on

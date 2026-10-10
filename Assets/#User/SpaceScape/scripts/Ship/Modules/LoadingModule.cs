@@ -14,6 +14,14 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Tooltip("Starts the session holding one, for trying the component out without loading one.")]
         [SerializeField] private bool _startsWithOne;
 
+        [Header("Port")]
+        [Tooltip("Takes items only through one item port, for a component with a supply per port (each of a reactor's chambers). Off: through any of the component's item ports.")]
+        [SerializeField] private bool _onePort;
+        [Tooltip("That port's face, in the component's own axes.")]
+        [SerializeField] private GridDirection _portFace = GridDirection.YPlus;
+        [Tooltip("That port's cell on the face, as ComponentEdgeModule counts it.")]
+        [SerializeField] private Vector2Int _portCell;
+
         [Header("Readout")]
         [Tooltip("Text showing what it accepts and whether it holds the next one. Optional.")]
         [SerializeField] private TMP_Text _readout;
@@ -23,6 +31,21 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         /// True when this takes items of type T, for a behaviour finding the module that holds its supply.
         public bool Takes<T>() where T : LoadableItem => _accepts is T;
+
+        /// True when items through the item port on this face and cell (the component's own axes) come here.
+        public bool FedFrom(GridDirection face, Vector2Int cell) => !_onePort || (face == _portFace && cell == _portCell);
+
+        /// True when items through the item port in this grid cell of the component come here.
+        public bool FedFrom(ComponentEdgeModule edges, Vector3Int cell) =>
+            !_onePort || (edges != null && edges.CellOf(_portFace, _portCell) == cell);
+
+        /// Binds it to one item port, for an editor tool building a component.
+        public void BindToPort(GridDirection face, Vector2Int cell)
+        {
+            _onePort = true;
+            _portFace = face;
+            _portCell = cell;
+        }
 
         /// True when this takes in this item: it is of the type this accepts.
         public bool Accepts(LoadableItem item) => item != null && _accepts != null && _accepts.GetType().IsInstanceOfType(item);

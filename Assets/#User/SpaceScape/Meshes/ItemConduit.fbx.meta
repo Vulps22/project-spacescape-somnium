@@ -7,6 +7,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: ComponentItem
+    second: {fileID: 2100000, guid: 7bd40a22e751cddd1bdfd8670e841691, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: FuelPackDark
     second: {fileID: 2100000, guid: 4cf1aa73758b4e18e8ef09d9a1a8970f, type: 2}
   - first:

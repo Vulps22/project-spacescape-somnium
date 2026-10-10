@@ -325,7 +325,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     port.transform.SetParent(transform, true);
                     port.name = $"Port {local} {ported.Flow}";
                     if (port.TryGetComponent<PortVisual>(out var visual)) visual.Show(ported.Flow);
-                    if (port.TryGetComponent<ItemPort>(out var item)) item.Show(ported.Flow);
+                    if (port.TryGetComponent<ItemPort>(out var item))
+                    {
+                        item.Show(ported.Flow);
+                        item.Place(local, ported.Cell);
+                    }
                 }
             }
         }

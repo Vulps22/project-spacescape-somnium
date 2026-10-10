@@ -13,7 +13,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
     /// Values travel as a float's bits in each int. Slot 0 is a counter the master bumps with every write,
     /// so a client can tell a fresh write from the zeros that are there before the first one arrives.
     ///
-    /// The reactor's dial and the disruptor's aim are what a non-master sets: a hand moves it here at once and
+    /// The reactor's levers (its master and each chamber's) and the disruptor's aim are what a non-master sets: a hand moves it here at once and
     /// the new value is sent to the master, which applies it and writes it back out with everything else. The
     /// disruptor's fire button on a non-master asks the master to fire; the master fires and tells everyone, so
     /// every client shows the shot. An item port on a non-master that loads an item tells the master which of the
@@ -26,15 +26,16 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         /// Wire ids. Append only; never insert or renumber.
         private enum ComponentMessageType : byte
         {
-            DialTurned = 0,
+            DialTurned = 0, // the reactor's master lever, from before it had chambers: one float
             AimMoved = 1,   // the disruptor's aim: two floats
             Fire = 2,       // asked of the master
             Fired = 3,      // from the master, to everyone
             RadarButton = 4, // a radar button pressed elsewhere: -1 Previous, +1 Next, 0 Select
             RadarZoom = 5,   // a radar's zoom lever moved elsewhere: one float
             ItemLoaded = 6,  // an item port elsewhere loaded an item: which of the component's LoadingModules, as an int
-            PackFed = 7,     // a loader elsewhere took in a pack: its kind and its filled places, two ints
+            PackFed = 7,     // a loader elsewhere took in a pack: its kind, its filled places and its contents, three ints (two before contents)
             EjectSwitch = 8, // a loader's eject switch thrown elsewhere: 1 on, 0 off, as an int
+            ReactorDial = 9, // a reactor lever moved elsewhere: its axis (0 the master, then each chamber) as an int, and a float
         }
 
         [Tooltip("Where the state is replicated. Any size with room for 3 + the modules' values; the log says if it is too small.")]
@@ -53,7 +54,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         private int _lastRead;
         private float _nextWrite;
         private float _nextDialSend;
-        private float? _pendingDial;
+        private readonly System.Collections.Generic.Dictionary<int, float> _pendingDials = new System.Collections.Generic.Dictionary<int, float>();
         private DisruptorBehaviourModule _disruptor;
         private Vector2? _pendingAim;
         private RadarBehaviourModule _radar;
@@ -105,6 +106,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
                 _loader.FedByHand += OnPackFed;
                 _loader.EjectPressed += OnEjectPressed;
                 _loader.PutOut = PutOutPack;
+                _loader.DropOut = DropOutItem;
             }
             // Every client has the same LoadingModules in the same order, so one is named by its place.
             _loading = GetComponents<LoadingModule>();
@@ -138,6 +140,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
                 _loader.FedByHand -= OnPackFed;
                 _loader.EjectPressed -= OnEjectPressed;
                 _loader.PutOut = null;
+                _loader.DropOut = null;
             }
             if (_loading != null) for (int i = 0; i < _loading.Length; i++) _loading[i].LoadedByHand -= _loadedHandlers[i];
         }
@@ -205,20 +208,25 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             }
         }
 
-        private void OnDialTurned(float withdrawal)
+        private void OnDialTurned(int axis, float value)
         {
-            if (IsLive && !_data.Object.HasStateAuthority) _pendingDial = withdrawal;
+            if (IsLive && !_data.Object.HasStateAuthority) _pendingDials[axis] = value;
         }
 
-        // At most a few times a second while a hand is moving it, and the last value always goes.
+        // At most a few times a second while hands are moving them, and each lever's last value always goes.
         private void SendPendingDial()
         {
-            if (_pendingDial == null || Time.time < _nextDialSend) return;
+            if (_pendingDials.Count == 0 || Time.time < _nextDialSend) return;
             _nextDialSend = Time.time + 1f / Mathf.Max(0.1f, _dialSendsPerSecond);
 
-            byte[] payload = BitConverter.GetBytes(_pendingDial.Value);
-            _pendingDial = null;
-            _data.RPC_SendMessageToController(MessageFrame.Pack((byte)ComponentMessageType.DialTurned, payload));
+            foreach (var pending in _pendingDials)
+            {
+                byte[] payload = new byte[8];
+                Buffer.BlockCopy(BitConverter.GetBytes(pending.Key), 0, payload, 0, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(pending.Value), 0, payload, 4, 4);
+                _data.RPC_SendMessageToController(MessageFrame.Pack((byte)ComponentMessageType.ReactorDial, payload));
+            }
+            _pendingDials.Clear();
         }
 
         private void OnAimMoved(Vector2 aim)
@@ -278,12 +286,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
                 _data.RPC_SendMessageToController(MessageFrame.Pack((byte)ComponentMessageType.ItemLoaded, BitConverter.GetBytes(index)));
         }
 
-        private void OnPackFed(int kind, int filled)
+        private void OnPackFed(int kind, int filled, int contents)
         {
             if (!IsLive || _data.Object.HasStateAuthority) return;
-            byte[] payload = new byte[8];
+            byte[] payload = new byte[12];
             Buffer.BlockCopy(BitConverter.GetBytes(kind), 0, payload, 0, 4);
             Buffer.BlockCopy(BitConverter.GetBytes(filled), 0, payload, 4, 4);
+            Buffer.BlockCopy(BitConverter.GetBytes(contents), 0, payload, 8, 4);
             _data.RPC_SendMessageToController(MessageFrame.Pack((byte)ComponentMessageType.PackFed, payload));
         }
 
@@ -302,6 +311,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             return spawned != null ? spawned.GetComponent<ItemPack>() : null;
         }
 
+        /// Spawns an item falling out of a cut-off item conduit, on the master. Made here with no network.
+        private LoadableItem DropOutItem(LoadableItem prefab, Vector3 at, Quaternion turn)
+        {
+            if (!IsLive) return Instantiate(prefab, at, turn);
+            if (!WorldManager.CanSpawn || !prefab.TryGetComponent<NetworkObject>(out var networked)) return null;
+            var spawned = WorldManager.Spawn(networked, at, turn, $"item '{prefab.name}' fell out of loader '{name}''s item conduit");
+            return spawned != null ? spawned.GetComponent<LoadableItem>() : null;
+        }
+
         private void OnMessageToAll(byte[] framed)
         {
             if (!MessageFrame.Unpack(framed, out byte id, out _)) return;
@@ -317,6 +335,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             {
                 case ComponentMessageType.DialTurned:
                     if (_reactor != null && data.Length >= 4) _reactor.TargetWithdrawal = BitConverter.ToSingle(data, 0);
+                    break;
+                case ComponentMessageType.ReactorDial:
+                    if (_reactor != null && data.Length >= 8) _reactor.SetDial(BitConverter.ToInt32(data, 0), BitConverter.ToSingle(data, 4));
                     break;
                 case ComponentMessageType.AimMoved:
                     if (_disruptor != null && data.Length >= 8)
@@ -339,7 +360,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
                     }
                     break;
                 case ComponentMessageType.PackFed:
-                    if (_loader != null && data.Length >= 8) _loader.Add(BitConverter.ToInt32(data, 0), BitConverter.ToInt32(data, 4));
+                    if (_loader != null && data.Length >= 8)
+                        _loader.Add(BitConverter.ToInt32(data, 0), BitConverter.ToInt32(data, 4), data.Length >= 12 ? BitConverter.ToInt32(data, 8) : 0);
                     break;
                 case ComponentMessageType.EjectSwitch:
                     if (_loader != null && data.Length >= 4) _loader.Ejecting = BitConverter.ToInt32(data, 0) != 0;

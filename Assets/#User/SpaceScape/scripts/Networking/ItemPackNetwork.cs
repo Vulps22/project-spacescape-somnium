@@ -14,10 +14,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
     ///
     /// It also makes the pack's pictures harmless (never spawned, so their network grab is stripped, as
     /// AddonItemNetwork does for a hologram's) and swaps a picture a hand takes for a spawned item in that hand.
+    ///
+    /// A pack whose places hold different things (the addon pack) has a third int: its Contents. Its bridge needs room
+    /// for it (a NetworkBridgeData4); with only two ints, Contents is not shared.
     [RequireComponent(typeof(ItemPack))]
     public sealed class ItemPackNetwork : MonoBehaviour
     {
-        [Tooltip("Two ints: the filled places plus one, and the lid (1 shut, 2 open); 0 until written.")]
+        [Tooltip("Two ints: the filled places plus one, and the lid (1 shut, 2 open); 0 until written. A third, for a pack with Contents (the addon pack): its Contents.")]
         [SerializeField] private NetworkBridgeData _data;
 
         private ItemPack _pack;
@@ -31,6 +34,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             _pack.PictureMade += OnPictureMade;
             _pack.ChangedByHand += OnChangedByHand;
             _pack.TakeOut = TakeOut;
+            if (_pack is AddonPack addons)
+            {
+                addons.AddonPictureMade += OnAddonPictureMade;
+                addons.TakeOutAddon = TakeOutAddon;
+            }
         }
 
         private void OnDestroy()
@@ -39,6 +47,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             _pack.PictureMade -= OnPictureMade;
             _pack.ChangedByHand -= OnChangedByHand;
             _pack.TakeOut = null;
+            if (_pack is AddonPack addons)
+            {
+                addons.AddonPictureMade -= OnAddonPictureMade;
+                addons.TakeOutAddon = null;
+            }
         }
 
         private void Update()
@@ -50,11 +63,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
                 int filled = _pack.Filled + 1, open = _pack.Open ? 2 : 1;
                 if (ints[0] != filled) ints.Set(0, filled);
                 if (ints[1] != open) ints.Set(1, open);
+                if (_data.IntCount > 2 && ints[2] != _pack.Contents) ints.Set(2, _pack.Contents);
             }
             else if (!_claiming && ints[0] > 0 && ints[1] > 0)
             {
                 int filled = ints[0] - 1;
                 bool open = ints[1] == 2;
+                if (_data.IntCount > 2 && _pack.Contents != ints[2]) _pack.Contents = ints[2];
                 if (_pack.Filled != filled || _pack.Open != open) _pack.Apply(filled, open);
             }
         }
@@ -92,6 +107,39 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             var hand = grab.isSelected ? grab.firstInteractorSelecting : null;
             _pack.ReturnPicture(picture);
             if (spawned == null || !spawned.TryGetComponent<LoadableItem>(out var item)) yield break;
+            if (hand != null && manager != null) manager.SelectEnter(hand, item.Grab);
+        }
+
+        /// An addon picture is never spawned: its network grab goes, as a hologram's addon item's does.
+        private static void OnAddonPictureMade(AddonItem picture)
+        {
+            if (picture.TryGetComponent<NetworkGrabbable>(out var grabbable)) DestroyImmediate(grabbable);
+        }
+
+        /// Spawns a real addon item where the picture is, with its state, next frame once XRI has finished the grab,
+        /// and moves the hand onto it. False with no network, and the pack lets the picture be the item.
+        private bool TakeOutAddon(AddonItem picture, AddonItem prefab, int state)
+        {
+            if (!WorldManager.CanSpawn || prefab == null || !prefab.TryGetComponent<NetworkObject>(out var networked)) return false;
+            StartCoroutine(SwapAddonForSpawned(picture, networked, state));
+            return true;
+        }
+
+        private IEnumerator SwapAddonForSpawned(AddonItem picture, NetworkObject prefab, int state)
+        {
+            yield return null;
+            if (picture == null) yield break;
+
+            var t = picture.transform;
+            var spawned = WorldManager.Spawn(prefab, t.position, t.rotation, $"addon item '{prefab.name}' taken from pack '{name}'");
+            var grab = picture.Grab;
+            var manager = grab.interactionManager;
+            var hand = grab.isSelected ? grab.firstInteractorSelecting : null;
+            picture.Retire();
+            if (hand != null && manager != null) manager.SelectExit(hand, grab);
+            Destroy(picture.gameObject);
+            if (spawned == null || !spawned.TryGetComponent<AddonItem>(out var item)) yield break;
+            if (item.CarriesState) item.State = state;   // spawned here, so written from here
             if (hand != null && manager != null) manager.SelectEnter(hand, item.Grab);
         }
 

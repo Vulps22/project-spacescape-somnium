@@ -1,32 +1,28 @@
 using System;
+using System.Collections.Generic;
 
 namespace SomniumSpace.Worlds.SpaceScape.Power
 {
-    /// A reactor core. Knows nothing about the grid: it burns fuel and makes watts, and its rods are
-    /// held up by magnets, so losing them drops the rods rather than letting it run away.
+    /// A reactor core: one or more fuel chambers, each burning its own rod at its own rod position (FuelChamber).
+    /// Knows nothing about the grid: it makes watts, and its rods are held up by magnets shared by every chamber, so
+    /// losing them drops every rod rather than letting it run away. To the grid it is one producer: output and heat
+    /// are the chambers' sum, and its working temperature comes from their combined load (reactor.md → Chambers).
     public sealed class FissionCore : IPowerProducer
     {
-        /// Watts one core makes with its rods fully withdrawn.
-        public double OutputPerCore = 100.0;
+        private readonly List<FuelChamber> _chambers = new List<FuelChamber> { new FuelChamber() };
 
-        /// How many cores are installed. The scavenge and upgrade axis.
-        public int Cores = 1;
+        /// Watts one chamber makes with its rods fully withdrawn.
+        public double OutputPerChamber = 100.0;
 
         /// Watts of heat made per watt delivered. Roughly 15 for an RTG, 2 for fission, under 1 for
         /// fusion — so a better core is survivable, not just bigger.
         public double HeatRatio = 2.0;
 
-        /// What it settles at with the rods fully out. Below full output it sits proportionally lower.
+        /// What it settles at with every chamber's rods fully out. Below full output it sits proportionally lower.
         public double WorkingCelsius = 400.0;
 
-        /// Where the crew has asked the rods to be, from fully in to fully out. Only the crew writes it.
-        public double TargetWithdrawal;
-
-        /// True while something holds the rods up. Without it they fall, whatever the dial says.
+        /// True while something holds the rods up. Without it every chamber's rods fall, whatever the levers say.
         public bool Gripped = true;
-
-        /// Where the rods actually are. Chases the target, slowly up and quickly down.
-        public double Withdrawal { get; private set; }
 
         /// Rods are driven out by motors, so coming up is slow and deliberate.
         public double RaisePerSecond = 0.05;
@@ -37,25 +33,66 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         /// Seconds one rod runs at full output. It burns proportionally slower with the rods part way.
         public double FuelSecondsPerRod = 3600.0;
 
-        /// Seconds of running left in the rod being burnt, at full output. Starts with one rod in.
-        public double FuelSeconds = 3600.0;
+        /// The chambers, each with its own rod and lever.
+        public IReadOnlyList<FuelChamber> Chambers => _chambers;
 
-        /// Asked for the next rod once the one being burnt is spent: true when one was there, and it is
-        /// consumed at that moment (loading.md). Null means nothing to refuel from.
-        public Func<bool> Refuel;
+        /// How many chambers it has, one or more. Changing it keeps the chambers already there; new ones start with
+        /// a rod in.
+        public int ChamberCount
+        {
+            get => _chambers.Count;
+            set
+            {
+                int count = value < 1 ? 1 : value;
+                while (_chambers.Count > count) _chambers.RemoveAt(_chambers.Count - 1);
+                while (_chambers.Count < count) _chambers.Add(new FuelChamber());
+            }
+        }
 
-        /// How much of the rod being burnt is left, from full (1) to spent (0).
-        public double FuelLevel => FuelSecondsPerRod <= 0.0 ? 0.0 : Clamp(FuelSeconds / FuelSecondsPerRod);
+        /// Where the master lever was last set. Setting it sets every chamber's lever to it, SCRAM included; a
+        /// chamber's own lever can move away from it afterwards.
+        public double TargetWithdrawal
+        {
+            get => _master;
+            set
+            {
+                _master = FuelChamber.Clamp(value);
+                foreach (var chamber in _chambers) chamber.TargetWithdrawal = _master;
+            }
+        }
+        private double _master;
 
-        /// Watts it would make with the rods fully out.
-        public double MaxOutput => OutputPerCore * (Cores < 0 ? 0 : Cores);
+        /// Sets where the master lever stands without moving the chambers, for the network.
+        public void CorrectMaster(double withdrawal) => _master = FuelChamber.Clamp(withdrawal);
 
-        public double WattsProduced => FuelSeconds <= 0.0 ? 0.0 : MaxOutput * Clamp(Withdrawal);
+        /// Where the rods are on average across the chambers, from fully in (0) to fully out (1).
+        public double Withdrawal
+        {
+            get
+            {
+                double sum = 0.0;
+                foreach (var chamber in _chambers) sum += chamber.Withdrawal;
+                return sum / _chambers.Count;
+            }
+        }
+
+        /// Watts it would make with every chamber's rods fully out.
+        public double MaxOutput => OutputPerChamber * _chambers.Count;
+
+        public double WattsProduced
+        {
+            get
+            {
+                double load = 0.0;
+                foreach (var chamber in _chambers) load += chamber.Load;
+                return OutputPerChamber * load;
+            }
+        }
 
         /// Watts of heat it is making, which is a consequence of output and not a fault.
         public double HeatWatts => WattsProduced * HeatRatio;
 
-        /// The temperature it should be sitting at right now, given how hard it is working.
+        /// The temperature it should be sitting at right now, given how hard its chambers are working together.
         public double BaselineCelsius
         {
             get
@@ -70,42 +107,28 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         /// True while it is making anything at all.
         public bool Running => WattsProduced > 0.0;
 
-        /// Turns the dial to zero, for the crew's big red button.
+        /// Turns the master lever to zero, which takes every chamber with it: the crew's big red button.
         public void Scram() => TargetWithdrawal = 0.0;
 
-        /// Sets where the rods are, for the network to bring a copy into line with the master's.
-        public void CorrectWithdrawal(double withdrawal) => Withdrawal = Clamp(withdrawal);
-
-        /// Burns fuel and lets the rods travel toward where they have been asked to be.
-        public void ProducePower(double seconds)
+        /// Sets every chamber's rods to one position, for the network or a test.
+        public void CorrectWithdrawal(double withdrawal)
         {
-            double max = MaxOutput;
-            if (max > 0.0 && FuelSeconds > 0.0)
-            {
-                FuelSeconds -= Clamp(Withdrawal) * seconds;
-                if (FuelSeconds < 0.0) FuelSeconds = 0.0;
-            }
-
-            // Spent, so it takes the next rod if there is one, and is full again.
-            if (FuelSeconds <= 0.0 && Refuel != null && Refuel()) FuelSeconds = FuelSecondsPerRod;
-
-            double target = Gripped ? Clamp(TargetWithdrawal) : 0.0;
-            if (Withdrawal < target)
-            {
-                Withdrawal += RaisePerSecond * seconds;
-                if (Withdrawal > target) Withdrawal = target;
-            }
-            else if (Withdrawal > target)
-            {
-                Withdrawal -= DropPerSecond * seconds;
-                if (Withdrawal < target) Withdrawal = target;
-            }
+            foreach (var chamber in _chambers) chamber.CorrectWithdrawal(withdrawal);
         }
 
-        private static double Clamp(double v) => v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v);
+        /// Burns every chamber's fuel and lets its rods travel toward where they have been asked to be.
+        public void ProducePower(double seconds)
+        {
+            foreach (var chamber in _chambers)
+                chamber.Advance(seconds, Gripped, RaisePerSecond, DropPerSecond, FuelSecondsPerRod);
+        }
 
-        public override string ToString() =>
-            $"{WattsProduced:0} W, rods {Withdrawal:P0} of {Clamp(TargetWithdrawal):P0}{(Gripped ? "" : " NO GRIP")}, " +
-            $"{BaselineCelsius:0} C nominal, fuel {FuelLevel:P0}";
+        public override string ToString()
+        {
+            string rods = _chambers.Count == 1
+                ? $"rods {_chambers[0].Withdrawal:P0} of {FuelChamber.Clamp(_chambers[0].TargetWithdrawal):P0}, fuel {_chambers[0].Fuel:P0}"
+                : $"{_chambers.Count} chambers, rods {Withdrawal:P0} on average";
+            return $"{WattsProduced:0} W, {rods}{(Gripped ? "" : " NO GRIP")}, {BaselineCelsius:0} C nominal";
+        }
     }
 }

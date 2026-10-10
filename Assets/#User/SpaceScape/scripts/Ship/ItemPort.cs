@@ -68,6 +68,17 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// Which way items go here: Item (in) or ItemOut.
         public FlowDirection Flow { get; private set; } = FlowDirection.Item;
 
+        private GridDirection _face;
+        private Vector2Int _cell;
+
+        /// Where it sits on its component, in the component's own axes, so items go to the LoadingModule fed from
+        /// it. Set by ComponentEdgeModule.
+        public void Place(GridDirection face, Vector2Int cell)
+        {
+            _face = face;
+            _cell = cell;
+        }
+
         /// Colours the border for which way items go.
         public void Show(FlowDirection flow)
         {
@@ -139,12 +150,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (loading != null) StartCoroutine(DrawIn(item, loading));
         }
 
-        /// The LoadingModule that would take this item now: one accepting its type, holding none.
+        /// The LoadingModule that would take this item now: one fed from this port, accepting its type, holding none.
         private LoadingModule LoaderFor(LoadableItem item)
         {
             if (_loading == null) return null;
             foreach (var loading in _loading)
-                if (loading.Accepts(item) && !loading.HasItem) return loading;
+                if (loading.FedFrom(_face, _cell) && loading.Accepts(item) && !loading.HasItem) return loading;
             return null;
         }
 

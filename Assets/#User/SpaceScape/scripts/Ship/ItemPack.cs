@@ -116,6 +116,28 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private int StartingFilled => (1 << Mathf.Clamp(_startsWith, 0, _places.Length)) - 1;
 
+        /// What is in each place beyond whether it is filled, packed into one int, for a pack whose places differ (the
+        /// addon pack: which addon and its state). The loader carries it through and the networking shares it. A pack
+        /// whose places all hold the same item has none.
+        public virtual int Contents
+        {
+            get => 0;
+            set { }
+        }
+
+        /// How far the lid has risen: 0 shut, 1 open.
+        protected float Raised => _raised;
+
+        /// Where each item hangs: an item's centre and turn.
+        protected Transform PlaceAt(int place) => place >= 0 && place < _places.Length ? _places[place] : null;
+
+        /// A hand on this client filled or emptied places: changes them here and tells the networking.
+        protected void SetFilledByHand(int filled)
+        {
+            _filled = filled & ((1 << _places.Length) - 1);
+            ChangedByHand?.Invoke();
+        }
+
         /// True for an item of the type it holds.
         public bool Accepts(LoadableItem item) =>
             _contains != null && item != null && _contains.GetType().IsInstanceOfType(item);
@@ -137,7 +159,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         }
 
         /// The pictures are made here, not in Awake, so the networking (subscribed in its Awake) sees each one.
-        private void Start()
+        protected virtual void Start()
         {
             if (_contains != null)
                 for (int i = 0; i < _places.Length; i++) _pictures[i] = MakePicture(i);
@@ -320,7 +342,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         }
 
         /// Its own parts never push each other: the lid on the box, the pictures inside it.
-        private void IgnoreOwnColliders()
+        protected void IgnoreOwnColliders()
         {
             GetComponentsInChildren(true, Colliders);
             for (int i = 0; i < Colliders.Count; i++)
@@ -329,7 +351,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             Colliders.Clear();
         }
 
-        private static void LetGoOf(XRGrabInteractable grab)
+        protected static void LetGoOf(XRGrabInteractable grab)
         {
             var manager = grab.interactionManager;
             if (manager == null) return;

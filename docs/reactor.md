@@ -175,12 +175,69 @@ Why this beats a coefficient:
 Coolant is consumed, not recycled. It boils off and takes the heat with it. First pass; deliberately
 lazy.
 
+## Chambers (decided 2026-10-09; built in code 2026-10-09, untested in play)
+
+The S5 reactor is endgame, so it gets the cool factor. The core becomes **six fuel chambers**, each burning
+its own rod, seen through clear glass. Decided with Vulps alongside the new model (`component-models.md`).
+
+**Any reactor has one or more chambers** (Vulps, 2026-10-09: a scalable class, not a six-chamber special case).
+`FuelChamber` is one rod: its lever, its rod position, its fuel (a share of one rod, 1 full) and its own refuel.
+`FissionCore` holds the chambers and replaces the old `Cores`: a chamber is a core, so `OutputPerChamber x
+ChamberCount` is full output, and a one-chamber core behaves exactly as the old single rod did. The magnets,
+rod speeds and rod life are shared. `ReactorBehaviourModule` (`_chambers`) gives its levers axes: **0 is the
+master, 1 to N each chamber**; chamber i is fed by the i-th `LoadingModule` taking fuel rods. A `LoadingModule`
+can be bound to one item port (`One Port`), so a chamber is filled only through the port above it, by hand, by
+a loader or along a conduit. Network state is the master lever, coolant, flow and grip, then each chamber's
+lever, rods and fuel (4 + 3N); a lever moved elsewhere goes to the master as `ReactorDial` (axis, value).
+The Reactor prefab has six chambers sharing the old core's 1000 W (166.67 W each) and a `NetworkBridgeData64`
+(33 ints).
+
+**Shown (2026-10-09, reworked 2026-10-10 with Vulps):** `ReactorChamberRods` copies the Fuel Rod's model into each
+chamber: the burning rod low down while the chamber has one, and the waiting rod (its `LoadingModule`'s) above it,
+dim. The burning rod glows by its own fuel (bright blue fresh, dim violet spent) and its own rods: nearly dark
+fully in, bright fully out, pulsing harder and faster the further out. Every rod leans toward amber-red as the
+core nears its working temperature, and redder past it. A spent rod drops out of the bottom of its chamber into
+the base housing, where it is hidden, as the waiting rod slides down into its place; with none waiting the
+chamber is left empty. The core column's bands brighten with output, and a blue **Core Light** (replacing the old
+reactor's green lamp, `ReactorLamp`, removed from the prefab) travels up and down inside the column, faster the
+further the rods are out on average; from 70% it is too fast to see and holds in the middle, solid, bright and
+wide. Dark with no output. All worked out on every client from the chamber state: nothing new is sent. The
+readout is a table, a column per chamber: fuel and rod position in percent, and temperature (the chamber's own
+load's share of the working temperature, plus the core's excess), with a dot where a chamber has no rod.
+
+- **Each chamber is fed from above.** An item port on the reactor's top face over each chamber, each with
+  its own `LoadingModule`: one rod burning, one waiting (`loading.md` → the spare is the standard). A rod
+  goes straight down into its chamber. Height is not a problem: ships get gantries in engineering, and
+  walls and roofs will be climbable.
+- **Output scales with loaded chambers.** Each chamber makes its share at its own rod position; three
+  loaded chambers at full make half power. Refuelling is topping up a chamber, not a stop.
+- **A spent rod drops visibly out of the bottom of its chamber** and vanishes inside the housing. It never
+  comes out of the model: no item, nothing networked; every client plays it from the chamber going empty.
+- **Seven levers in the front control bay:** one per chamber, and a master that sets all six at once
+  (SCRAM included). When the master moves, the six move with it visibly, so the bay always shows what the
+  chambers are doing. The magnet fail-safe stays shared: losing grip drops all six.
+- **Heat to the grid is unchanged.** The grid asks the reactor for heat watts and a baseline, never a
+  temperature; the chambers hand it their sum and their combined load. That is the same as averaging,
+  so the damage model does not change. A chamber's own heat is **visual only**: it glows by its own load,
+  worked out locally. One chamber at full with five off glows hot but adds a sixth of the heat, and nothing
+  is damaged. Accepted: the glow shows where the heat comes from.
+- **What each chamber shows:** colour from its rod's fuel (bright blue fresh, fading to a dim violet spent),
+  a heat tint toward amber-red shared by all six, and a pulse worked out locally from output, each chamber
+  slightly out of phase so they shimmer.
+
+**Networking.** The master owns every chamber. State per chamber: rod position, fuel, and whether a rod
+is in. All of it is sent as state, so a late joiner sees every chamber right. A non-master's hand on a
+lever asks the master, as the single lever does now. The master lever only writes those six positions,
+so it adds nothing to send. Pulse, glow and the spent-rod drop are derived on every client; nothing new
+is sent for them.
+
 ## Physical handling
 
 Both consumables are placed by hand, and the animation *is* the readout:
 
 - **fuel** — rod packs, fed in one rod at a time by hand or from a loader: `loading.md`. The core burns
-  one rod and takes the next from its `LoadingModule` when spent; nothing loads the module yet.
+  one rod and takes the next from its `LoadingModule` when spent; nothing loads the module yet. Becoming
+  six chambers fed from the top (Six chambers, above).
 - **coolant pad** — a metal drum set on a pad, draining as it is used.
 
 No inventory screen, no gauge required. Consistent with the contract wall and the conduit run: the

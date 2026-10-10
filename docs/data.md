@@ -10,6 +10,8 @@ boards are not.
   **Add Data**). Its ring is red (`ComponentData.mat` on the Port prefab). No power crosses it:
   `SendsAt`/`AcceptsAt` never answer for it, and `DataAt` does. The Radar and the Disruptor each have one on
   the back face at (4, 0), beside their power In.
+  **Every component gets one** (decided 2026-10-09): assume data is, or will be, on every component; its model's
+  I/O panel carries In, Data and Out with Data between (`component-models.md`).
 - **Joining a data port:** a conduit with a segment on that face. Point the segment's arrow **into the conduit
   (In)**: an Out segment there sends power at a port that takes none, which is wasted as heat like any dead end.
 - **`IDataSource` / `DataObject`** (`scripts/Ship/Data`): `Module` and `ConduitAddon` answer `GetData()` with

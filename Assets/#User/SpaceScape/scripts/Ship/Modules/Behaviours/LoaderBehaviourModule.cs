@@ -36,14 +36,18 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private bool _ejecting;
 
         [Header("Intake")]
-        [Tooltip("The middle of the box where a pack let go is taken in; the box turns with it.")]
+        [Tooltip("The middle of the box where a pack let go is taken in; the box turns with it. It is stretched along the rails to reach the extended rails' end (Rails Reach out from the path's first point), so a pack can be put down anywhere from there to just inside the frame.")]
         [SerializeField] private Transform _intake;
-        [Tooltip("The intake box's size, in metres.")]
+        [Tooltip("The intake box's size, in metres, before it is stretched to the extended rails' end.")]
         [SerializeField] private Vector3 _intakeSize = new Vector3(1.3f, 1.6f, 1.2f);
-        [Tooltip("Seconds a pack taken in takes to settle onto the start of the path.")]
+        [Tooltip("Seconds a pack let go takes to line up on the rails, where they are.")]
         [SerializeField] private float _drawInSeconds = 0.6f;
         [Tooltip("Seconds between looks at the packs let go in the intake that are still waiting to go in.")]
         [SerializeField] private float _checkSeconds = 0.25f;
+
+        [Header("Sending")]
+        [Tooltip("Seconds between an item fully clearing the Out port and the next leaving: the gap between items in the tube, as time at the conduit's speed.")]
+        [SerializeField] private float _sendGapSeconds = 1f;
 
         [Header("Sound")]
         [Tooltip("Looped while any pack is moving.")]
@@ -52,7 +56,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private AudioSource _sound;
 
         [Header("Front rails")]
-        [Tooltip("The rails that slide forward out of the front while a pack it would take is in the intake: the sign it is ready to take it. Slides along its parent's forward.")]
+        [Tooltip("The rails that slide forward out of the front while a pack it would take is in the intake: the sign it is ready to take it. Slides along its parent's forward. A pack let go on them rides them back in: the path's first stretch, out from its first point by Rails Reach, which is not a place and is never counted as room.")]
         [SerializeField] private Transform _rails;
         [Tooltip("How far the rails slide out, in metres.")]
         [SerializeField] private float _railsReach = 1.1f;
@@ -64,10 +68,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private AudioSource _railsSound;
 
         private static readonly Collider[] Found = new Collider[32];
-        private readonly HashSet<ItemPack> _waiting = new HashSet<ItemPack>();
+        private readonly Dictionary<ItemPack, float> _waiting = new Dictionary<ItemPack, float>();   // when each was let go
+        private const float WatchSeconds = 3f;   // how long a pack let go outside the intake is watched for falling in
         private readonly List<ItemPack> _gone = new List<ItemPack>();
         private int[] _kind;      // per state entry: 0 none, else 1 + the index in Packs
         private int[] _filled;    // which of the pack's places are filled, one bit each
+        private int[] _contents;  // what is in each place, for a pack whose places differ (ItemPack.Contents)
         private float[] _at;      // how far along the path, in metres
         private int[] _order;
         private ItemPackPicture[] _pictures;
@@ -77,13 +83,19 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private float _end;
         private ItemPack _drawing;
         private float _nextCheck;
-        private int _sending;        // the item in the tube: 0 none, else 1 + the index in Packs of the pack it came from
-        private float _sent;         // how far along the route it has travelled, in metres
-        private ClippedItemPicture _sendingPicture;
+        // The items in the tube, up to MaxInFlight: each one's kind (0 none, else 1 + the index in Packs of the pack it
+        // came from), how far along its route it has travelled in metres, and the cell of the port it is heading for.
+        private const int MaxInFlight = 6;
+        private readonly int[] _flightKind = new int[MaxInFlight];
+        private readonly float[] _flightAt = new float[MaxInFlight];
+        private readonly Vector3Int[] _flightTo = new Vector3Int[MaxInFlight];
+        private readonly ClippedItemPicture[] _flightPictures = new ClippedItemPicture[MaxInFlight];
+        private readonly Pose?[] _flightPose = new Pose?[MaxInFlight];   // where each was last shown, to fall out from
         private ComponentEdgeModule _edges;
         private Vector3 _railsIn;
         private float _railsOut;     // metres slid out
         private bool _railsWanted;
+        private bool _riding;        // a pack is riding the rails in: they retract, whatever is in the intake
         private float _nextPutOut;
         private float _trustLocalUntil;
 
@@ -94,8 +106,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// (it tries again). Unset, the pack is made here.
         public Func<ItemPack, Vector3, Quaternion, ItemPack> PutOut;
 
-        /// Raised on the client whose hand fed a pack: its kind (the index in Packs) and its filled places.
-        public event Action<int, int> FedByHand;
+        /// Puts an item that fell out of a cut-off item conduit into the world, set by the networking: the item made, or
+        /// null. Unset, it is made here.
+        public Func<LoadableItem, Vector3, Quaternion, LoadableItem> DropOut;
+
+        /// Raised on the client whose hand fed a pack: its kind (the index in Packs), its filled places and its
+        /// contents.
+        public event Action<int, int, int> FedByHand;
 
         /// Raised on the client whose hand threw the eject switch: on or off.
         public event Action<bool> EjectPressed;
@@ -148,6 +165,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (_kind != null) return;
             _kind = new int[Entries];
             _filled = new int[Entries];
+            _contents = new int[Entries];
             _at = new float[Entries];
             _order = new int[Entries];
             _pictures = new ItemPackPicture[Entries];
@@ -169,7 +187,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             if (_pictures == null) return;
             foreach (var picture in _pictures) picture?.Destroy();
-            _sendingPicture?.Destroy();
+            foreach (var picture in _flightPictures) picture?.Destroy();
         }
 
         private void Update()
@@ -186,7 +204,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             {
                 _nextCheck = Time.time + _checkSeconds;
                 CheckWaiting();
-                _railsWanted = _drawing != null || TakeableInRange();
+                _railsWanted = !_riding && (_drawing != null || TakeableInRange());
             }
         }
 
@@ -216,65 +234,92 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             return moved;
         }
 
-        // ---- Sending: one item at a time from the pack in the mechanism, along the item conduit from its ItemOut port.
+        // ---- Sending: a stream of items from the pack in the mechanism, along the item conduit from its ItemOut port.
 
-        /// Starts sending an item when the component at the other end of the item conduit wants one of the kind
-        /// the pack in the mechanism holds (its LoadingModule takes that type and holds none), and carries it
-        /// there. Every client moves the item; only the master sends one and decides it has arrived, loading it
-        /// into that LoadingModule. Unpowered, the item stops where it is.
+        /// Moves every item in the tube along its route (one whose section has been cut off from this loader falls out
+        /// of the tube), and starts another when the tube's mouth is clear: the last
+        /// one sent has fully left the Out port and gone on for the send gap, and some port the tree reaches wants
+        /// one of the kind the pack in the mechanism holds (its LoadingModule takes that type, holds none, and no item
+        /// is already on its way to it). The junctions choose which port (ItemConduits.Choose). It never waits for
+        /// an item to arrive. Every client moves the items; only the master sends one and decides it has arrived,
+        /// loading it into that LoadingModule. Unpowered, they stop where they are.
         private void Send(float seconds)
         {
             var conduits = ItemConduits.Current;
-            var route = conduits != null && _edges != null ? conduits.RouteFrom(_edges) : null;
-            if (_sending != 0)
+            bool tubed = conduits != null && _edges != null;
+            float mouth = float.MaxValue;   // how far behind it the last item sent has left the Out port
+            for (int s = 0; s < MaxInFlight; s++)
             {
-                var item = PackOf(_sending) != null ? PackOf(_sending).Contains : null;
-                if (route == null || item == null)
+                if (_flightKind[s] == 0) { _flightPictures[s]?.Hide(); continue; }
+                var item = PackOf(_flightKind[s]) != null ? PackOf(_flightKind[s]).Contains : null;
+                var route = tubed && item != null ? conduits.RouteTo(_edges, _flightTo[s]) : null;
+                if (route == null)
                 {
-                    HideSending();
-                    if (!Decides) return;
-                    Debug.LogWarning($"Loader: '{name}' lost the item it was sending: its item conduit is gone", this);
-                    _sending = 0;
-                    return;
+                    // Its section was cut off from this loader: it falls out of the tube where it was, as a real item.
+                    _flightPictures[s]?.Hide();
+                    if (!Decides) continue;
+                    if (item != null && _flightPose[s] is Pose at)
+                    {
+                        if (DropOut != null) DropOut(item, at.position, at.rotation);
+                        else Instantiate(item, at.position, at.rotation);
+                    }
+                    _flightKind[s] = 0;
+                    _flightPose[s] = null;
+                    continue;
                 }
-                var picture = SendingPicture(item);
+                var picture = FlightPicture(s, item);
                 float total = route.Length(picture.Length);
-                if (Working) _sent = Mathf.Min(total, _sent + conduits.ItemSpeed * seconds);
-                route.Pose(_sent, picture.Length, out var centre, out var turn, out var keepA, out var keepB);
+                if (Working) _flightAt[s] = Mathf.Min(total, _flightAt[s] + conduits.ItemSpeed * seconds);
+                route.Pose(_flightAt[s], picture.Length, out var centre, out var turn, out var keepA, out var keepB);
                 picture.Show(centre, turn, keepA, keepB);
-                if (Decides && _sent >= total) Arrive(route, item);
-                return;
+                _flightPose[s] = new Pose(centre, turn);
+                mouth = Mathf.Min(mouth, _flightAt[s] - picture.Length);
+                if (Decides && _flightAt[s] >= total) Arrive(s, route, item);
             }
-            HideSending();
-            if (!Decides || !Working || _ejecting || route == null) return;
+            if (!Decides || !Working || _ejecting || !tubed) return;
 
+            int free = Array.IndexOf(_flightKind, 0);
+            if (free < 0 || mouth < conduits.ItemSpeed * _sendGapSeconds) return;
             int engaged = Engaged();
             if (engaged < 0 || _filled[engaged] == 0) return;
             var pack = PackOf(_kind[engaged]);
-            if (pack == null || pack.Contains == null || Wanting(route, pack.Contains) == null) return;
+            if (pack == null || pack.Contains == null) return;
+            var chosen = conduits.Choose(_edges, way => Wanting(way, pack.Contains) != null && !Heading(way.ReceiverCell));
+            if (chosen == null) return;
             int top = 31;
             while (top > 0 && (_filled[engaged] & (1 << top)) == 0) top--;
             _filled[engaged] &= ~(1 << top);
-            _sending = _kind[engaged];
-            _sent = 0f;
+            _flightKind[free] = _kind[engaged];
+            _flightAt[free] = 0f;
+            _flightPose[free] = null;
+            _flightTo[free] = chosen.ReceiverCell;
+        }
+
+        /// True while an item in the tube is on its way to the port in this cell.
+        private bool Heading(Vector3Int cell)
+        {
+            for (int s = 0; s < MaxInFlight; s++)
+                if (_flightKind[s] != 0 && _flightTo[s] == cell) return true;
+            return false;
         }
 
         /// The master: the item is inside the receiver, and is loaded into the LoadingModule that wants it.
-        private void Arrive(ItemConduits.Route route, LoadableItem item)
+        private void Arrive(int slot, ItemConduits.Route route, LoadableItem item)
         {
             var loading = Wanting(route, item);
             if (loading != null) loading.Load();
             else Debug.LogWarning($"Loader: '{name}' sent '{item.name}' to '{route.Receiver.name}', which no longer wants it; it is lost", this);
-            _sending = 0;
-            HideSending();
+            _flightKind[slot] = 0;
+            _flightPose[slot] = null;
+            _flightPictures[slot]?.Hide();
         }
 
-        /// The receiver's LoadingModule that would take this item now, or null.
+        /// The receiver's LoadingModule fed from the port the route arrives at that would take this item now, or null.
         private static LoadingModule Wanting(ItemConduits.Route route, LoadableItem item)
         {
             if (route.Receiver == null) return null;
             foreach (var loading in route.Receiver.GetComponents<LoadingModule>())
-                if (loading.Accepts(item) && !loading.HasItem) return loading;
+                if (loading.FedFrom(route.Receiver, route.ReceiverCell) && loading.Accepts(item) && !loading.HasItem) return loading;
             return null;
         }
 
@@ -287,15 +332,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             return -1;
         }
 
-        private ClippedItemPicture SendingPicture(LoadableItem item)
+        private ClippedItemPicture FlightPicture(int slot, LoadableItem item)
         {
-            if (_sendingPicture != null && _sendingPicture.Prefab == item) return _sendingPicture;
-            _sendingPicture?.Destroy();
-            _sendingPicture = new ClippedItemPicture(item, $"{item.name} (sent by {name})");
-            return _sendingPicture;
+            var picture = _flightPictures[slot];
+            if (picture != null && picture.Prefab == item) return picture;
+            picture?.Destroy();
+            return _flightPictures[slot] = new ClippedItemPicture(item, $"{item.name} (sent by {name})");
         }
-
-        private void HideSending() => _sendingPicture?.Hide();
 
         /// Slides the rails out while a pack it would take is in range, and back in once there is none, looping
         /// their sound while they move. Each client works this out from the packs it sees, so nothing is sent.
@@ -320,7 +363,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private bool TakeableInRange()
         {
             if (_intake == null || !CanTakeIn) return false;
-            int count = Physics.OverlapBoxNonAlloc(_intake.position, _intakeSize * 0.5f, Found, _intake.rotation, ~0, QueryTriggerInteraction.Ignore);
+            var box = IntakeBox();
+            int count = Physics.OverlapBoxNonAlloc(_intake.TransformPoint(box.center), box.extents, Found, _intake.rotation, ~0, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < count; i++)
             {
                 var pack = Found[i] != null ? Found[i].GetComponentInParent<ItemPack>() : null;
@@ -401,6 +445,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 }
                 if (pack != null)
                 {
+                    pack.Contents = _contents[i];
                     pack.Apply(_filled[i], false);
                     pack.Body.isKinematic = false;
                 }
@@ -439,7 +484,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         /// Puts a pack on the start of the path. The master calls it for a pack fed elsewhere; false when there was
         /// no room in the state for it.
-        public bool Add(int kind, int filled)
+        public bool Add(int kind, int filled, int contents = 0)
         {
             Ready();
             if (PackOf(kind) == null) return false;
@@ -448,6 +493,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 if (_kind[i] != 0) continue;
                 _kind[i] = kind;
                 _filled[i] = filled;
+                _contents[i] = contents;
                 _at[i] = 0f;
                 return true;
             }
@@ -474,24 +520,29 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             }
         }
 
-        // ---- Intake: a pack a hand on this client lets go of in the box is drawn in when there is room.
+        // ---- Intake: a pack a hand on this client lets go of is drawn in, when there is room, once any part of it is in
+        // the box: the same test that sends the rails out, so if the rails come out for it, letting go takes it.
 
+        /// Watches every pack a hand on this client lets go of: only that client draws it in, as it holds the pack.
         private void OnPackLetGo(ItemPack pack)
         {
-            if (pack == null || !InIntake(pack)) return;
-            _waiting.Add(pack);
-            TryTakeIn(pack);
+            if (pack == null) return;
+            _waiting[pack] = Time.time;
+            if (InIntake(pack)) TryTakeIn(pack);
         }
 
-        /// Takes in a waiting pack once there is room; forgets one picked up again or moved out of the box.
+        /// Takes in a waiting pack that is in the box once there is room. One in the box waits there for as long as it
+        /// stays; one outside it is watched for Watch Seconds after it was let go, in case it falls or slides in. A pack
+        /// picked up again is forgotten.
         private void CheckWaiting()
         {
-            foreach (var pack in _waiting)
-                if (pack == null || pack.Grab.isSelected || !InIntake(pack)) _gone.Add(pack);
+            foreach (var pair in _waiting)
+                if (pair.Key == null || pair.Key.Grab.isSelected || (!InIntake(pair.Key) && Time.time - pair.Value > WatchSeconds))
+                    _gone.Add(pair.Key);
             foreach (var pack in _gone) _waiting.Remove(pack);
             _gone.Clear();
-            foreach (var pack in _waiting)
-                if (TryTakeIn(pack)) break;
+            foreach (var pair in _waiting)
+                if (InIntake(pair.Key) && TryTakeIn(pair.Key)) break;
         }
 
         private bool TryTakeIn(ItemPack pack)
@@ -503,16 +554,35 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             return true;
         }
 
+        /// True when any part of the pack is in the intake box.
         private bool InIntake(ItemPack pack)
         {
             if (_intake == null) return false;
-            var local = _intake.InverseTransformPoint(pack.Body.worldCenterOfMass);
-            var half = _intakeSize * 0.5f;
-            return Mathf.Abs(local.x) <= half.x && Mathf.Abs(local.y) <= half.y && Mathf.Abs(local.z) <= half.z;
+            var box = IntakeBox();
+            int count = Physics.OverlapBoxNonAlloc(_intake.TransformPoint(box.center), box.extents, Found, _intake.rotation, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < count; i++)
+                if (Found[i] != null && Found[i].GetComponentInParent<ItemPack>() == pack) return true;
+            return false;
         }
 
-        /// Settles the pack onto the start of the path, upright and shut, then swaps it for a picture there and
-        /// removes it. A hand taking it back first, or the room going, leaves it be.
+        /// The way the rails slide, in the world.
+        private Vector3 RailsDirection => _rails != null && _rails.parent != null ? _rails.parent.forward : transform.forward;
+
+        /// The intake box in the intake's own space: as set, stretched along the rails to take in the extended rails'
+        /// end, Rails Reach out from the path's first point, with half the box's depth to spare beyond it.
+        private Bounds IntakeBox()
+        {
+            var box = new Bounds(Vector3.zero, _intakeSize);
+            if (_path.Length == 0 || _path[0] == null) return box;
+            var outEnd = _path[0].position + RailsDirection * _railsReach;
+            box.Encapsulate(_intake.InverseTransformPoint(outEnd) + _intake.InverseTransformDirection(RailsDirection) * (_intakeSize.z * 0.5f));
+            return box;
+        }
+
+        /// Lines the pack up on the rails, upright and square, where along them it was put down (no further out than
+        /// they reach now); then the rails retract and carry it in, at their own speed, onto the path's first point,
+        /// where it is swapped for a picture and removed. The rails' stretch is not a place: it holds nothing and is
+        /// never room. A hand taking it back first, or the room going, leaves it be.
         private IEnumerator DrawIn(ItemPack pack, int kind)
         {
             _drawing = pack;
@@ -521,15 +591,35 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             var colliders = pack.GetComponentsInChildren<Collider>();
             foreach (var c in colliders) c.enabled = false;
 
+            var inner = transform.TransformPoint(_points[0]);
+            var dir = RailsDirection;
+            float along = Mathf.Clamp(Vector3.Dot(pack.transform.position - inner, dir), 0f, Mathf.Min(_railsReach, _railsOut));
+
             var fromAt = pack.transform.position;
             var fromTurn = pack.transform.rotation;
-            var toAt = transform.TransformPoint(_points[0]);
             for (float t = 0f; t < 1f && pack != null; t += Time.fixedDeltaTime / Mathf.Max(0.01f, _drawInSeconds))
             {
                 float k = Mathf.SmoothStep(0f, 1f, t);
-                pack.Body.MovePosition(Vector3.Lerp(fromAt, toAt, k));
+                pack.Body.MovePosition(Vector3.Lerp(fromAt, inner + dir * along, k));
                 pack.Body.MoveRotation(Quaternion.Slerp(fromTurn, transform.rotation, k));
                 yield return new WaitForFixedUpdate();
+            }
+
+            // The rails come in at their own speed, and once they reach the pack it rides their end in with them.
+            _riding = true;
+            _railsWanted = false;
+            while (pack != null && along > 0f)
+            {
+                along = Mathf.Min(along, _railsOut);
+                pack.Body.MovePosition(inner + dir * along);
+                pack.Body.MoveRotation(transform.rotation);
+                yield return new WaitForFixedUpdate();
+            }
+            _riding = false;
+            if (pack != null)
+            {
+                pack.Body.MovePosition(inner);
+                pack.Body.MoveRotation(transform.rotation);
             }
             _drawing = null;
             if (pack == null) yield break;
@@ -544,17 +634,18 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
             _waiting.Remove(pack);
             foreach (var r in pack.GetComponentsInChildren<Renderer>()) r.enabled = false;
-            int filled = pack.Filled;
-            Add(kind, filled);
+            int filled = pack.Filled, contents = pack.Contents;
+            Add(kind, filled, contents);
             _trustLocalUntil = Time.time + TrustLocalSeconds;
-            FedByHand?.Invoke(kind, filled);
+            FedByHand?.Invoke(kind, filled, contents);
             pack.RemoveForEveryone();
         }
 
-        // ---- State: the eject switch, the item being sent and how far it has gone, then per entry its kind,
-        // filled places and how far along.
+        // ---- State: the eject switch; per item in the tube its kind, how far it has gone, and the cell of the port it
+        // is heading for in two halves (each exact as a float); then per entry its kind, filled places, how far along,
+        // and its contents in two halves.
 
-        public override int StateCount => base.StateCount + 3 + 3 * Entries;
+        public override int StateCount => base.StateCount + 1 + 4 * MaxInFlight + 5 * Entries;
 
         public override void WriteState(float[] to, int at)
         {
@@ -562,13 +653,21 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             base.WriteState(to, at);
             at += base.StateCount;
             to[at++] = _ejecting ? 1f : 0f;
-            to[at++] = _sending;
-            to[at++] = _sent;
+            for (int s = 0; s < MaxInFlight; s++)
+            {
+                int cell = ItemConduits.PackCell(_flightTo[s]);
+                to[at++] = _flightKind[s];
+                to[at++] = _flightAt[s];
+                to[at++] = cell & 0x7FFF;
+                to[at++] = (cell >> 15) & 0x7FFF;
+            }
             for (int i = 0; i < Entries; i++)
             {
                 to[at++] = _kind[i];
                 to[at++] = _filled[i];
                 to[at++] = _at[i];
+                to[at++] = _contents[i] & 0xFFFF;
+                to[at++] = (_contents[i] >> 16) & 0xFFFF;
             }
         }
 
@@ -579,15 +678,22 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (Time.time < _trustLocalUntil) return;   // a hand here just changed it; the master has not caught up
             at += base.StateCount;
             _ejecting = from[at++] > 0.5f;
-            int sending = Mathf.RoundToInt(from[at++]);
-            float sent = from[at++];
-            if (sending != _sending || Mathf.Abs(sent - _sent) > 0.3f) _sent = sent;
-            _sending = sending;
+            for (int s = 0; s < MaxInFlight; s++)
+            {
+                int kind = Mathf.RoundToInt(from[at++]);
+                float along = from[at++];
+                var cell = ItemConduits.UnpackCell(Mathf.RoundToInt(from[at++]) | (Mathf.RoundToInt(from[at++]) << 15));
+                // Close enough is left alone, so an item this client is moving does not jump back and forth.
+                if (kind != _flightKind[s] || cell != _flightTo[s] || Mathf.Abs(along - _flightAt[s]) > 0.3f) _flightAt[s] = along;
+                _flightKind[s] = kind;
+                _flightTo[s] = cell;
+            }
             for (int i = 0; i < Entries; i++)
             {
                 int kind = Mathf.RoundToInt(from[at++]);
                 int filled = Mathf.RoundToInt(from[at++]);
                 float along = from[at++];
+                _contents[i] = Mathf.RoundToInt(from[at++]) | (Mathf.RoundToInt(from[at++]) << 16);
                 // Close enough is left alone, so a pack this client is moving does not jump back and forth.
                 if (kind != _kind[i] || Mathf.Abs(along - _at[i]) > 0.15f) _at[i] = along;
                 _kind[i] = kind;
@@ -603,8 +709,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             foreach (var place in _places)
                 if (place != null) Gizmos.DrawWireCube(place.position + place.up * (_packSize.y * 0.5f), _packSize);
             if (_intake == null) return;
+            if (_path.Length > 0 && _path[0] != null)
+                Gizmos.DrawLine(_path[0].position, _path[0].position + RailsDirection * _railsReach);   // the rails' stretch
+            var box = IntakeBox();
             Gizmos.matrix = _intake.localToWorldMatrix;
-            Gizmos.DrawWireCube(Vector3.zero, _intakeSize);
+            Gizmos.DrawWireCube(box.center, box.size);
         }
     }
 }

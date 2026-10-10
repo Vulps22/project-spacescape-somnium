@@ -42,6 +42,8 @@ static class Program
 
     static void Main()
     {
+        ChambersAreIndividual();
+        ChambersRefuelFromTheirOwnSupply();
         EvenSplit();
         MergeSums();
         EndpointsDoNotPassPower();
@@ -1250,7 +1252,7 @@ static class Program
     {
         Console.WriteLine("a reactor runs hot without being damaged for it");
 
-        var core = new FissionCore { OutputPerCore = 100, Cores = 1, HeatRatio = 2.0, WorkingCelsius = 400 };
+        var core = new FissionCore { OutputPerChamber = 100, HeatRatio = 2.0, WorkingCelsius = 400 };
         core.TargetWithdrawal = 1.0;
 
         var g = new PowerGraph { PopSeed = 2 };
@@ -1339,7 +1341,7 @@ static class Program
     {
         Console.WriteLine("the starter is for starting, not for running");
 
-        var core = new FissionCore { OutputPerCore = 200, Cores = 1, RaisePerSecond = 0.5, DropPerSecond = 0.5 };
+        var core = new FissionCore { OutputPerChamber = 200, RaisePerSecond = 0.5, DropPerSecond = 0.5 };
         var control = new LoadBehaviour(20, 40);          // 20 W to hold, 40 J of grip once cut
         var reactor = new ReactorBehaviour(core, control);
 
@@ -1414,7 +1416,7 @@ static class Program
         Check("a component passes none of it on", PassedOnBy(true), 0);
 
         // and a reactor is a component like any other
-        var core2 = new FissionCore { OutputPerCore = 100, Cores = 1 };
+        var core2 = new FissionCore { OutputPerChamber = 100 };
         var r2 = new ReactorBehaviour(core2, new LoadBehaviour(20, 40));
         var g2 = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
         var feed2 = g2.AddSource("feed", 100);
@@ -1434,7 +1436,7 @@ static class Program
         Console.WriteLine("a diode stops the cold-start loop running away");
 
         // reactor -> cable -> cell -> cable -> back to the reactor's control input
-        var core = new FissionCore { OutputPerCore = 100, Cores = 1, RaisePerSecond = 1.0 };
+        var core = new FissionCore { OutputPerChamber = 100, RaisePerSecond = 1.0 };
         var control = new LoadBehaviour(20, 40);
         var reactor = new ReactorBehaviour(core, control);
         var cell = new BatteryBehaviour(100, 100, 5000, 5000);   // starts full, so it stops absorbing early
@@ -1474,7 +1476,7 @@ static class Program
     {
         Console.WriteLine("a running reactor holds its own rods");
 
-        var core = new FissionCore { OutputPerCore = 100, Cores = 1, RaisePerSecond = 0.5 };
+        var core = new FissionCore { OutputPerChamber = 100, RaisePerSecond = 0.5 };
         var control = new LoadBehaviour(20, 40);
         var reactor = new ReactorBehaviour(core, control);
 
@@ -1518,7 +1520,7 @@ static class Program
     {
         Console.WriteLine("rods can be lowered as well as raised");
 
-        var core = new FissionCore { OutputPerCore = 100, Cores = 1, RaisePerSecond = 0.5, DropPerSecond = 0.5 };
+        var core = new FissionCore { OutputPerChamber = 100, RaisePerSecond = 0.5, DropPerSecond = 0.5 };
         var reactor = new ReactorBehaviour(core, new LoadBehaviour(20, 40));
 
         var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
@@ -1554,7 +1556,7 @@ static class Program
     {
         Console.WriteLine("throttling below house load self-scrams");
 
-        var core = new FissionCore { OutputPerCore = 100, Cores = 1, RaisePerSecond = 0.5, DropPerSecond = 0.5 };
+        var core = new FissionCore { OutputPerChamber = 100, RaisePerSecond = 0.5, DropPerSecond = 0.5 };
         var reactor = new ReactorBehaviour(core, new LoadBehaviour(20, 40));
 
         var g = new PowerGraph { PopSecondsAt100WAnd120C = 0.0 };
@@ -1646,7 +1648,7 @@ static class Program
     static void LooseReactorKeepsRunning()
     {
         Console.WriteLine("a loose reactor keeps running");
-        var core = new FissionCore { OutputPerCore = 100, Cores = 1, HeatRatio = 2.0, WorkingCelsius = 400 };
+        var core = new FissionCore { OutputPerChamber = 100, HeatRatio = 2.0, WorkingCelsius = 400 };
         core.TargetWithdrawal = 1.0;
         var g = new PowerGraph { PopSeed = 3 };
         var reactor = g.AddSource("reactor", new ReactorBehaviour(core, null));
@@ -1697,19 +1699,20 @@ static class Program
         Console.WriteLine("a spent rod takes the next one, consuming it on the spot");
 
         int next = 1, asked = 0;
-        var core = new FissionCore { OutputPerCore = 100, Cores = 1, RaisePerSecond = 1.0, FuelSecondsPerRod = 10, FuelSeconds = 10 };
-        core.Refuel = () => { asked++; if (next == 0) return false; next--; return true; };
+        var core = new FissionCore { OutputPerChamber = 100, RaisePerSecond = 1.0, FuelSecondsPerRod = 10 };
+        var chamber = core.Chambers[0];
+        chamber.Refuel = () => { asked++; if (next == 0) return false; next--; return true; };
         core.TargetWithdrawal = 1.0;
         core.ProducePower(1.0);                    // rods fully out after 1 s, 1 s of fuel not yet burnt
         CheckTrue("nothing is asked for while the rod has fuel left", asked == 0);
 
         for (int t = 0; t < 105; t++) core.ProducePower(0.1);     // 10.5 s at full output: spent at 10
         CheckTrue("the next rod was taken and consumed", next == 0);
-        Check("and the core is nearly full again", core.FuelLevel, 0.95, 0.02);
+        Check("and the core is nearly full again", chamber.Fuel, 0.95, 0.02);
         CheckTrue("still running", core.WattsProduced > 0);
 
         for (int t = 0; t < 120; t++) core.ProducePower(0.1);     // 12 s: spends it, with none to follow
-        Check("with no next rod it stays spent", core.FuelLevel, 0.0);
+        Check("with no next rod it stays spent", chamber.Fuel, 0.0);
         Check("and makes nothing", core.WattsProduced, 0.0);
 
         next = 1;
@@ -1717,6 +1720,73 @@ static class Program
         core.CorrectWithdrawal(0.0);
         core.ProducePower(0.1);
         CheckTrue("a spent core takes a rod as soon as one is there, rods in or not", next == 0);
-        Check("and is full", core.FuelLevel, 1.0);
+        Check("and is full", chamber.Fuel, 1.0);
+    }
+
+    // Six chambers, each its own rod and lever, one producer to the grid (reactor.md → Chambers).
+    static void ChambersAreIndividual()
+    {
+        Console.WriteLine("a reactor's chambers burn and move individually and add up to one producer");
+
+        var core = new FissionCore { ChamberCount = 6, OutputPerChamber = 100, HeatRatio = 2.0, WorkingCelsius = 400, RaisePerSecond = 1.0, DropPerSecond = 1.0 };
+        Check("six chambers", core.ChamberCount, 6);
+        Check("full output is six chambers' worth", core.MaxOutput, 600);
+
+        core.TargetWithdrawal = 1.0;
+        core.ProducePower(1.0);
+        Check("the master lever takes all six out", core.WattsProduced, 600);
+
+        core.Chambers[1].Fuel = 0.0;
+        core.Chambers[3].Fuel = 0.0;
+        core.Chambers[5].Fuel = 0.0;
+        Check("three chambers without a rod make half", core.WattsProduced, 300);
+        Check("heat is the chambers' sum", core.HeatWatts, 600);
+        Check("and the working temperature is their combined load", core.BaselineCelsius,
+            PowerGraph.AmbientCelsius + 0.5 * (400 - PowerGraph.AmbientCelsius), 1e-6);
+
+        core.Chambers[0].TargetWithdrawal = 0.0;
+        core.ProducePower(1.0);
+        Check("one chamber's own lever moves only that chamber", core.Chambers[0].Withdrawal, 0.0);
+        Check("the rest stay out", core.Chambers[2].Withdrawal, 1.0);
+        Check("so output drops by one chamber", core.WattsProduced, 200);
+        Check("and the master lever still reads where it was set", core.TargetWithdrawal, 1.0);
+        CheckTrue("a chamber with no rod burns nothing", core.Chambers[1].Fuel == 0.0);
+        double before = core.Chambers[0].Fuel;
+        core.ProducePower(1.0);
+        CheckTrue("a chamber with its rods in burns nothing", core.Chambers[0].Fuel == before);
+        CheckTrue("a working chamber burns its own rod", core.Chambers[2].Fuel < 1.0);
+
+        core.Gripped = false;
+        core.ProducePower(1.0);
+        Check("losing grip drops every chamber", core.Withdrawal, 0.0);
+        core.Gripped = true;
+        core.ProducePower(1.0);
+        Check("grip back, each heads back to its own lever", core.Chambers[2].Withdrawal, 1.0);
+        Check("and the one set to zero stays in", core.Chambers[0].Withdrawal, 0.0);
+
+        core.Scram();
+        core.ProducePower(1.0);
+        Check("SCRAM on the master takes every chamber in", core.Withdrawal, 0.0);
+        Check("and makes nothing", core.WattsProduced, 0.0);
+    }
+
+    // Each chamber is fed by its own supply: a spent chamber takes only its own next rod.
+    static void ChambersRefuelFromTheirOwnSupply()
+    {
+        Console.WriteLine("each chamber takes its next rod from its own supply");
+
+        var core = new FissionCore { ChamberCount = 2, OutputPerChamber = 100, RaisePerSecond = 1.0, FuelSecondsPerRod = 10 };
+        int nextA = 0, nextB = 1;
+        core.Chambers[0].Refuel = () => { if (nextA == 0) return false; nextA--; return true; };
+        core.Chambers[1].Refuel = () => { if (nextB == 0) return false; nextB--; return true; };
+        core.TargetWithdrawal = 1.0;
+        for (int t = 0; t < 120; t++) core.ProducePower(0.1);     // 12 s: both spend their first rod
+        Check("the chamber with no next rod is spent", core.Chambers[0].Fuel, 0.0);
+        CheckTrue("the other took its own next rod", nextB == 0 && core.Chambers[1].Fuel > 0.7);
+        Check("so it runs on one chamber", core.WattsProduced, 100);
+
+        core.ChamberCount = 3;
+        Check("a chamber added later starts with a rod in", core.Chambers[2].Fuel, 1.0);
+        Check("and its lever where it was built: in", core.Chambers[2].TargetWithdrawal, 0.0);
     }
 }

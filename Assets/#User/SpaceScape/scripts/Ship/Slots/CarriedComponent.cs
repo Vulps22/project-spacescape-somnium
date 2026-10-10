@@ -44,6 +44,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private XRGrabInteractable _grab;
         private Rigidbody _body;
         private BoxCollider _box;
+        private readonly List<MeshCollider> _solid = new List<MeshCollider>();
         private IgnoresPlayerBody _ignoresPlayer;
         private ComponentSlot _guided;
         private ComponentSlot.Guide _shown;
@@ -65,6 +66,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (_ignoresPlayer != null) _ignoresPlayer.enabled = false;   // solid until a hand has it
 
             FitCollider();
+            // The model's own shape, solid while it is locked in a slot. Exact (non-convex) mesh colliders only work
+            // on a body that does not move, so while it is free or in a hand the carry box stands in for them.
+            foreach (var mesh in GetComponentsInChildren<MeshCollider>(true))
+                if (!mesh.convex) _solid.Add(mesh);
 
             // Physics-driven, so it lags the hand by its weight and shoves what it meets.
             float heft = Mathf.Clamp01(_body.mass / Mathf.Max(1f, _heaviestKilograms));
@@ -138,6 +143,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             var slot = _slotted.Slot;
             bool free = slot == null || slot.Unlocked;
             if (_box != null && _box.enabled != free) _box.enabled = free;
+            foreach (var mesh in _solid)
+                if (mesh != null && mesh.enabled == free) mesh.enabled = !free;
             if (_grab.enabled != free) _grab.enabled = free;
         }
 
