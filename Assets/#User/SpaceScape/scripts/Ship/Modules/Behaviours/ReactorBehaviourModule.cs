@@ -11,8 +11,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// the output, and the input fills it only when the core cannot, so cutting both drops the rods.
     ///
     /// It has one or more fuel chambers, each with its own rod, lever and fuel (reactor.md → Chambers). Its dials,
-    /// for RodLevers: axis 0 is the master, which sets every chamber at once (SCRAM included); axis 1 to the
-    /// chamber count is each chamber's own. Chamber i is fed by the i-th LoadingModule taking fuel rods.
+    /// for RodLevers: axis 0 is the master, which moves freely while held and sets every chamber when let go; axis 1
+    /// to the chamber count is each chamber's own. SCRAM sets them all at once. Chamber i is fed by the i-th LoadingModule taking fuel rods.
     [RequireComponent(typeof(CapacitorModule))]
     public sealed class ReactorBehaviourModule : BehaviourModule, INetworkedState, ILeverDial
     {
@@ -138,7 +138,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         public event Action<int, float> DialTurned;
 
         // Which dials a hand on this client holds, by axis. The network leaves a held dial alone, so an older value
-        // from the master cannot pull it out of the hand; the master held holds them all.
+        // from the master cannot pull it out of the hand.
         private readonly HashSet<int> _held = new HashSet<int>();
 
         /// Where a dial is: axis 0 the master, 1 to ChamberCount a chamber's own lever.
@@ -149,11 +149,17 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             return axis <= chambers.Count ? (float)chambers[axis - 1].TargetWithdrawal : 0f;
         }
 
-        /// Sets a dial: the master sets every chamber with it; a chamber's lever only that chamber.
+        /// Sets a dial: the master moves only itself (its setting goes to the chambers when let go, ApplyMaster); a
+        /// chamber's lever only that chamber.
         public void SetDial(int axis, float value)
         {
             value = Mathf.Clamp01(value);
-            if (axis <= 0) { TargetWithdrawal = value; return; }
+            if (axis <= 0)
+            {
+                _targetWithdrawal = value;
+                if (_reactor != null) _reactor.Core.CorrectMaster(value);
+                return;
+            }
             var chambers = Reactor.Core.Chambers;
             if (axis <= chambers.Count) chambers[axis - 1].TargetWithdrawal = value;
         }
@@ -165,13 +171,20 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             DialTurned?.Invoke(axis, GetDial(axis));
         }
 
-        private bool Held(int axis) => _held.Contains(0) || _held.Contains(axis);
+        /// The master lever let go: every chamber's lever turns to its setting, as if by hand, so each goes to the
+        /// master like any chamber lever.
+        private void ApplyMaster()
+        {
+            for (int axis = 1; axis <= ChamberCount; axis++) TurnDial(axis, _targetWithdrawal);
+        }
+
+        private bool Held(int axis) => _held.Contains(axis);
 
         float ILeverDial.GetDial(int axis) => GetDial(axis);
         void ILeverDial.SetDialHeld(int axis, bool held)
         {
             if (held) _held.Add(axis);
-            else _held.Remove(axis);
+            else if (_held.Remove(axis) && axis == 0) ApplyMaster();
         }
         void ILeverDial.TurnDial(int axis, float value) => TurnDial(axis, value);
 

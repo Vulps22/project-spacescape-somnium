@@ -97,6 +97,35 @@ save up for.
 Real operating temperatures, if a running baseline is wanted: PWR coolant ~325 °C, sodium fast
 ~500–550 °C, gas-cooled ~750–950 °C.
 
+### Open: heat-ratio heat and its counters (talked through 2026-10-09; not decided)
+
+**Today the heat ratio does nothing.** `FissionCore.HeatWatts` (output × `HeatRatio`) is computed but nothing
+reads it: a reactor's temperature comes from `WorkingCelsius` and how hard it runs, and only heat above that
+conducts into the grid. So the ladder above is a design never connected, and the smaller reactors
+(`component-models.md` → Smaller reactors, S4 to S1) depend on it. Vulps: a 15 : 1 S1 would wreck a ship's grid
+fast; not a reason not to have it, but there must be something to install that offsets or protects against it.
+
+**Proposed:** heat-ratio heat is real heat that must leave the reactor's tile every second, by one of three exits:
+1. **Coolant**, consumed: the drum drains faster the more heat it carries (exists).
+2. **Radiators**, passive: nothing spent, but each has a hard limit and costs a slot or wall space.
+3. **The grid**, the bad exit: whatever coolant and radiators do not take conducts out along the cables.
+
+**Counters a crew installs:**
+- **Thermal break** (conduit addon): a ceramic section in one cable tile that carries current but blocks heat. The
+  cheapest answer to the S1: one on its output keeps the heat at the reactor.
+- **Thermostat** (conduit addon): opens the tile when too hot, closes once cool; can be set to stay open until reset
+  by hand. An open switch still conducts heat (`power.md`), so it pairs with a thermal break.
+- **Circuit breaker** (conduit addon): trips past a set current, cutting a wasteful branch loose before its heat
+  reaches the trunk (`power.md` sketches it; `open-questions.md`).
+- **Radiator** (S1 or S2 component, or a wall panel): glowing fins shedding heat to space, more the hotter they get;
+  the fins are the readout. S1 reactor plus radiator as the standard early-ship pair.
+- **Coolant upgrade** (branch upgrade circle, already planned): cools a whole branch, the mid-game answer.
+- **Data:** a thermostat sends its temperature to a logic board, which scrams the reactor or opens breakers. The
+  late-game answer.
+
+**The balancing lever is the output number:** the S1's heat is 15 × a small output (20 W makes 300 W of heat, one
+radiator's worth), so "wrecks the ship" or "one radiator" is settled with the power-number rescale (`power.md`).
+
 ## Control rods
 
 **The dial is the crew's.** `TargetWithdrawal` is written by the crew and nothing else. While the
@@ -227,8 +256,10 @@ load's share of the working temperature, plus the core's excess), with a dot whe
 
 **Networking.** The master owns every chamber. State per chamber: rod position, fuel, and whether a rod
 is in. All of it is sent as state, so a late joiner sees every chamber right. A non-master's hand on a
-lever asks the master, as the single lever does now. The master lever only writes those six positions,
-so it adds nothing to send. Pulse, glow and the spent-rod drop are derived on every client; nothing new
+lever asks the master, as the single lever does now. **The master lever moves on its own while held**
+(sent, so everyone sees it) **and sets every chamber only when let go** (2026-10-10): each chamber's lever
+turns to it as if by hand, through the chamber lever's own message, so it adds nothing new. SCRAM still sets
+every chamber at once. Pulse, glow and the spent-rod drop are derived on every client; nothing new
 is sent for them.
 
 ## Physical handling

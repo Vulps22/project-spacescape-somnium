@@ -11,7 +11,8 @@ CHAMFER = 0.04
 LAMP = (0.08, 0.03, 0.05)   # x, depth out of the face, z
 CELL = 0.32        # a lattice cell; an addon item is 0.25 x 0.25 x 0.063 m and stands upright in one
 ADDON_H = 0.25
-CENTRE = 0.52      # an addon's centre below the lid's underside (the places, Unity y -0.52 under the lid track)
+CENTRE = 0.885     # an addon's centre below the lid's underside (the places, Unity y -0.885 under the lid track):
+                   # with the lid risen 1.03 m the tray's underside sits on the seam, and closed it rests 2 cm off the bottom
 FLOOR = -CENTRE - ADDON_H / 2   # the tray's floor, relative to the lid's underside
 WALL_H = 0.10      # the lattice walls: low, so the addons can be read and lifted out
 

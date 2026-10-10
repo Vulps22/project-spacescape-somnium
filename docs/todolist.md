@@ -6,7 +6,7 @@ in the topic docs, never here; an item is removed once it is done. Build everyth
 
 ## NEXT (insisted on; only a major bug comes first)
 
-- Replace every component model in the loader's look: battery, radar, disruptor, reactor. `component-models.md`
+- Replace every component model in the loader's look: battery, radar, disruptor (the S5 reactor is done). `component-models.md`
 
 ## Weapons and data
 
@@ -25,6 +25,8 @@ in the topic docs, never here; an item is removed once it is done. Build everyth
 - Reactor chambers: test in play and with a second player. `reactor.md`
 - Reactor hum, generated in code. `reactor.md`
 - Open: an overproducing reactor bakes its own cables. `reactor.md`
+- Open: connect heat-ratio heat (coolant, radiators, the grid) and its counters (thermal break, thermostat, breaker, radiator). `reactor.md`
+- Smaller reactors S4 to S1 (Bottle, Pool, Breech, Pile): proposed, not decided. `component-models.md`
 - Open: should a running reactor's input take a cell's full discharge as heat? `power.md`
 - Open: the battery tier ladder. `power.md`
 - Open: rebalance and scale up every power number (a 100 W cell feeding a cannon; a 1 MW reactor). `power.md`

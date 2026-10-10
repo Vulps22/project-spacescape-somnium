@@ -4,6 +4,7 @@ using SomniumSpace.Worlds.SpaceScape.Player;
 using TMPro;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Attachment;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
@@ -78,6 +79,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _grab.angularVelocityScale = Mathf.Lerp(1f, _followWhenHeaviest, heft);
             // Its own transformer steers it; XRI's default would steer it too, or instead.
             _grab.addDefaultGrabTransformers = false;
+            // Held where it was caught, never pulled to the hand: a laser holds it out where it was; a second hand
+            // joins the first to turn it (HeftGrabTransformer).
+            _grab.farAttachMode = InteractableFarAttachMode.Far;
+            _grab.selectMode = InteractableSelectMode.Multiple;
             var heftTransformer = GetComponent<HeftGrabTransformer>() ?? gameObject.AddComponent<HeftGrabTransformer>();
             heftTransformer.Sag = _sagWhenHeaviest * heft;
         }

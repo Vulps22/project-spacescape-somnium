@@ -228,6 +228,7 @@ GameObject:
   - component: {fileID: 63372048}
   - component: {fileID: 63372047}
   - component: {fileID: 63372046}
+  - component: {fileID: 63372051}
   m_Layer: 0
   m_Name: Players
   m_TagString: Untagged
@@ -310,6 +311,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &63372051
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 63372045}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 71b071a71883bce4c862ec8fcc0c6057, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Player.GrabReach
+  _reach: 6
 --- !u!1001 &68077856
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -12425,7 +12439,7 @@ MonoBehaviour:
   AssetDescription: 'HEAVY WORK IN PROGRESS! DO NOT EXPECT MUCH                               '
   PreviewPicturePath: 
   PreviewTexture: {fileID: 2800000, guid: acf8c4ecc0b2b52d2bafbbf574f7af82, type: 3}
-  LastBuildSizeBytes: 5244560
+  LastBuildSizeBytes: 5249088
   BoundsIsDisplay: 0
   IsOpen360Preview: 0
   IsEditSpawnPos: 0
@@ -12453,7 +12467,7 @@ MonoBehaviour:
     Free:
       Count: 4
       MaxCount: 10
-      AvailableSize: 244153920
+      AvailableSize: 244149392
     Paid:
       Entries: []
   OwnedTokens: []

@@ -149,7 +149,9 @@ Pack` (`AddonPack`, an `ItemPack`), modelled by `Blender/AddonPack.py` → `Mesh
 and lid, **red** where it is blue (`AddonPackGlow`), with **eight count lamps**. Under the lid hangs a tray: **eight
 places in a lattice round a solid middle block** as tall as the addons, with a red ring round its top. Each place holds
 any addon item (switch, junction, voltmeter) **at full size, upright, its front facing out** so it can be read; the
-corners face out diagonally. It **starts empty**.
+corners face out diagonally. It **starts empty**. The tray hangs on long posts (2026-10-10): its lid rises 1.03 m
+(`_rise`, the fuel pack's 1.08), so open, the tray's underside sits on the seam; closed, it rests 2 cm off the
+bottom of the box.
 
 - **In:** an addon item let go near an empty place in the open pack goes in, and is removed.
 - **Out:** a hand taking one is given a real, spawned item, its state included (a +3 junction stays +3).
@@ -469,6 +471,9 @@ the floor, which is fine. Upper runners are at floor + 1.50.
   is about 8.4 cm square and sinks 4 cm behind its face. Every loader has its power In port on the back face
   at cell (0, 0), on a dark panel a little bigger than the port, flush with the back face, on an arm or
   bracket tied into the rig. S2 got its panel, on an arm from the back-right leg, the same day.
+- **Mesh colliders** (2026-10-10): every loader's Frame, Mechanism and Front Rails have one matching the model,
+  on only while it is locked in its slot (`CarriedComponent`, as the reactor's). The rails' moves with them, so
+  a pack dropped on extended rails rests on them. Ejected packs appear past the frame's end, clear of it.
 
 ## Later: bigger loaders holding more (logged 2026-10-09)
 

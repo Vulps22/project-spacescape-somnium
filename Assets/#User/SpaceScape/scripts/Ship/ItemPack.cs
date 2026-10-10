@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Attachment;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
@@ -151,6 +152,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private void Awake()
         {
+            // Held where the hand touched it, never pulled to the hand by its base: a laser holds it out where it
+            // was; a second hand joins the first to turn it.
+            Grab.useDynamicAttach = true;
+            Grab.farAttachMode = InteractableFarAttachMode.Far;
+            Grab.selectMode = InteractableSelectMode.Multiple;
             if (_lid != null) _slide = _lid.GetComponent<SlideGrabTransformer>();
             if (_lidTrack != null) _closedAt = _lidTrack.localPosition;
             _lampOn = new Material[_lamps.Length];

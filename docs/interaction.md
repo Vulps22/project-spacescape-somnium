@@ -18,5 +18,22 @@ each piece keeps its own private state that nothing else could sync. Somnium's g
 | Addon slot | distance from the slot, checked when an item is let go | `XRSocketInteractor` on the slot |
 | Addon item | `XRGrabInteractable` | already stock |
 
+## Holding things (2026-10-10; tested in-world, works)
+
+- **Nothing snaps to the hand.** Packs and components have `Far Attach Mode = Far`: caught by the laser, they
+  stay out where they were and move with it. Packs also have `Use Dynamic Attach`, so a near grab holds them
+  where the hand touched, not by the middle of the base. Components already keep the pose they were grabbed in
+  (`HeftGrabTransformer`). Both set in code (`ItemPack.Awake`, `CarriedComponent.Awake`).
+- **Two hands.** Both have `Select Mode = Multiple`. Packs turn through XRI's default transformer (aimed from
+  the first hand toward the second). Components keep their pose in the frame between the hands (centred on them,
+  pointing from the first to the second, up the way both lean): push and pull turns it, raising one hand tilts
+  it, twisting both rolls it, and it still sags with weight. Each time a hand takes hold or lets go the pose is
+  taken afresh, so nothing jumps. Slotting and pack drops already wait for the last hand.
+- **The laser reaches 3 m** (`Player/GrabReach`, on the Players object, `Reach`). When the local player joins
+  (`PlayerManager.LocalPlayerJoined`) it lengthens every straight ray interactor (reach and drawn line) and
+  near-far interactor's far caster on this client, which can only be the local rig; never shortens, leaves
+  curved (teleport) rays alone, and logs what it found and what it was.
+- **Open:** which interactor Somnium's rig uses (the `GrabReach:` log line says).
+
 Open: whether Somnium's hands include a poke interactor; and how Somnium syncs an
 `XRGrabInteractable` (and whether the rest needs Fusion) before networking.

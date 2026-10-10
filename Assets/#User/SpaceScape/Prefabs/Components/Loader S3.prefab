@@ -309,6 +309,7 @@ GameObject:
   - component: {fileID: 3260797903654372861}
   - component: {fileID: 1343295334676819343}
   - component: {fileID: 5422945692978782040}
+  - component: {fileID: 789948825866286770}
   m_Layer: 0
   m_Name: Mechanism
   m_TagString: Untagged
@@ -390,6 +391,28 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!64 &789948825866286770
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3594726639300781202}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 2953376727904889545, guid: ae7730fbcdc287b6f965c73fb4a1197a, type: 3}
 --- !u!1 &3652605472442069808
 GameObject:
   m_ObjectHideFlags: 0
@@ -1477,6 +1500,7 @@ GameObject:
   - component: {fileID: 8434775160432782159}
   - component: {fileID: 1353694135215335435}
   - component: {fileID: 6285153182356076607}
+  - component: {fileID: 1488717670173501280}
   m_Layer: 0
   m_Name: Frame
   m_TagString: Untagged
@@ -1558,6 +1582,28 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!64 &1488717670173501280
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7461061555989627540}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: -6360558719573625917, guid: ae7730fbcdc287b6f965c73fb4a1197a, type: 3}
 --- !u!1 &7723463660249509422
 GameObject:
   m_ObjectHideFlags: 0
@@ -1819,6 +1865,7 @@ GameObject:
   - component: {fileID: 8851278341236389809}
   - component: {fileID: 7240518504450586401}
   - component: {fileID: 973280047125404277}
+  - component: {fileID: 5179771500034679751}
   m_Layer: 0
   m_Name: Front Rails
   m_TagString: Untagged
@@ -1900,6 +1947,28 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!64 &5179771500034679751
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8338924821011944748}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 1956141058815536644, guid: ae7730fbcdc287b6f965c73fb4a1197a, type: 3}
 --- !u!1 &8664683424860098481
 GameObject:
   m_ObjectHideFlags: 0
