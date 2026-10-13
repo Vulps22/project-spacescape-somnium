@@ -19,6 +19,15 @@ Its art stands on the floor (art children at local y -0.25, on a floor whose top
 about a quarter cell off the grid (local z -4.27), so where two walls meet there is a small gap or an overlap,
 never flush; overlaps hide inside the art.
 
+**The panel's art is the ship look** (2026-10-13, untested in-world): the access panel was the pack's `decorative_wall_2`;
+it is now **Panel**, `Meshes/WallPanel.fbx` with a non-convex mesh collider, at local (0, -0.25, -4.271), facing the
+room. The ship look sample's wall (`Ship Look Sample` in the scene): a 3.5 × 4 m section, panels in two columns over a
+dark backing, a skirt low down, and half a rib at each edge, so containers side by side make a whole rib every 3.5 m.
+0.26 m deep. The back skin (`wall_big`) is unchanged, and the corridor corners keep their own panels. Built by
+`Blender/Walls/ShipWalls.py`, with **FloorTile** (`Meshes/FloorTile.fbx`: 4 × 4 m of 1 m plates on a dark backing, its
+origin the middle of its top, so it sits on the floor at y -0.25 with its edges on cell boundaries when centred on one).
+Both use the sample's materials (`ShipPanel`, `ShipSkirt`, `ShipFloor`, `FuelPackMetal`, `FuelPackDark`).
+
 ## Access panels
 
 **Status (2026-10-01):** built.
