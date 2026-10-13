@@ -1,17 +1,25 @@
+---
+aliases:
+  - "Data"
+tags:
+  - system
+---
 # Data
 
-How information moves round the ship: data along conduits, and logic boards. The radar is in `radar.md`.
+How information moves round the ship: data along conduits, and logic boards. The radar is in [[radar]].
 **The data network and data ports are built (2026-10-07), untested in-world;** the data upgrade and logic
 boards are not.
 
-## Built (2026-10-07, untested in-world)
+## Built
+
+**Status (2026-10-07):** built, untested in-world.
 
 - **Data ports:** `FlowDirection.Data`, set on a component's port like In or Out (the port inspector has
   **Add Data**). Its ring is red (`ComponentData.mat` on the Port prefab). No power crosses it:
   `SendsAt`/`AcceptsAt` never answer for it, and `DataAt` does. The Radar and the Disruptor each have one on
   the back face at (4, 0), beside their power In.
   **Every component gets one** (decided 2026-10-09): assume data is, or will be, on every component; its model's
-  I/O panel carries In, Data and Out with Data between (`component-models.md`).
+  I/O panel carries In, Data and Out with Data between ([[component-models]]).
 - **Joining a data port:** a conduit with a segment on that face. Point the segment's arrow **into the conduit
   (In)**: an Out segment there sends power at a port that takes none, which is wasted as heat like any dead end.
 - **`IDataSource` / `DataObject`** (`scripts/Ship/Data`): `Module` and `ConduitAddon` answer `GetData()` with
@@ -23,8 +31,9 @@ boards are not.
   changed, a tile bound or unbound, as a slot's component changes) has moved; otherwise `Read<T>(tile)` is a
   lookup plus each publisher's `GetData()`. The list it returns is reused by the next read of the same kind.
 
-## How data travels (in discussion, from 2026-10-03)
+## How data travels
 
+**Status (2026-10-03):** in discussion.
 
 How information moves round the ship. The radar, a bridge fire button and the logic board all wait on this.
 
@@ -44,7 +53,7 @@ How information moves round the ship. The radar, a bridge fire button and the lo
   each works out the same connections and reads its own copies of the values.
 - **No commands. Reading is how one thing acts on another.** A component reads what its network carries and
   decides for itself; nothing tells another part what to do. (When logic boards come, their reading is what
-  drives things.)
+  drives things.) ^no-commands
 - **The network carries data, not objects.** A publisher (a module, or an addon) declares a small plain
   record of what it shares, something like `IDataSource<RadarData>`, and only that record travels. A reader
   gets copies of the records on its own network, one per publisher, never a reference to the publisher, so it
@@ -55,7 +64,7 @@ How information moves round the ship. The radar, a bridge fire button and the lo
   a slot's occupant changes; a read is a lookup. No request queue: an order of serving could differ between
   clients. If data should feel delayed, that is a later mechanic: each network snapshots its records a few
   times a second, the natural place for §6's fade with distance too.
-- **Targeting** (who detects, who selects, what the radar publishes): `radar.md`.
+- **Targeting** (who detects, who selects, what the radar publishes): [[radar]].
 
 - **What publishes and what travels (decided 2026-10-03).** Anything that shares data implements
   `IDataSource { DataObject GetData(); }`. `Module` implements it as a public virtual returning `null`
@@ -82,10 +91,12 @@ How information moves round the ship. The radar, a bridge fire button and the lo
   comes later as its own step: there are no upgrade items, nothing installs into the upgrade circle, and
   nothing works out branches yet.
 
-**Open:** whether data is instant or fades with distance (§6); and the radar's own open questions (`radar.md`).
+> [!question] Open
+> Whether data is instant or fades with distance (§6); and the radar's own open questions ([[radar]]).
 
-## Logic board (unrefined, logged 2026-10-03)
+## Logic board
 
+**Status (2026-10-03):** idea, unrefined.
 
 **Gated behind the data discussion** (how information moves round the ship), which the radar and a bridge fire
 button are waiting on too. Nothing here is decided.
@@ -97,7 +108,7 @@ fitted: a battery's charge, a conduit's heat, a switch's position, the reactor's
 it can drive: a switch addon, a breaker, a gun's fire, a lamp).
 
 **Why it fits:**
-- **Automation is progression (`principles.md` §7).** The board is the automation, and it is a component, so
+- **Automation is progression ([[principles]] §7).** The board is the automation, and it is a component, so
   it fails: it can overheat, misfire when worn, starve when its branch does, or be set up wrong. The best
   fault in the principles is the board doing exactly what someone told it last week: "the gun will not fire
   because of a number someone set".
@@ -131,17 +142,18 @@ it can drive: a switch addon, a breaker, a gun's fire, a lamp).
 2. **Data logic: the richer grid.** Not on/off: real values (charge, watts, a selected target) carried on the data
    network to **component nodes** (below), for what has to be read from far away or is more than power.
 
-**Possible foundation (2026-10-03):** the component hologram's addon slots (`component-hologram.md`). A
+**Possible foundation (2026-10-03):** the component hologram's addon slots ([[component-hologram]]). A
 component's nodes (its functions and settings) are the logic's inputs and outputs, wired like a conduit, so a
 logic block could be an addon slotted into a component and wired between nodes, e.g. "fire when charged and a
 target is selected": the charge node and the selected target in, the fire node out.
 
-**To decide (in the data discussion):**
-1. **How signals travel:** their own cables, a second grid beside the conduits, or riding the power conduits.
-   Their own cables read best; riding conduits is least new work.
-2. **What a signal is:** on/off only, or numbers too (charge 0 to 100%, watts). On/off is simpler and more
-   readable; numbers allow "below 20%".
-3. **How it is programmed:** placing physical blocks and wiring them in a hologram suits VR and the 2D rule
-   (`2d.md`); a text or code screen does not.
-4. **Networking:** the board's layout is state, kept by the master like conduit edits; evaluation runs on the
-   master (like failure rolls) or on every client from the same inputs.
+> [!question] To decide (in the data discussion)
+> 1. **How signals travel:** their own cables, a second grid beside the conduits, or riding the power conduits.
+>    Their own cables read best; riding conduits is least new work.
+> 2. **What a signal is:** on/off only, or numbers too (charge 0 to 100%, watts). On/off is simpler and more
+>    readable; numbers allow "below 20%".
+> 3. **How it is programmed:** placing physical blocks and wiring them in a hologram suits VR and the 2D rule
+>    ([[2d]]); a text or code screen does not.
+> 4. **Networking:** the board's layout is state, kept by the master like conduit edits; evaluation runs on the
+>    master (like failure rolls) or on every client from the same inputs.
+>

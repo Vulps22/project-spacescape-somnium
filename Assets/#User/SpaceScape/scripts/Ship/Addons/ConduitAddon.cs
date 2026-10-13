@@ -1,4 +1,5 @@
 using System;
+using SomniumSpace.Worlds.SpaceScape.Power;
 using UnityEngine;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
@@ -102,6 +103,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         /// False while this addon stops power crossing the conduit.
         public virtual bool Conducts => true;
+
+        /// What the conduit hands power to while this addon works on it, or null for plain cable. A conduit with a
+        /// sink stops forwarding: it takes what it wants of what arrives, and the rest is wasted on its tile.
+        public virtual IPowerSink Sink => null;
 
         /// Segments this addon adds to the conduit's own.
         protected virtual int ExtraSegments => 0;

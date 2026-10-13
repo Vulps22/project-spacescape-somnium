@@ -30,7 +30,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         public override IPowerSource Source => null;
 
-        public override IPowerSink Sink => null;
+        /// The working addon's, if it takes power (the black hole); null for plain cable, which forwards everything.
+        public override IPowerSink Sink => Addon != null ? Addon.Sink : null;
 
         /// True when a hand must pass through an unlock point before this conduit's hologram opens. Asks the
         /// addon slot; a conduit with behaviour of its own can override it and ask base first.
@@ -69,11 +70,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (_heard != null) _heard.Changed += Apply;
         }
 
-        /// Puts the tile in the grid unless disabled or its addon stops power crossing it.
+        /// Puts the tile in the grid unless disabled or its addon stops power crossing it, and hands the grid the
+        /// addon's sink, if it has one: an addon going in, out or parked changes what the tile does with power.
         private void Apply()
         {
             var addon = Addon;
             Tile.On = enabled && (addon == null || addon.Conducts);
+            if (Tile.Node != null) Tile.Node.Sink = Sink;
         }
     }
 }

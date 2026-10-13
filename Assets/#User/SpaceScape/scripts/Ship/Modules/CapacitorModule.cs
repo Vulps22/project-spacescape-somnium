@@ -16,6 +16,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Tooltip("Text showing the charge out of the capacity, and the watts it is gaining or losing. Optional.")]
         [SerializeField] private TMP_Text _readout;
 
+        [Header("Debug")]
+        [Tooltip("Play mode only: follows the held charge as a share of the capacity, and dragging it sets the charge. On a network, set it on the master: anyone else is corrected back to the master's.")]
+        [Range(0f, 1f)] [SerializeField] private float _debugCharge;
+
         private Capacitor _capacitor;
         private Readout _readoutShown;
 
@@ -38,11 +42,23 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private void OnDestroy() => _readoutShown?.Stop();
 
         private string ReadoutText() =>
-            $"Charge: {Capacitor.Charge:0}/{Capacitor.Capacity:0} J\nNet: {Capacitor.NetWatts:+0;-0;0} W";
+            $"Charge: {Units.Joules(Capacitor.Charge)} / {Units.Joules(Capacitor.Capacity)}\nNet: {Units.Watts(Capacitor.NetWatts, plus: true)}";
+
+#if UNITY_EDITOR
+        // Keeps Debug Charge showing the charge, so the slider starts from where the charge is.
+        private void Update()
+        {
+            if (_capacitor != null) _debugCharge = (float)_capacitor.Fraction;
+        }
+#endif
 
         private void OnValidate()
         {
-            if (_capacitor != null) _capacitor.Capacity = _capacityJoules;
+            if (_capacitor == null) return;
+            _capacitor.Capacity = _capacityJoules;
+            // A drag of Debug Charge in play mode: set the charge to it. Anything else leaves it as it is.
+            if (Application.isPlaying && Mathf.Abs(_debugCharge - (float)_capacitor.Fraction) > 0.0001f)
+                _capacitor.Correct(_debugCharge * _capacitor.Capacity);
         }
     }
 }

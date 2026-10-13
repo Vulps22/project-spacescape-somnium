@@ -136,8 +136,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private readonly Dictionary<GridNode, Transform> _boxes = new Dictionary<GridNode, Transform>();
         private GridNode _shown;
 
-        private readonly Dictionary<Vector3Int, GridNode> _conduits = new Dictionary<Vector3Int, GridNode>();
-        private readonly Dictionary<Vector3Int, GridNode> _tiles = new Dictionary<Vector3Int, GridNode>();
+        private ConduitCells _cells;
         private readonly Vector3[] _hands = new Vector3[MaxHands];
         private readonly List<Lock> _locks = new List<Lock>();
         private ConduitHologram _hologram;
@@ -169,20 +168,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private void Start()
         {
             _grid = FindFirstObjectByType<PowerGrid>();
-            foreach (var tile in FindObjectsByType<GridNode>(FindObjectsSortMode.None))
+            _cells = FindFirstObjectByType<ConduitCells>();
+            // Power conduits come and go as their cells are installed and removed (PowerConduits).
+            if (_grid != null)
             {
-                bool conduit = tile.TryGetComponent<ConduitBehaviourModule>(out var module);
-                foreach (var cell in tile.Cells)
-                {
-                    _tiles[cell] = tile;
-                    if (conduit) _conduits[cell] = tile;
-                }
-                if (conduit && tile.TryGetComponent<AddonModule>(out var slot))
-                {
-                    var owner = tile;
-                    slot.Changed += () => RefreshLock(owner);
-                }
-                if (conduit) RefreshLock(tile);
+                _grid.TileAdded += OnTileAdded;
+                _grid.TileRemoved += OnTileRemoved;
             }
 
             var motion = Motion();
@@ -191,6 +182,47 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             motion.Removed = conduit => Edited?.Invoke(((TileConduit)conduit).Tile);
             _hologram = ConduitHologram.Create(_segmentPrefab, _addonHandlePrefab, _centrePrefab, _addonSlotPrefab, _upgradeSlotPrefab,
                 _addonHeight, _upgradeHeight, _slotSpread, motion);
+        }
+
+        private void OnDestroy()
+        {
+            if (_grid == null) return;
+            _grid.TileAdded -= OnTileAdded;
+            _grid.TileRemoved -= OnTileRemoved;
+        }
+
+        private readonly Dictionary<GridNode, Action> _lockListeners = new Dictionary<GridNode, Action>();
+
+        /// A power conduit was installed: it may need an unlock cube for its addon.
+        private void OnTileAdded(GridNode tile)
+        {
+            if (!tile.TryGetComponent<ConduitBehaviourModule>(out _)) return;
+            if (tile.TryGetComponent<AddonModule>(out var slot))
+            {
+                Action refresh = () => RefreshLock(tile);
+                slot.Changed += refresh;
+                _lockListeners[tile] = refresh;
+            }
+            RefreshLock(tile);
+        }
+
+        /// A power conduit was removed: forget everything kept about it.
+        private void OnTileRemoved(GridNode tile)
+        {
+            if (_lockListeners.TryGetValue(tile, out var refresh) && tile.TryGetComponent<AddonModule>(out var slot)) slot.Changed -= refresh;
+            _lockListeners.Remove(tile);
+            for (int i = _locks.Count - 1; i >= 0; i--)
+            {
+                if (_locks[i].Tile != tile) continue;
+                if (_locks[i].Cube != null) Destroy(_locks[i].Cube.gameObject);
+                _locks.RemoveAt(i);
+            }
+            if (_unlocked == tile) _unlocked = null;
+            _wrapped.Remove(tile);
+            if (_boxes.TryGetValue(tile, out var box) && box != null) Destroy(box.gameObject);
+            _boxes.Remove(tile);
+            _openElsewhere.Remove(tile);
+            if (_shown == tile) Shown(null);
         }
 
         /// Another conduit hologram built from the same parts and settings, for item conduits: what a hand does in it
@@ -259,7 +291,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private TileConduit Wrap(GridNode tile)
         {
             if (!_wrapped.TryGetValue(tile, out var conduit))
-                _wrapped[tile] = conduit = new TileConduit(tile, cell => _tiles.TryGetValue(cell, out var found) ? found : null);
+                _wrapped[tile] = conduit = new TileConduit(tile, cell => _grid != null ? _grid.TileAt(cell) : null,
+                    t => _cells != null && _cells.EditByHand(ConduitCells.Edit.Addon, t.Coordinate, 0, 0));
             return conduit;
         }
 
@@ -274,8 +307,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             var slot = _hologram.AddonSlot;
             if (slot == null || (item.transform.position - slot.position).sqrMagnitude > _installRadius * _installRadius) return;
             var tile = _hologram.Tile;
-            if (!tile.TryGetComponent<AddonModule>(out var module) || !module.Install(item.Installs, FaceTowardPlayer(tile))) return;
-            if (item.CarriesState && module.Addon != null) module.Addon.NetworkState = item.State;   // before the edit is described
+            if (_cells == null || !tile.TryGetComponent<AddonModule>(out var module) || module.Addon != null) return;
+            int id = _cells.AddonId(item.Installs);
+            int state = item.CarriesState ? item.State : item.Installs.NetworkState;
+            if (id == 0 || !_cells.EditByHand(ConduitCells.Edit.Addon, tile.Coordinate, id, (state & 0xFF) | ((int)FaceTowardPlayer(tile) << 8))) return;
 
             item.Retire();
             if (RemoveItem == null || !RemoveItem(item)) Destroy(item.gameObject);
@@ -487,10 +522,14 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         }
 
         /// The free side of a conduit nearest the player's head, where a newly installed addon faces.
-        private static GridDirection FaceTowardPlayer(GridNode tile)
+        private static GridDirection FaceTowardPlayer(GridNode tile) => FaceToward(tile.transform.position, tile.UsedFaces);
+
+        /// The free face of a cell centred here (none of the used faces) that looks most toward the player's head, for an
+        /// addon going in to face them.
+        public static GridDirection FaceToward(Vector3 centre, IEnumerable<GridDirection> usedFaces)
         {
-            var used = new HashSet<GridDirection>(tile.UsedFaces);
-            Vector3 toHead = PlayerHands.TryHead(out var head) ? head - tile.transform.position : Vector3.forward;
+            var used = usedFaces != null ? new HashSet<GridDirection>(usedFaces) : new HashSet<GridDirection>();
+            Vector3 toHead = PlayerHands.TryHead(out var head) ? head - centre : Vector3.forward;
             var best = GridDirection.ZPlus;
             float bestDot = float.MinValue;
             foreach (var face in AllFaces)
@@ -506,29 +545,17 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// conduit's faces stay as they were.
         private void CommitAddon(GridNode tile, GridDirection face, int turns, bool parked)
         {
-            if (tile == null || !tile.TryGetComponent<AddonModule>(out var module)) return;
-            module.Arrange(face, turns, parked);
-            Edited?.Invoke(tile);
+            if (tile == null || _cells == null) return;
+            if (_cells.EditByHand(ConduitCells.Edit.Pose, tile.Coordinate, ConduitCells.Pose(face, turns, parked), 0)) Edited?.Invoke(tile);
         }
 
         /// Gives a conduit the shape its hologram was left in: its segments' faces In or Out, every other face
         /// None, and the grid rewired around it. Giving a blown conduit an output again repairs it.
         private void Commit(GridNode tile, IReadOnlyList<GridDirection> faces, IReadOnlyList<bool> outward)
         {
-            var edges = tile.Edges;
-            if (edges == null) return;
-            foreach (var face in AllFaces) edges.SetFace(face, FlowDirection.None);
-            bool hasOutput = false;
-            for (int i = 0; i < faces.Count; i++)
-            {
-                if (faces[i] == GridDirection.None) continue;
-                edges.SetFace(faces[i], outward[i] ? FlowDirection.Out : FlowDirection.In);
-                hasOutput |= outward[i];
-            }
-            if (_grid == null) return;
-            if (hasOutput && tile.Node != null && tile.Node.IsPopped) _grid.Repair(tile);
-            _grid.Rewire(tile);
-            Edited?.Invoke(tile);
+            if (tile == null || _cells == null) return;
+            if (_cells.EditByHand(ConduitCells.Edit.Faces, tile.Coordinate, ConduitCells.Mask(faces), ConduitCells.OutMask(faces, outward)))
+                Edited?.Invoke(tile);
         }
 
         /// The conduit whose cell a point is in, or null.
@@ -536,7 +563,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             var cell = GridCell.ToCell(point);
             if (Claimed != null && Claimed(cell)) return null;
-            return _conduits.TryGetValue(cell, out var tile) ? tile : null;
+            var tile = _grid != null ? _grid.TileAt(cell) : null;
+            return tile != null && tile.TryGetComponent<ConduitBehaviourModule>(out _) ? tile : null;
         }
     }
 }

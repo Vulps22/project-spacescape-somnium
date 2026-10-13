@@ -8,39 +8,19 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// The ship's item conduits (loading.md → Item conduit rules): square glass tubes that carry items from a
     /// component's ItemOut port to others' Item (in) ports. Not part of the power grid.
     ///
-    /// An item conduit is a conduit: each installed cell has its segments, two or more with a Junction addon, each on
-    /// a face or parked, and its addon; its hologram is the conduit hologram (ItemConduitHolograms), with no arrows.
+    /// An item conduit is a conduit, one kind of the ship's conduit cells (ConduitCells, which holds them, installs them,
+    /// prunes them and shares them): each installed item cell has its segments, two or more with a Junction addon, each
+    /// on a face or parked, and its addon; its hologram is the conduit hologram (ItemConduitHolograms), with no arrows.
     /// Two cells join where both have a segment on the face between them; a cell joins a port where it has a segment
-    /// on the face toward it. The only difference from a power conduit is installing: a cell can take one only where
-    /// an item port, or an installed item conduit's segment, points into it. Once installed it stays until it is
-    /// fully parked (no segment on a face, no addon) with no port facing it and no installed item conduit beside it.
+    /// on the face toward it. This draws them as tubes and routes items along them.
     ///
     /// Items take turns at a cell with more than two faces joined (Choose), side after side, skipping a side where
     /// nothing wants the item. Split only: one loader feeds a tree.
     ///
-    /// The cells are the state (shared by ItemConduitNetwork); the tubes and routes are worked out from them, and
-    /// from where the components stand, on every client.
+    /// The cells are the state; the tubes and routes are worked out from them, and from where the components stand,
+    /// on every client.
     public sealed class ItemConduits : MonoBehaviour
     {
-        /// What a hand did to a cell. Faces: a, the faces its segments are on, one bit per GridDirection. Addon: a, the
-        /// index in Addons plus one (0 takes it out), and b, its state (a junction's extra segments).
-        public enum Edit { Faces = 5, Addon = 6 }
-
-        private sealed class Cell
-        {
-            public int Faces;          // one bit per GridDirection
-            public int Addon = -1;     // index in _addons, or -1
-            public int AddonState;
-        }
-
-        private struct ItemPortAt
-        {
-            public ComponentEdgeModule Edges;
-            public Vector3Int Front;        // the cell in front of the port
-            public GridDirection Into;      // from that cell into the port
-            public FlowDirection Flow;
-        }
-
         /// The way an item goes from a sender's ItemOut port to a receiver's Item port: straight legs between solid
         /// corners and junctions. An item crosses a leg end to end, emerging whole from its start and swallowed whole
         /// at its end.
@@ -107,20 +87,22 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
             public int Across => 1;
 
-            public int Segments => _owner.SegmentsAt(Coordinate);
+            public int Segments => _owner._store.SegmentsAt(Coordinate);
 
             public bool HasArrows => false;
 
             public void GetSegments(List<GridDirection> faces, List<bool> outward)
             {
-                int mask = _owner._cells.TryGetValue(Coordinate, out var cell) ? cell.Faces : Bit(_owner.EntryFor(Coordinate));
+                int mask;
+                if (_owner.TryCell(Coordinate, out var cell)) mask = cell.Used;
+                else mask = _owner._store.EntryFor(Coordinate, out _, out var face, out _) ? Bit(face) : 0;
                 foreach (var face in AllFaces)
                     if ((mask & Bit(face)) != 0) { faces.Add(face); outward.Add(true); }
             }
 
             public ConduitAddon Addon => _owner.AddonAt(Coordinate);
 
-            public int AddonState => _owner._cells.TryGetValue(Coordinate, out var cell) ? cell.AddonState : 0;
+            public int AddonState => _owner.TryCell(Coordinate, out var cell) ? cell.AddonState : 0;
 
             public GridDirection AddonFacing => GridDirection.None;
 
@@ -128,7 +110,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
             public bool AddonParked => false;
 
-            public bool RemoveAddon() => _owner.EditByHand(Edit.Addon, Coordinate, 0, 0);
+            public bool RemoveAddon() => _owner._store.EditByHand(ConduitCells.Edit.Addon, Coordinate, 0, 0);
 
             public bool PairsOutward(GridDirection face) => true;
         }
@@ -167,28 +149,16 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Tooltip("The cable mesh's length at scale 1, in metres (2 for Unity's cylinder).")]
         [SerializeField] private float _cableLengthAtScaleOne = 2f;
 
-        [Header("Addons")]
-        [Tooltip("The addons an item conduit takes, as the part that goes on a conduit (the junction's). A cell's addon is its index here, so every client must have the same list.")]
-        [SerializeField] private ConduitAddon[] _addons = new ConduitAddon[0];
-
         [Header("Items")]
         [Tooltip("How fast an item moves through a tube, in metres a second (one cell is half a metre).")]
         [SerializeField] private float _itemSpeed = 1f;
 
-        [Header("Limits")]
-        [Tooltip("The most cells that may be installed: the network's room (ItemConduitNetwork). Installing past it is refused.")]
-        [SerializeField] private int _maxCells = 240;
-        [Tooltip("Seconds between looks at where the components' item ports are, as components come and go.")]
-        [SerializeField] private float _portsCheckSeconds = 0.5f;
-
-        private readonly Dictionary<Vector3Int, Cell> _cells = new Dictionary<Vector3Int, Cell>();
+        private ConduitCells _store;
         private readonly Dictionary<Vector3Int, ItemConduit> _views = new Dictionary<Vector3Int, ItemConduit>();
-        private readonly List<ItemPortAt> _ports = new List<ItemPortAt>();
-        private readonly Dictionary<Vector3Int, GridNode> _conduits = new Dictionary<Vector3Int, GridNode>();
-        private readonly HashSet<Vector3Int> _reserved = new HashSet<Vector3Int>();
         private readonly List<GameObject> _tubes = new List<GameObject>();
         private readonly Dictionary<Vector3Int, List<Renderer>> _pieces = new Dictionary<Vector3Int, List<Renderer>>();
         private readonly Dictionary<Vector3Int, float> _gone = new Dictionary<Vector3Int, float>();     // cells smoking away or back
+        private readonly List<Vector3Int> _goneCells = new List<Vector3Int>();
         private readonly Dictionary<Vector3Int, GameObject> _cables = new Dictionary<Vector3Int, GameObject>();
         private readonly Dictionary<Material, Material> _smoke = new Dictionary<Material, Material>();
         private Vector3Int? _revealed;
@@ -196,8 +166,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private readonly Dictionary<Vector3Int, int> _turns = new Dictionary<Vector3Int, int>();
         private readonly Dictionary<ComponentEdgeModule, List<Route>> _routes = new Dictionary<ComponentEdgeModule, List<Route>>();
         private Transform _tubeRoot;
-        private float _nextPortsCheck;
-        private int _portsSeen;
 
         /// The ship's item conduits, or null.
         public static ItemConduits Current { get; private set; }
@@ -205,120 +173,67 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// How fast an item moves through a tube, in metres a second.
         public float ItemSpeed => _itemSpeed;
 
-        /// The most cells that may be installed.
-        public int MaxCells => _maxCells;
-
         /// Bumped whenever the cells, or the ports they join, change.
         public int Revision { get; private set; }
 
         /// Raised whenever the cells change, from a hand here or from the network.
         public event Action Changed;
 
-        /// Raised when a hand on this client changed a cell: the edit, the cell and its two values, for the network
-        /// to pass on to the master.
-        public event Action<Edit, Vector3Int, int, int> EditedByHand;
-
-        private void Awake() => Current = this;
+        private void Awake()
+        {
+            Current = this;
+            _store = GetComponent<ConduitCells>();
+            if (_store != null) _store.Changed += Rebuild;
+        }
 
         private void OnDestroy()
         {
             if (Current == this) Current = null;
+            if (_store != null) _store.Changed -= Rebuild;
             if (ItemPort.Wired == IsWired) ItemPort.Wired = null;
         }
 
         private void Start()
         {
-            foreach (var tile in FindObjectsByType<GridNode>(FindObjectsSortMode.None))
-            {
-                if (tile.TryGetComponent<ConduitBehaviourModule>(out _))
-                    foreach (var cell in tile.Cells) _conduits[cell] = tile;
-                if (tile.TryGetComponent<ComponentSlot>(out _))
-                    foreach (var cell in tile.Cells) _reserved.Add(cell);
-            }
-            var holograms = FindFirstObjectByType<ConduitHolograms>();
-            if (holograms != null) holograms.Claimed = IsClaimed;
             ItemPort.Wired = IsWired;
             _tubeRoot = new GameObject("Item Conduit Tubes").transform;
             _tubeRoot.SetParent(transform, false);
-            RefreshPorts();
             Rebuild();
         }
 
-        private void Update()
-        {
-            Animate();
-            if (Time.time < _nextPortsCheck) return;
-            _nextPortsCheck = Time.time + _portsCheckSeconds;
-            if (RefreshPorts()) { _routes.Clear(); Revision++; }
-        }
+        private void Update() => Animate();
 
         // ---- Questions
 
-        /// True for a cell an item conduit is installed in, or could be installed in: its power conduit stays shut.
-        public bool IsClaimed(Vector3Int cell) => _cells.ContainsKey(cell) || Installable(cell);
+        /// An installed item cell, if this is one.
+        private bool TryCell(Vector3Int cell, out ConduitCells.Cell c)
+        {
+            c = _store != null ? _store.Get(cell) : null;
+            if (c != null && c.Kind == ConduitCells.Kind.Item) return true;
+            c = null;
+            return false;
+        }
 
         /// True for a cell an item conduit is installed in.
-        public bool Installed(Vector3Int cell) => _cells.ContainsKey(cell);
+        public bool Installed(Vector3Int cell) => TryCell(cell, out _);
 
-        /// True for a cell a hand could install an item conduit in: free, with an item port or an installed item
-        /// conduit's segment pointing into it.
-        public bool Installable(Vector3Int cell) => !_cells.ContainsKey(cell) && Free(cell) && EntryFor(cell) != GridDirection.None;
+        /// True for a cell a hand could install an item conduit in.
+        public bool Installable(Vector3Int cell) => _store != null && _store.Installable(cell, ConduitCells.Kind.Item);
 
-        /// The conduit in a cell, installed or installable, for its hologram; null for any other cell. The same object
-        /// each time, so the hologram knows it.
+        /// The item conduit installed in a cell, for its hologram; null for any other cell. The same object each time, so
+        /// the hologram knows it. An empty cell's parked conduit is ConduitCells.PendingAt.
         public IConduit ConduitAt(Vector3Int cell)
         {
-            if (!_cells.ContainsKey(cell) && !Installable(cell)) return null;
+            if (!Installed(cell)) return null;
             if (!_views.TryGetValue(cell, out var view)) _views[cell] = view = new ItemConduit(this, cell);
             return view;
         }
 
-        /// How many segments a cell has: two, and a junction's extra.
-        public int SegmentsAt(Vector3Int cell)
-        {
-            var addon = AddonAt(cell);
-            if (addon == null) return ConduitHologram.PlainSegments;
-            int extra = addon is JunctionAddon ? _cells[cell].AddonState : addon.GetExtraSegments();
-            return ConduitHologram.PlainSegments + Mathf.Max(0, extra);
-        }
-
         /// A cell's addon, as the prefab, or null.
-        private ConduitAddon AddonAt(Vector3Int cell) =>
-            _cells.TryGetValue(cell, out var c) && c.Addon >= 0 && c.Addon < _addons.Length ? _addons[c.Addon] : null;
+        private ConduitAddon AddonAt(Vector3Int cell) => TryCell(cell, out var c) ? _store.AddonPrefab(c.Addon) : null;
 
-        /// The index of an addon an item conduit takes, or -1.
-        public int AddonIndex(ConduitAddon addon) => addon == null ? -1 : Array.IndexOf(_addons, addon);
-
-        /// The face of a free cell toward an item port in front of it, or toward an installed item conduit with a
-        /// segment pointing into it; None when nothing points into it.
-        private GridDirection EntryFor(Vector3Int cell)
-        {
-            foreach (var face in AllFaces)
-            {
-                if (PortAt(cell, face, out _)) return face;
-                if (_cells.TryGetValue(cell + face.Offset(), out var neighbour) && (neighbour.Faces & Bit(GridNode.Opposite(face))) != 0) return face;
-            }
-            return GridDirection.None;
-        }
-
-        /// True when an installed cell has something to reconnect to: an item port facing it, or an installed item
-        /// conduit beside it.
-        private bool HasNeighbour(Vector3Int cell)
-        {
-            foreach (var face in AllFaces)
-                if (PortAt(cell, face, out _) || _cells.ContainsKey(cell + face.Offset())) return true;
-            return false;
-        }
-
-        /// True where an item conduit may be: outside every slot's volume, where the power conduit, if there is one,
-        /// is parked with no addon.
-        private bool Free(Vector3Int cell)
-        {
-            if (_reserved.Contains(cell)) return false;
-            if (!_conduits.TryGetValue(cell, out var tile) || tile == null) return true;
-            if (tile.UsedFaces.Any()) return false;
-            return !tile.TryGetComponent<AddonModule>(out var addon) || addon.Addon == null;
-        }
+        /// The id of an addon an item conduit takes (a junction), or 0.
+        public int AddonId(ConduitAddon addon) => addon is JunctionAddon && _store != null ? _store.AddonId(addon) : 0;
 
         /// True while an item conduit is installed in front of this port with a segment on the face toward it, so its
         /// intake takes nothing by hand.
@@ -327,144 +242,23 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             var t = port.transform;
             var front = GridCell.ToCell(t.position + t.forward * GridCell.Half);
             var into = Nearest(-t.forward);
-            return _cells.TryGetValue(front, out var cell) && (cell.Faces & Bit(into)) != 0;
+            return TryCell(front, out var cell) && (cell.Used & Bit(into)) != 0;
         }
 
-        private bool PortAt(Vector3Int front, GridDirection into, out ItemPortAt port)
+        private bool PortAt(Vector3Int front, GridDirection into, out ConduitCells.Port port)
         {
-            foreach (var p in _ports)
-                if (p.Front == front && p.Into == into) { port = p; return true; }
             port = default;
-            return false;
+            return _store != null && _store.PortAt(front, into, out port) && ComponentEdgeModule.IsItem(port.Flow);
         }
 
-        private static int Bit(GridDirection face) => face == GridDirection.None ? 0 : 1 << (int)face;
+        private static int Bit(GridDirection face) => ConduitCells.Bit(face);
 
-        private static int Count(int mask)
-        {
-            int n = 0;
-            for (; mask != 0; mask &= mask - 1) n++;
-            return n;
-        }
-
-        /// The faces a hologram's segments are on, as Edit.Faces takes them.
-        public static int Mask(IReadOnlyList<GridDirection> faces)
-        {
-            int mask = 0;
-            foreach (var face in faces) mask |= Bit(face);
-            return mask;
-        }
-
-        // ---- Editing
-
-        /// Changes a cell as a hand on this client did, and tells the network. True when it changed.
-        public bool EditByHand(Edit edit, Vector3Int cell, int a, int b)
-        {
-            if (!Apply(edit, cell, a, b)) return false;
-            EditedByHand?.Invoke(edit, cell, a, b);
-            return true;
-        }
-
-        /// Puts a cell's segments on faces (installing it, if a hand could), or puts an addon in or takes it out. The
-        /// master applies a hand's edit from elsewhere with this too. True when it changed.
-        public bool Apply(Edit edit, Vector3Int cell, int a, int b)
-        {
-            switch (edit)
-            {
-                case Edit.Faces:
-                {
-                    int mask = a & 0x7E;
-                    if (!_cells.TryGetValue(cell, out var c))
-                    {
-                        if (mask == 0 || !Installable(cell) || Count(mask) > ConduitHologram.PlainSegments) return false;
-                        if (_cells.Count >= _maxCells)
-                        {
-                            Debug.LogWarning("ItemConduits: no room left in the network for another item conduit");
-                            return false;
-                        }
-                        _cells[cell] = c = new Cell();
-                    }
-                    else if (Count(mask) > SegmentsAt(cell) || c.Faces == mask) return false;
-                    c.Faces = mask;
-                    break;
-                }
-                case Edit.Addon:
-                {
-                    if (!_cells.TryGetValue(cell, out var c)) return false;
-                    if (a > 0)
-                    {
-                        int index = a - 1;
-                        if (c.Addon >= 0 || index >= _addons.Length || _addons[index] == null) return false;
-                        if (_addons[index] is JunctionAddon && (b < JunctionAddon.MinExtra || b > JunctionAddon.MaxExtra)) return false;
-                        c.Addon = index;
-                        c.AddonState = b;
-                    }
-                    else
-                    {
-                        if (c.Addon < 0) return false;
-                        c.Addon = -1;
-                        c.AddonState = 0;
-                        // Its extra segments went with it: more on faces than it now has parks the lot.
-                        if (Count(c.Faces) > ConduitHologram.PlainSegments) c.Faces = 0;
-                    }
-                    break;
-                }
-                default:
-                    return false;
-            }
-            Prune(cell);
-            Rebuild();
-            return true;
-        }
-
-        /// Takes out a fully parked cell with nothing left to reconnect to, and then any neighbour that leaves the
-        /// same way.
-        private void Prune(Vector3Int start)
-        {
-            var check = new Stack<Vector3Int>();
-            check.Push(start);
-            while (check.Count > 0)
-            {
-                var cell = check.Pop();
-                if (!_cells.TryGetValue(cell, out var c) || c.Faces != 0 || c.Addon >= 0 || HasNeighbour(cell)) continue;
-                _cells.Remove(cell);
-                foreach (var face in AllFaces) check.Push(cell + face.Offset());
-            }
-        }
-
-        // ---- State: per installed cell two ints: its cell, then its faces (bits 1 to 6), its addon's index plus one
-        // (bits 8 to 11) and its addon's state (bits 12 to 15). Sorted by cell, so a client compares like with like.
-
-        /// Two ints per installed cell.
-        public int[] Write()
-        {
-            var ints = new List<int>(_cells.Count * 2);
-            foreach (var pair in _cells.OrderBy(p => PackCell(p.Key)))
-            {
-                ints.Add(PackCell(pair.Key));
-                ints.Add((pair.Value.Faces & 0x7E) | (((pair.Value.Addon + 1) & 0xF) << 8) | ((pair.Value.AddonState & 0xF) << 12));
-            }
-            return ints.ToArray();
-        }
-
-        /// Takes the cells the network carries. Rebuilds only when they differ from these.
-        public void Read(int[] ints)
-        {
-            if (ints == null) return;
-            if (ints.SequenceEqual(Write())) return;
-            _cells.Clear();
-            for (int i = 0; i + 1 < ints.Length; i += 2)
-            {
-                int info = ints[i + 1];
-                _cells[UnpackCell(ints[i])] = new Cell { Faces = info & 0x7E, Addon = ((info >> 8) & 0xF) - 1, AddonState = (info >> 12) & 0xF };
-            }
-            Rebuild();
-        }
+        private static int Count(int mask) => ConduitCells.Count(mask);
 
         /// A grid cell in 30 bits, ten to an axis.
-        public static int PackCell(Vector3Int c) => ((c.x + 512) & 1023) | (((c.y + 512) & 1023) << 10) | (((c.z + 512) & 1023) << 20);
+        public static int PackCell(Vector3Int c) => ConduitCells.PackCell(c);
 
-        public static Vector3Int UnpackCell(int p) => new Vector3Int((p & 1023) - 512, ((p >> 10) & 1023) - 512, ((p >> 20) & 1023) - 512);
+        public static Vector3Int UnpackCell(int p) => ConduitCells.UnpackCell(p);
 
         // ---- Building
 
@@ -474,27 +268,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _routes.Clear();
             Revision++;
             Changed?.Invoke();
-        }
-
-        /// Finds every seated component's item ports. True when they changed.
-        private bool RefreshPorts()
-        {
-            int before = _ports.Count, hash = 17;
-            _ports.Clear();
-            foreach (var edges in FindObjectsByType<ComponentEdgeModule>(FindObjectsSortMode.None))
-            {
-                if (edges.TryGetComponent<SlottedComponent>(out var slotted) && slotted.Slot == null) continue;
-                foreach (var (face, cell, flow) in edges.PortsAt(edges.transform.position, edges.transform.rotation))
-                {
-                    if (!ComponentEdgeModule.IsItem(flow)) continue;
-                    var port = new ItemPortAt { Edges = edges, Front = cell + face.Offset(), Into = GridNode.Opposite(face), Flow = flow };
-                    _ports.Add(port);
-                    hash = hash * 31 + port.Front.GetHashCode() * 7 + (int)port.Into * 3 + (int)flow + edges.GetInstanceID();
-                }
-            }
-            bool changed = hash != _portsSeen || before != _ports.Count;
-            _portsSeen = hash;
-            return changed;
         }
 
         /// A tube per installed cell, from the faces its segments are on, as a power conduit draws a stub per segment:
@@ -509,14 +282,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _cables.Clear();
             if (_tubeRoot == null) return;
             var faces = new List<GridDirection>();
-            foreach (var pair in _cells)
+            foreach (var pair in _store != null ? _store.All : Enumerable.Empty<KeyValuePair<Vector3Int, ConduitCells.Cell>>())
             {
+                if (pair.Value.Kind != ConduitCells.Kind.Item) continue;
                 faces.Clear();
                 foreach (var face in AllFaces)
-                    if ((pair.Value.Faces & Bit(face)) != 0) faces.Add(face);
-                if (faces.Count == 0 && pair.Value.Addon < 0) continue;
+                    if ((pair.Value.Used & Bit(face)) != 0) faces.Add(face);
+                if (faces.Count == 0 && pair.Value.Addon == 0) continue;
                 var at = GridCell.ToWorld(pair.Key);
-                if (faces.Count > 2 || pair.Value.Addon >= 0)
+                if (faces.Count > 2 || pair.Value.Addon != 0)
                 {
                     var block = Piece("Item Junction", at, Quaternion.identity,
                         _junctionMesh != null ? _junctionMesh : _cornerMesh, _junctionMesh != null ? _junctionMaterials : _cornerMaterials);
@@ -585,7 +359,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             if (_gone.Count == 0) return;
             float step = Time.deltaTime / Mathf.Max(0.01f, _revealSeconds);
-            foreach (var cell in _gone.Keys.ToList())
+            _goneCells.Clear();
+            _goneCells.AddRange(_gone.Keys);
+            foreach (var cell in _goneCells)
             {
                 float gone = Mathf.MoveTowards(_gone[cell], _revealed == cell ? 1f : 0f, step);
                 _gone[cell] = gone;
@@ -630,13 +406,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             if (_cables.TryGetValue(cell, out var old) && old != null) Destroy(old);
             _cables.Remove(cell);
-            if (_cableMesh == null || _tubeRoot == null || !_cells.TryGetValue(cell, out var c)) return;
+            if (_cableMesh == null || _tubeRoot == null || !TryCell(cell, out var c)) return;
             var root = new GameObject("Item Conduit Cable");
             root.transform.SetParent(_tubeRoot, false);
             root.transform.position = GridCell.ToWorld(cell);
             foreach (var face in AllFaces)
             {
-                if ((c.Faces & Bit(face)) == 0) continue;
+                if ((c.Used & Bit(face)) == 0) continue;
                 var dir = face.Vector();
                 var stub = new GameObject("Stub");
                 stub.transform.SetParent(root.transform, false);
@@ -659,7 +435,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (sender == null) return Array.Empty<Route>();
             if (_routes.TryGetValue(sender, out var cached)) return cached;
             var routes = new List<Route>();
-            foreach (var port in _ports)
+            foreach (var port in _store != null ? _store.Ports : (IReadOnlyList<ConduitCells.Port>)Array.Empty<ConduitCells.Port>())
             {
                 if (port.Edges != sender || port.Flow != FlowDirection.ItemOut) continue;
                 Walk(port.Front, port.Into, new List<(Vector3Int, GridDirection, GridDirection)>(),
@@ -710,8 +486,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private void Walk(Vector3Int at, GridDirection inBy, List<(Vector3Int cell, GridDirection inBy, GridDirection outBy)> path,
             List<(Vector3Int, GridDirection)> decisions, HashSet<Vector3Int> seen, List<Route> routes)
         {
-            if (!_cells.TryGetValue(at, out var cell) || (cell.Faces & Bit(inBy)) == 0 || !seen.Add(at)) return;
-            var outs = AllFaces.Where(f => f != inBy && (cell.Faces & Bit(f)) != 0).ToList();
+            if (!TryCell(at, out var cell) || (cell.Used & Bit(inBy)) == 0 || !seen.Add(at)) return;
+            var outs = AllFaces.Where(f => f != inBy && (cell.Used & Bit(f)) != 0).ToList();
             bool junction = outs.Count > 1;
             foreach (var outBy in outs)
             {
@@ -728,7 +504,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         /// A route's legs: straight between solid corners and junctions, each ending where the item goes in and the
         /// next starting where it comes out.
-        private Route Build(List<(Vector3Int cell, GridDirection inBy, GridDirection outBy)> cells, List<(Vector3Int, GridDirection)> decisions, ItemPortAt to)
+        private Route Build(List<(Vector3Int cell, GridDirection inBy, GridDirection outBy)> cells, List<(Vector3Int, GridDirection)> decisions, ConduitCells.Port to)
         {
             var route = new Route { Receiver = to.Edges, ReceiverCell = to.Front + to.Into.Offset() };
             route.Decisions.AddRange(decisions);
@@ -751,7 +527,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         }
 
         /// True for a cell drawn as a junction block, which an item passes through hidden even going straight.
-        private bool Solid(Vector3Int cell) => _cells.TryGetValue(cell, out var c) && (Count(c.Faces) > 2 || c.Addon >= 0);
+        private bool Solid(Vector3Int cell) => TryCell(cell, out var c) && (Count(c.Used) > 2 || c.Addon != 0);
 
         private static Vector3 Face(Vector3Int cell, GridDirection face) => GridCell.ToWorld(cell) + face.Vector() * GridCell.Half;
 

@@ -146,3 +146,51 @@ def export(out_blend, out_fbx):
                              axis_forward="-Z", axis_up="Y", bake_space_transform=True, mesh_smooth_type="FACE")
     for obj in bpy.data.objects:
         print("DONE", obj.name, len(obj.data.polygons), "faces", [round(v, 3) for v in obj.dimensions])
+
+
+def U(p):
+    """A Unity point (x, y, z; front +z, up +y) in Blender's coordinates (Z up, front -Y)."""
+    return Vector((-p[0], -p[2], p[1]))
+
+def render(stem, shots):
+    """Review shots beside the .blend: a floor, a sun and a soft key light; each shot (name, camera, target) in
+    Unity coordinates."""
+    scene = bpy.context.scene
+    floor_mat = material("ReviewFloor", (0.22, 0.22, 0.24), 0.0, 0.8)
+    lowest = min((o.matrix_world @ Vector(c)).z for o in bpy.data.objects if o.type == "MESH" for c in o.bound_box)
+    bpy.ops.mesh.primitive_plane_add(size=60, location=(0, 0, lowest - 0.001))
+    bpy.context.object.data.materials.append(floor_mat)
+    bpy.ops.object.light_add(type="SUN", rotation=(math.radians(50), math.radians(10), math.radians(-30)))
+    bpy.context.object.data.energy = 3.0
+    bpy.ops.object.light_add(type="AREA", location=(0, -12, 8))
+    bpy.context.object.data.energy = 3000
+    bpy.context.object.data.size = 12
+    bpy.context.object.rotation_euler = (math.radians(55), 0, 0)
+    world = bpy.data.worlds.new("World")
+    scene.world = world
+    world.use_nodes = True
+    world.node_tree.nodes["Background"].inputs["Color"].default_value = (0.05, 0.055, 0.065, 1)
+    scene.render.engine = "BLENDER_EEVEE"
+    scene.render.resolution_x, scene.render.resolution_y = 1400, 1000
+    try:
+        scene.view_settings.view_transform = "Standard"
+    except TypeError:
+        pass
+    for name, cam_at, target in shots:
+        bpy.ops.object.camera_add(location=U(cam_at))
+        cam = bpy.context.object
+        cam.rotation_mode = "QUATERNION"
+        cam.rotation_quaternion = (U(target) - U(cam_at)).to_track_quat("-Z", "Y")
+        cam.data.lens = 35
+        scene.camera = cam
+        scene.render.filepath = f"{stem}_{name}.png"
+        bpy.ops.render.render(write_still=True)
+
+
+def shots_for(h):
+    """The standard review angles for a model of half-size h: front three-quarter, front, back three-quarter, top."""
+    d = h * 4.2
+    return [("front34", (-d * 0.55, h * 1.1, d * 0.85), (0, -h * 0.1, 0)),
+            ("front", (0, 0, d), (0, -h * 0.05, 0)),
+            ("back34", (d * 0.6, h * 1.2, -d * 0.8), (0, -h * 0.1, 0)),
+            ("top", (0, d, 0.01), (0, 0, 0))]

@@ -1,10 +1,19 @@
+---
+aliases:
+  - "The component hologram"
+tags:
+  - interaction
+  - component
+---
 # The component hologram
 
 A hologram opened on a component's face, like a conduit's: one hand within a cell of the slot's face holds it
-open, and it opens on that face. It is where the component's own work happens: repair games (`repair.md`), and
+open, and it opens on that face. It is where the component's own work happens: repair games ([[repair]]), and
 addon slots (below). Nothing is built yet.
 
-## Opening it (decided 2026-10-01)
+## Opening it
+
+**Status (2026-10-01):** decided; not built.
 
 Repairs and addon wiring live here; everything else a component does is a physical control on it.
 
@@ -14,7 +23,9 @@ Repairs and addon wiring live here; everything else a component does is a physic
   cracks are on that face.
 - **No bigger than S1** (2 m square), whatever the slot's size, centred on that face.
 
-## Addon slots (logged 2026-10-03)
+## Addon slots
+
+**Status (2026-10-03):** idea.
 
 **Addon slots at fixed places round the component**, shown in its hologram. An addon item put into one spawns a
 list of **nodes**: the component's functions, behaviours and settings that the addon can be wired to. **Wiring
@@ -30,4 +41,4 @@ cable.
   its edit there.
 - **Maybe the foundation for logic** (2026-10-03): the nodes are a component's inputs and outputs, wired with the
   conduit grammar, so a logic block (comparator, timer, latch) could simply be an addon slotted into a component
-  and wired between its nodes, reading the data network for anything else (`data.md`, Logic board).
+  and wired between its nodes, reading the data network for anything else ([[data]], Logic board).

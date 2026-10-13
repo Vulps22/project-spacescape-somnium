@@ -1,3 +1,9 @@
+---
+aliases:
+  - "Damage and the hull"
+tags:
+  - system
+---
 # Damage and the hull
 
 **Status: design only (2026-09-28).** Nothing here is built and nothing is decided unless it says
@@ -8,17 +14,17 @@ the hull is physically put together.
 ## The rule: a hit is energy delivered into the lattice
 
 The ship already has per-tile heat, `Integrity`, pops, damage stages (`IntegrityModule`'s
-`_damageThresholds` / `_damageModels`) and the `Popped` / `Damaged` / `Lost` events (`power.md`).
+`_damageThresholds` / `_damageModels`) and the `Popped` / `Damaged` / `Lost` events ([[power]]).
 A weapon does not bring its own HP system. **A hit puts energy into cells, and the existing rules
-decide what it does.** That is "one abstraction" (`README.md`) applied to combat.
+decide what it does.** That is "one abstraction" ([[README]]) applied to combat.
 
 ## Layers, outside in
 
 | Layer | Exists? | What a hit does |
 |---|---|---|
-| **Shield** | a load in `modules.md`, not built | spends its charge to absorb the hit; once empty, the hit passes through |
+| **Shield** | a load in [[modules]], not built | spends its charge to absorb the hit; once empty, the hit passes through |
 | **Hull** | no | armour with integrity: damaged, then breached into a real hole |
-| **Wall panel** | built (access panels, `ship-structure.md`) | a thin layer; once off, the cell is exposed |
+| **Wall panel** | built (access panels, [[ship-structure]]) | a thin layer; once off, the cell is exposed |
 | **Tile** (conduit, component) | yes | heat and integrity damage through the sim |
 
 A hit passes through the layers in order and each one absorbs its share. **"Exposed components are
@@ -33,7 +39,9 @@ And power × heat does the rest. A laser dumping heat into an idle cable does li
 into the trunk carrying the reactor's output pushes power × heat over the line and the trunk pops.
 The same shot does different harm depending on how the ship is routed, with no extra rule.
 
-## Two kinds of hit (proposed)
+## Two kinds of hit
+
+**Status:** proposed.
 
 - **Thermal** (lasers): adds heat to the cells it hits, and the sim decides. The damage is delayed
   and spreads along the metal.
@@ -114,7 +122,7 @@ grabbed. **Repair is the reverse:** carry a plate to the hole and let go, and th
 being data. That is the addon item's install pattern (`XRGrabInteractable` into a socket), and it
 makes repair physical work (principle 1).
 
-The same rule as the conduits (`networking.md`): **data until someone needs to touch it.**
+The same rule as the conduits ([[networking]]): **data until someone needs to touch it.**
 
 ### Handmade art still has a place
 
@@ -131,7 +139,7 @@ data. The grid hull stays underneath, and the true shape stays the lattice.
 
 ## Networking
 
-It follows `networking.md`'s rules:
+It follows [[networking]]'s rules:
 
 - **The master resolves every hit.** Where it landed and what it did are its decisions.
 - **Results are state.** A small int per hull cell (present, material or tier, damage stage) in
@@ -143,7 +151,7 @@ It follows `networking.md`'s rules:
 
 ## Repair
 
-Ties into `repair.md`: patching hull by carrying plates, refitting panels, replacing
+Ties into [[repair]]: patching hull by carrying plates, refitting panels, replacing
 severed conduits, and `Integrity.Restore` for components. A patched cell uses the patch piece, so a
 repaired ship shows its history.
 
@@ -152,9 +160,9 @@ repaired ship shows its history.
 1. **Hull thickness.** Is one skin per cell enough, or does armour stack into several layers
    (plating tiers as a progression axis)?
 2. **What a breach does beyond the hole.** Atmosphere, pressure and people are the Barotrauma half of
-   the design and a separate system (`the-loop.md` mentions losing life support).
+   the design and a separate system ([[the-loop]] mentions losing life support).
 3. **Walls between rooms.** Probably panels only, no hull, but damage could travel inward through
    them.
-4. **Shields as a load on the grid,** which is how `modules.md` has them. Does a shield cover the
+4. **Shields as a load on the grid,** which is how [[modules]] has them. Does a shield cover the
    whole ship, a side, or a set of cells?
 5. **Patch size.** 4 × 4 cells is a guess; measure rebuild time and object count before fixing it.

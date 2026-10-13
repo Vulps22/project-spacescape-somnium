@@ -20,13 +20,24 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// where a camera can see the panel as it starts to go or come back; anywhere else it is simply gone or
     /// back, with nothing to watch.
     ///
+    /// What it covers is its own block of cells: Cover cells along its own axes, spread evenly out from its Cover
+    /// Origin (an empty child placed where the conduits run), leaving out any cell inside a component slot.
+    ///
     /// While editing, each socket shows a copy of the socket prefab, so they can be placed by eye. The copies
-    /// are never saved.
+    /// are never saved. It also keeps itself on the grid: the root turns only in quarter turns and sits on a cell
+    /// centre, and the Cover Origin stays square to it, on a cell centre along an axis with an odd count and on a
+    /// cell face along an even one, so the art and the cells move together. Keep the root and Cover Origin unscaled.
     [ExecuteAlways]
     [RequireComponent(typeof(BoxCollider))]
     public sealed class AccessPanel : MonoBehaviour
     {
         private const int MaxHands = 8;
+
+        [Header("Cover")]
+        [Tooltip("How many cells it covers along its own x, y and z. At least 1 each way.")]
+        [SerializeField] private Vector3Int _cover = Vector3Int.one;
+        [Tooltip("Where the covered block is centred: an empty child placed where the conduits run. None centres it on this object.")]
+        [SerializeField] private Transform _coverOrigin;
 
         [Header("Parts")]
         [Tooltip("The panel that smokes away: every renderer and collider under it goes.")]
@@ -86,6 +97,38 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private bool _measured;
         private GridDirection _side = GridDirection.None;
         private readonly Dictionary<Vector3Int, float> _surfaceAt = new Dictionary<Vector3Int, float>();
+
+        /// Where the covered block is centred: the Cover Origin, or this object when none is set.
+        public Transform CoverOrigin => _coverOrigin != null ? _coverOrigin : transform;
+
+        /// True when it sits square to the world grid, so its cells land on whole cells.
+        public bool IsSquare
+        {
+            get
+            {
+                var r = transform.rotation;
+                return IsAxis(r * Vector3.right) && IsAxis(r * Vector3.up);
+            }
+        }
+
+        /// The cells it covers: its block, but for any cell inside a component slot. None when it is not square.
+        public IEnumerable<Vector3Int> CoveredCells
+        {
+            get
+            {
+                if (!IsSquare) yield break;
+                var rotation = transform.rotation;
+                Vector3 centre = CoverOrigin.position;
+                for (int x = 0; x < _cover.x; x++)
+                    for (int y = 0; y < _cover.y; y++)
+                        for (int z = 0; z < _cover.z; z++)
+                        {
+                            var local = new Vector3(x - (_cover.x - 1) * 0.5f, y - (_cover.y - 1) * 0.5f, z - (_cover.z - 1) * 0.5f) * GridCell.Size;
+                            var cell = GridCell.ToCell(centre + rotation * local);
+                            if (!ComponentSlot.InSlot(cell)) yield return cell;
+                        }
+            }
+        }
 
         /// Every panel in the world.
         public static IReadOnlyList<AccessPanel> All => Panels;
@@ -158,8 +201,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             if (_measured) return;
             _measured = true;
-            if (!TryGetComponent<ConduitLayoutDefinition>(out var definition)) return;
-            foreach (var cell in definition.Cells) _covers.Add(cell);
+            foreach (var cell in CoveredCells) _covers.Add(cell);
             if (_panel == null) return;
 
             // Which side of its cells the panel stands on: the axis its middle is furthest off them along.
@@ -171,7 +213,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 else { bounds = r.bounds; any = true; }
             }
             if (!any) return;
-            Vector3 offset = bounds.center - definition.Origin.position;
+            Vector3 offset = bounds.center - CoverOrigin.position;
             Vector3 abs = new Vector3(Mathf.Abs(offset.x), Mathf.Abs(offset.y), Mathf.Abs(offset.z));
             if (abs.x >= abs.y && abs.x >= abs.z) _side = offset.x >= 0f ? GridDirection.XPlus : GridDirection.XMinus;
             else if (abs.y >= abs.z) _side = offset.y >= 0f ? GridDirection.YPlus : GridDirection.YMinus;
@@ -268,6 +310,53 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (stale) MakeCubes(HideFlags.HideAndDontSave);
         }
 
+        /// Puts it back on the grid, writing only what is off, so it does not dirty the scene for nothing.
+        private void Snap()
+        {
+            Vector3 euler = transform.localEulerAngles;
+            var rotation = Quaternion.Euler(Quarter(euler.x), Quarter(euler.y), Quarter(euler.z));
+            if (Quaternion.Angle(rotation, transform.localRotation) > 0.01f) transform.localRotation = rotation;
+
+            if (!IsSquare)
+            {
+                Debug.LogWarning($"AccessPanel: '{name}' is not square to the grid (its parent is turned by something other than quarter turns); it covers no cells", this);
+                return;
+            }
+
+            if (CoverOrigin == transform)
+            {
+                // No Cover Origin: the root itself is the centre. An odd count centres on a cell, an even one on a face.
+                Vector3 span = transform.rotation * (Vector3)_cover;
+                Vector3 at = transform.position;
+                var centred = new Vector3(Axis(at.x, span.x), Axis(at.y, span.y), Axis(at.z, span.z));
+                if ((centred - at).sqrMagnitude > 1e-10f) transform.position = centred;
+                return;
+            }
+
+            // The root on a cell centre, and the Cover Origin offset from it by whole cells, or half a cell more along
+            // an even count: so wherever the root is put, the Cover Origin lands where the block needs it.
+            Vector3 position = transform.position;
+            var snapped = new Vector3(Axis(position.x, 1), Axis(position.y, 1), Axis(position.z, 1));
+            if ((snapped - position).sqrMagnitude > 1e-10f) transform.position = snapped;
+
+            if (Quaternion.Angle(CoverOrigin.localRotation, Quaternion.identity) > 0.01f) CoverOrigin.localRotation = Quaternion.identity;
+            Vector3 local = CoverOrigin.localPosition;
+            var offset = new Vector3(Axis(local.x, _cover.x), Axis(local.y, _cover.y), Axis(local.z, _cover.z));
+            if ((offset - local).sqrMagnitude > 1e-10f) CoverOrigin.localPosition = offset;
+        }
+
+        private static bool IsAxis(Vector3 v) =>
+            Mathf.Abs(Mathf.Abs(v.x) + Mathf.Abs(v.y) + Mathf.Abs(v.z) - 1f) < 1e-3f;
+
+        private static float Quarter(float degrees) => Mathf.Round(degrees / 90f) * 90f;
+
+        private static float Axis(float at, float span)
+        {
+            int count = Mathf.Abs(Mathf.RoundToInt(span));
+            float offset = count % 2 == 0 ? GridCell.Half : 0f;
+            return Mathf.Round((at - offset) / GridCell.Size) * GridCell.Size + offset;
+        }
+
         private void OnDestroy()
         {
             if (_smokeMaterials == null) return;
@@ -309,6 +398,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (!Application.isPlaying)
             {
                 Preview();
+                if (transform.hasChanged || CoverOrigin.hasChanged)
+                {
+                    Snap();
+                    transform.hasChanged = false;
+                    CoverOrigin.hasChanged = false;
+                }
                 return;
             }
             PulseSocket();
@@ -475,6 +570,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private void OnValidate()
         {
             if (TryGetComponent<BoxCollider>(out var box) && !box.isTrigger) box.isTrigger = true;
+            _cover = Vector3Int.Max(_cover, Vector3Int.one);
+            transform.hasChanged = true;
         }
     }
 }

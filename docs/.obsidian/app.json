@@ -1,0 +1,6 @@
+{
+  "userIgnoreFilters": [
+    "simtest/",
+    "logs/"
+  ]
+}

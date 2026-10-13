@@ -1,29 +1,43 @@
+---
+aliases:
+  - "Radar"
+tags:
+  - component
+sizes:
+  - S3
+---
 # Radar
 
 The component that sees what is outside the ship and lets the crew pick a target. **Seeing, cycling and
 selecting are built and tested in-world; publishing to the data network and the gun's auto-aim are built
 (2026-10-07), untested in-world.** How its
-data reaches the gun is in `data.md`; the gun is in `weapons.md`.
+data reaches the gun is in [[data]]; the gun is in [[weapons]].
 
-## Decided (2026-10-03)
+## Decided
+
+**Status (2026-10-03):** decided.
 
 - **An S3 component** (S1 at first; its screen sat far too low, 2026-10-03), in a slot like any other: carried,
   swapped, powered, worn.
+- **It works from any S slot on board** (Vulps, 2026-10-13): it needs no view of space, and is not a gun, so it
+  never goes in a G slot ([[slots#G slots|slots → G slots]]).
 - **It has its own screen.** Phase 1 has no separate console: the radar is where a person looks at contacts
   and picks one.
 - **It owns detection**, since only it can see contacts, **and selection**, since the selection is made on its
   screen. A bridge console later is just another reader of its contacts that publishes its own selection; the
   gun's question does not change.
-- **It publishes `RadarData`** (`data.md`): its **contacts** (what it can detect) and the **selected target**,
+- **It publishes `RadarData`** ([[data]]): its **contacts** (what it can detect) and the **selected target**,
   as a read-only record through `IDataSource`. Anything on its data network reads it: a gun, and later a
   bridge monitor, at no extra cost.
-- **The gun reads the selected target each tick** and ignores the rest (`weapons.md`). Nothing commands the
+- **The gun reads the selected target each tick** and ignores the rest ([[weapons]]). Nothing commands the
   gun; reading is how the radar acts on it.
 - **Networking:** the selected target is the radar's state, kept by the master; a hand on any client sends its
   choice to the master, like the disruptor's aim, and late joiners get it with the rest of the radar's state.
   The contacts are worked out on every client from the same targets, so they need nothing sent (Phase 1).
 
-## Phase 1 (decided 2026-10-03)
+## Phase 1
+
+**Status (2026-10-03):** decided.
 
 - **What it detects:** anything with a **`DetectableModule`** within **1 km** of the radar, found by distance,
   not by raycast: the radar sits inside the ship, so a ray from it would stop at the ship's own walls. Line of
@@ -31,7 +45,7 @@ data reaches the gun is in `data.md`; the gun is in `weapons.md`.
 - **Test targets:** static objects with a `DetectableModule`, dotted at random from **z -100 to z -500**,
   **x -50 to +50**. Positions come from a fixed seed, so every client places them the same with nothing sent.
   **Hit, a target disappears and comes back where it was one minute later.** The master decides hits
-  (`damage.md`: the master resolves every hit) and brings targets back; whether each is down is shared state,
+  ([[damage]]: the master resolves every hit) and brings targets back; whether each is down is shared state,
   one bit per target (like the access panels), so late joiners see the same.
 - **The screen:** the contacts as markers. Under it, **Previous** and **Next** buttons step through them, with
   a **green square button** between them that selects the one stepped to. The selected marker gets a square
@@ -58,9 +72,11 @@ data reaches the gun is in `data.md`; the gun is in `weapons.md`.
 ## Open
 
 - **Range and confidence later:** contacts growing less certain with distance, like the nav scanner's JPR
-  (`the-loop.md`, `principles.md` §6). Not for now: phase 1 reports true positions.
+  ([[the-loop]], [[principles]] §6). Not for now: phase 1 reports true positions.
 
-## Built (2026-10-03, untested in-world)
+## Built
+
+**Status (2026-10-07):** seeing, cycling and selecting tested in-world; publishing and auto-aim built, untested in-world.
 
 `Prefabs/Components/Radar`: S3 (4 m), 600 kg, its art fitted to the slot, screen centre 1.83 m above the slot's
 floor, with everything a component carries (from
@@ -88,5 +104,13 @@ A 50 W load (`LoadBehaviourModule`, 50 J hold): unpowered, the screen is blank a
 (it was a separate `Radar` script beside one), and while powered publishes `RadarData`: a copy of every contact
 (`Contact`: id, position, facing) and the selected one if it is in sight. Unpowered, it publishes nothing. Its
 readout says how many contacts it sees and Target N or No target (Off when unpowered). The disruptor's auto-aim
-is in `weapons.md`.
+is in [[weapons]].
 
+
+## Model
+
+**Status (2026-10-09):** proposed, in the house look ([[component-models]]); next after the battery.
+
+- A rig carrying a square phased-array panel on a turret that **sweeps while powered** and stops dead when
+  it isn't.
+- A tilted console in front with the screen, the buttons and the zoom lever.

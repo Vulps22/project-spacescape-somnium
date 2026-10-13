@@ -1,9 +1,16 @@
+---
+aliases:
+  - "Interaction"
+tags:
+  - interaction
+---
 # Interaction
 
 How hands work things: stock XRI first (Somnium's guidance), and the pieces still driven by our own scripts.
 
-## Interaction rework (found 2026-09-27)
+## Interaction rework
 
+**Status (2026-09-27):** planned.
 
 **Found 2026-09-27.** Most of what a hand does in the scene is driven by our own scripts rather than
 stock XRI components, which is why it all feels a little clunky, and it will not survive networking:
@@ -18,7 +25,9 @@ each piece keeps its own private state that nothing else could sync. Somnium's g
 | Addon slot | distance from the slot, checked when an item is let go | `XRSocketInteractor` on the slot |
 | Addon item | `XRGrabInteractable` | already stock |
 
-## Holding things (2026-10-10; tested in-world, works)
+## Holding things
+
+**Status (2026-10-10):** tested in-world, works.
 
 - **Nothing snaps to the hand.** Packs and components have `Far Attach Mode = Far`: caught by the laser, they
   stay out where they were and move with it. Packs also have `Use Dynamic Attach`, so a near grab holds them
@@ -37,3 +46,24 @@ each piece keeps its own private state that nothing else could sync. Somnium's g
 
 Open: whether Somnium's hands include a poke interactor; and how Somnium syncs an
 `XRGrabInteractable` (and whether the rest needs Fusion) before networking.
+
+## Physics hands
+
+**Status (2026-09-26):** blocked: needs something from Somnium.
+
+Holding the avatar's hand at a surface instead of letting it pass through, which
+is what would make a switch feel substantial. Spiked on 2026-09-26 and it cannot be done from a world
+today:
+
+- `ISomniumPlayerBody.LeftHand` / `RightHand` are the **tracked controller anchors**
+  (`…/XR.Body/FloorOffset/LeftHand/…/LeftHandAnchor`), carrying `TrackedPoseDriver`,
+  `ActionBasedController`, `PlayerTransformNetworkDriver` and a kinematic `Rigidbody`. The avatar's
+  IK reaches for them; they are not the rendered hand.
+- A sphere sweep found the wall fine, but anything written to the anchor is overwritten before render,
+  every frame (`overwritten before render` = `blocked frames`, 493 of 493).
+- Stopping the pose drivers' before-render update needed reflection, and **the uploader rejected
+  that version as using features that are not allowed**. Reflection is the likely cause, not
+  confirmed.
+
+So the switches press through for now: `RockerSwitch` follows the hand in and snaps rather than
+stopping it. Worth asking Somnium for a supported way to offset or constrain a hand anchor.

@@ -5,11 +5,13 @@ using UnityEngine;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
-    /// Opens the conduit hologram on an item conduit (loading.md → Item conduit rules): the same hologram as a power
-    /// conduit's, built by ConduitHolograms from the same parts, with no arrows. A hand in a cell an item conduit is
-    /// installed in, or could be installed in, holds it open, and the same hand can work it: swing a segment to a
-    /// face or park it in the middle, and put an addon in its addon slot or lift it out. Unparking a segment in a
-    /// cell that could take one installs it; it starts with a segment on the face toward what points into it.
+    /// Opens the conduit hologram on a cell that is not a power conduit's tile (conduits.md → Conduits V2): an installed
+    /// item conduit, or an empty cell a hand could install a conduit of either kind in. The same hologram as a power
+    /// conduit's, built by ConduitHolograms from the same parts; arrows for power, none for items. A hand in the cell
+    /// holds it open, and the same hand can work it: swing a segment to a face or park it in the middle, and put an
+    /// addon in an item conduit's addon slot or lift it out. An empty cell starts with a segment on the face toward
+    /// what points into it; putting the other on a face installs it, and a power conduit installed so becomes a tile,
+    /// which ConduitHolograms opens from then on.
     ///
     /// Which cell each player has open is told to everyone (ShipNetwork), as a conduit's hologram is, so a cell
     /// open elsewhere does not open here, and is boxed in the handles' material as a power conduit is.
@@ -23,6 +25,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private ConduitHolograms _parts;
         private ConduitHologram _hologram;
         private ItemConduits _conduits;
+        private ConduitCells _cells;
         private Vector3Int? _shown;
         private int _holder = -1;
 
@@ -92,7 +95,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 _conduits = ItemConduits.Current;
                 if (_conduits != null) _conduits.Changed += OnChanged;
             }
-            if (_conduits == null || _hologram == null) return;
+            if (_cells == null) _cells = ConduitCells.Current;
+            if (_conduits == null || _cells == null || _hologram == null) return;
             int count = PlayerHands.Positions(_hands);
 
             var open = _hologram.IsOpen ? _hologram.Conduit : null;
@@ -100,7 +104,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             {
                 if (_hologram.Dragging) return;
                 if (_holder >= 0 && _holder < count && GridCell.ToCell(_hands[_holder]) == open.Coordinate
-                    && _conduits.ConduitAt(open.Coordinate) == open) return;
+                    && ConduitAt(open.Coordinate) == open) return;
             }
 
             _holder = -1;
@@ -108,7 +112,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             {
                 var cell = GridCell.ToCell(_hands[i]);
                 if (OpenElsewhere(cell) || AccessPanel.Blocks(cell)) continue;
-                var conduit = _conduits.ConduitAt(cell);
+                var conduit = ConduitAt(cell);
                 if (conduit == null) continue;
                 _holder = i;
                 _hologram.Holder = i;
@@ -120,6 +124,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _hologram.Close();
             Shown(null);
         }
+
+        /// The conduit this hologram opens in a cell: an installed item conduit, or the parked conduit in an empty cell
+        /// something points into; null for any other cell.
+        private IConduit ConduitAt(Vector3Int cell) => _conduits.ConduitAt(cell) ?? _cells.PendingAt(cell);
 
         private void OnDestroy()
         {
@@ -142,16 +150,18 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (cell.HasValue) Opened?.Invoke(cell.Value);
         }
 
-        /// The hologram was let go in a new shape: the cell's segments go on those faces, installing it if it was not.
+        /// The hologram was let go in a new shape: the cell's segments go on those faces, with their arrows for power,
+        /// installing it if it was not.
         private void Commit(IConduit conduit, IReadOnlyList<GridDirection> faces, IReadOnlyList<bool> outward)
         {
-            if (_conduits == null || conduit == null) return;
-            _conduits.EditByHand(ItemConduits.Edit.Faces, conduit.Coordinate, ItemConduits.Mask(faces), 0);
+            if (_cells == null || conduit == null) return;
+            int outs = conduit.HasArrows ? ConduitCells.OutMask(faces, outward) : 0;
+            _cells.EditByHand(ConduitCells.Edit.Faces, conduit.Coordinate, ConduitCells.Mask(faces), outs);
             _hologram.Refresh();
         }
 
-        /// Installs an addon item let go of in the open item conduit's addon slot, when that slot is empty and the
-        /// addon is one item conduits take.
+        /// Installs an addon item let go of in the open conduit's addon slot, when that slot is empty: on an item conduit,
+        /// only a junction; on an empty cell's parked conduit, any addon, installing the conduit with it.
         private void Install(AddonItem item)
         {
             if (_conduits == null || _hologram == null || !_hologram.IsOpen || item == null || item.Installs == null) return;
@@ -159,11 +169,14 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             var slot = _hologram.AddonSlot;
             float radius = _parts != null ? _parts.InstallRadius : 0.1f;
             if (slot == null || (item.transform.position - slot.position).sqrMagnitude > radius * radius) return;
-            if (!_conduits.Installed(conduit.Coordinate) || conduit.Addon != null) return;
-            int index = _conduits.AddonIndex(item.Installs);
-            if (index < 0) return;
+            if (conduit.Addon != null) return;
+            bool parked = !_cells.Installed(conduit.Coordinate);
+            if (!parked && !_conduits.Installed(conduit.Coordinate)) return;
+            int id = parked ? _cells.AddonId(item.Installs) : _conduits.AddonId(item.Installs);
+            if (id == 0) return;
             int state = item.CarriesState ? item.State : item.Installs.NetworkState;
-            if (!_conduits.EditByHand(ItemConduits.Edit.Addon, conduit.Coordinate, index + 1, state)) return;
+            int facing = parked ? (int)ConduitHolograms.FaceToward(conduit.Centre, null) << 8 : 0;
+            if (!_cells.EditByHand(ConduitCells.Edit.Addon, conduit.Coordinate, id, (state & 0xFF) | facing)) return;
 
             item.Retire();
             if (_parts.RemoveItem == null || !_parts.RemoveItem(item)) Destroy(item.gameObject);

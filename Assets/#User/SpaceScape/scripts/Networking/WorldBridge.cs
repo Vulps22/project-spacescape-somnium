@@ -20,6 +20,17 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         /// The local peer has joined and the scene's network objects are registered.
         public static bool IsNetworkReady => SceneNetworking.IsNetworkReady;
 
+        /// Seconds on the session's shared clock, the same on every client, for things every client works out for
+        /// itself at the same moment. Local time while Fusion is not running (the Editor without Photon).
+        public static double SharedTime
+        {
+            get
+            {
+                var runner = SceneNetworking.NetworkRunnerRef;
+                return runner != null && runner.IsRunning ? runner.SimulationTime : Time.timeAsDouble;
+            }
+        }
+
         /// Raised when IsNetworkReady becomes true.
         public static event Action NetworkReady
         {

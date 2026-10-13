@@ -139,6 +139,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         }
 
         public override string ToString() =>
-            $"{Name}: in {Inflow:0.##} W, drew {Drawn:0.##} W, passed {Passed:0.##} W, dumped {Dumped:0.##} W";
+            $"{Name}: in {Units.Watts(Inflow)}, drew {Units.Watts(Drawn)}, passed {Units.Watts(Passed)}, dumped {Units.Watts(Dumped)}";
     }
 }

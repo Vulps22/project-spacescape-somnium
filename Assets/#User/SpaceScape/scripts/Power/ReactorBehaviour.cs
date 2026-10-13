@@ -99,7 +99,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
 
         public override string ToString() =>
             $"{_core}{(RodsHeld ? "" : " [RODS DROPPED]")}" +
-            (HouseLoad > 0.0 ? $" | house {HouseLoad:0.##} W" : " | house from grid") +
+            (HouseLoad > 0.0 ? $" | house {Units.Watts(HouseLoad)}" : " | house from grid") +
             (Coolant != null ? $" | {Coolant}" : "");
     }
 }

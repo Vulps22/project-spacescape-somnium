@@ -1,7 +1,14 @@
+---
+aliases:
+  - "Felix"
+tags:
+  - easter-egg
+---
 # Felix
 
-## Felix, the ship's cat (future, logged 2026-09-29)
+## Felix, the ship's cat
 
+**Status (2026-09-29):** idea, for the future.
 
 **Felix, the ship's cat.** He darts around the ship being cute and mascot-y, and can be picked up and
 petted.

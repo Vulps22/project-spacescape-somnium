@@ -19,6 +19,7 @@ GameObject:
   - component: {fileID: 7867652972499243155}
   - component: {fileID: 591147961133513054}
   - component: {fileID: 6382786781183802571}
+  - component: {fileID: 2958005890834662521}
   m_Layer: 0
   m_Name: Fuel Rod Pack
   m_TagString: Untagged
@@ -324,15 +325,7 @@ MonoBehaviour:
   - {fileID: 1827749415714528893}
   - {fileID: 471592543133760561}
   _startsWith: 4
-  _lidTrack: {fileID: 9128872702973191040}
-  _lid: {fileID: 2389239023849092504}
-  _rise: 1.08
-  _riseSeconds: 2
-  _tugShare: 0.8
-  _returnSeconds: 0.15
-  _openClip: {fileID: 8300000, guid: 521429b7d2f9f2a49b76107ddbcbc326, type: 3}
-  _closeClip: {fileID: 8300000, guid: 85731ffad56b8d74da53f9dff408ec68, type: 3}
-  _sound: {fileID: 8241856721852313375}
+  _lid: {fileID: 2958005890834662521}
   _returnDistance: 0.25
   _lamps:
   - {fileID: 8087930171237806142}
@@ -353,6 +346,28 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Networking.ItemPackNetwork
   _data: {fileID: 7867652972499243155}
+--- !u!114 &2958005890834662521
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 219614296386825134}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 482cbc58392a26f59815d820df97524d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.TugSlide
+  _track: {fileID: 9128872702973191040}
+  _grip: {fileID: 2389239023849092504}
+  _direction: {x: 0, y: 1, z: 0}
+  _distance: 1.08
+  _seconds: 2
+  _tugShare: 0.8
+  _returnSeconds: 0.15
+  _openClip: {fileID: 8300000, guid: 521429b7d2f9f2a49b76107ddbcbc326, type: 3}
+  _closeClip: {fileID: 8300000, guid: 85731ffad56b8d74da53f9dff408ec68, type: 3}
+  _sound: {fileID: 8241856721852313375}
 --- !u!1 &467640868368782369
 GameObject:
   m_ObjectHideFlags: 0
@@ -1229,6 +1244,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9e42e4da0f8bd6f4da941e4fb9ec4949, type: 3}
   m_Name: 
   m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.SlideGrabTransformer
+  _axis: {x: 0, y: 1, z: 0}
   _travel: 0.06
   _travelDown: 0.06
 --- !u!1 &8037920092803954263

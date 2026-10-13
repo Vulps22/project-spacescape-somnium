@@ -6,7 +6,9 @@ using UnityEngine;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
-    /// Builds the ship's grid from what is in the scene, then ticks it at a fixed rate.
+    /// Builds the ship's grid from what is in the scene, then ticks it at a fixed rate. Conduits are not in the scene: each
+    /// installed power conduit cell (ConduitCells) is given a tile at runtime by PowerConduits, which adds it here
+    /// (AddTile) and takes it out again (RemoveTile).
     public sealed class PowerGrid : MonoBehaviour
     {
         [Tooltip("How many times a second the grid is simulated. Behaviour is per second, so this changes smoothness, not speed.")]
@@ -41,14 +43,28 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// ship stands, which cannot simulate any of it until it has all of it.
         public bool Held { get; set; }
 
+        /// Raised when a tile joins the grid at runtime (a conduit installed), after it is wired in.
+        public event Action<GridNode> TileAdded;
+
+        /// Raised when a tile leaves the grid at runtime (a conduit removed), before it is destroyed.
+        public event Action<GridNode> TileRemoved;
+
+        /// Raised, between ticks, for each conduit that has just blown, for its cell to park its outputs. With nobody
+        /// listening, the grid parks them itself.
+        public event Action<GridNode> Blown;
+
+        /// The tile standing in a cell, or null.
+        public GridNode TileAt(Vector3Int cell) => _byCell.TryGetValue(cell, out var tile) ? tile : null;
+
+        /// The tile a sim node stands for, or null.
+        public GridNode TileOf(PowerNode node) => node != null && _tileOf.TryGetValue(node, out var tile) ? tile : null;
+
         private void Awake()
         {
             Current = this;
             _graph = new PowerGraph();
             _step = 1.0 / Mathf.Max(1f, _ticksPerSecond);
 
-            var layout = FindFirstObjectByType<ConduitLayout>();
-            if (layout != null) layout.Spawn();
             Build();
             _graph.Popped += n => Report("Popped", n, "severed, carries nothing until it is repaired");
             _graph.Popped += n => _blown.Add(n);
@@ -86,8 +102,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         /// Logs a thermal failure with what the tile was doing when it happened.
         private static void Report(string what, PowerNode node, string outcome) =>
-            Debug.LogWarning($"[SpaceScape] {what}() '{node.Name}' — {outcome}; {node.Celsius:0} C " +
-                             $"({node.HeatAboveBaseline:0} over), in {node.Inflow:0} W, wasting {node.Dumped:0} W");
+            Debug.LogWarning($"[SpaceScape] {what}() '{node.Name}' — {outcome}; {Units.Celsius(node.Celsius)} " +
+                             $"({Units.Celsius(node.HeatAboveBaseline)} over), in {Units.Watts(node.Inflow)}, wasting {Units.Watts(node.Dumped)}");
 
         /// Turns every GridNode and Conduit in the scene into the sim's nodes and edges.
         private void Build()
@@ -114,22 +130,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     continue;
                 }
 
-                var behaviours = placed.GetComponents<BehaviourModule>();
-                if (behaviours.Length == 0)
-                    Debug.LogWarning($"'{placed.name}' has no behaviour module, so it acts as bare cable", placed);
-                else if (behaviours.Length > 1)
-                    Debug.LogWarning($"'{placed.name}' has {behaviours.Length} behaviour modules; only the first counts", placed);
-
-                var behaviour = behaviours.Length > 0 ? behaviours[0] : null;
-                var source = behaviour != null ? behaviour.Source : null;
-                var sink = behaviour != null ? behaviour.Sink : null;
-                var node = source != null
-                    ? _graph.AddSource(placed.name, source, sink)
-                    : _graph.AddNode(placed.name, sink);
-                if (placed.TryGetComponent<IntegrityModule>(out var integrity)) node.Integrity = integrity.Integrity;
-                if (placed.TryGetComponent<CapacitorModule>(out var hold)) node.Hold = hold.Capacitor;
-                placed.Bind(node);
-                _tileOf[node] = placed;
+                Register(placed);
             }
 
             // Every cell of every footprint, so two things cannot be built through each other.
@@ -155,6 +156,57 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 if (slot.TryGetComponent<GridNode>(out var tile) && tile.Node != null) slot.Attach(tile.Node, this);
 
             foreach (var placed in nodes) ConnectOutputs(placed, null, true);
+        }
+
+        /// Gives a tile its sim node, from its behaviour, and binds it.
+        private PowerNode Register(GridNode placed)
+        {
+            var behaviours = placed.GetComponents<BehaviourModule>();
+            if (behaviours.Length == 0)
+                Debug.LogWarning($"'{placed.name}' has no behaviour module, so it acts as bare cable", placed);
+            else if (behaviours.Length > 1)
+                Debug.LogWarning($"'{placed.name}' has {behaviours.Length} behaviour modules; only the first counts", placed);
+
+            var behaviour = behaviours.Length > 0 ? behaviours[0] : null;
+            var source = behaviour != null ? behaviour.Source : null;
+            var sink = behaviour != null ? behaviour.Sink : null;
+            var node = source != null
+                ? _graph.AddSource(placed.name, source, sink)
+                : _graph.AddNode(placed.name, sink);
+            if (placed.TryGetComponent<IntegrityModule>(out var integrity)) node.Integrity = integrity.Integrity;
+            if (placed.TryGetComponent<CapacitorModule>(out var hold)) node.Hold = hold.Capacitor;
+            placed.Bind(node);
+            _tileOf[node] = placed;
+            return node;
+        }
+
+        /// Puts a tile on the grid at runtime (a conduit just installed): gives it a node, stands it in its cells, and
+        /// joins it to its neighbours and them to it.
+        public void AddTile(GridNode tile)
+        {
+            if (_graph == null || tile == null || tile.Node != null) return;
+            Register(tile);
+            foreach (var cell in tile.Cells)
+                if (!_byCell.ContainsKey(cell)) _byCell.Add(cell, tile);
+            Rewire(tile);
+            DataGrid.Invalidate();
+            TileAdded?.Invoke(tile);
+        }
+
+        /// Takes a tile off the grid at runtime (a conduit removed), with every conduit into and out of it.
+        public void RemoveTile(GridNode tile)
+        {
+            if (tile == null) return;
+            TileRemoved?.Invoke(tile);
+            var node = tile.Node;
+            foreach (var cell in tile.Cells)
+                if (_byCell.TryGetValue(cell, out var there) && there == tile) _byCell.Remove(cell);
+            if (node == null) return;
+            _tileOf.Remove(node);
+            _blown.Remove(node);
+            tile.Unbind();
+            _graph?.RemoveNode(node);
+            DataGrid.Invalidate();
         }
 
         /// Gives a component taken out of its slot a node of its own with no conduits, so it goes on running as
@@ -284,10 +336,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private void ParkBlownOutputs()
         {
             if (_blown.Count == 0) return;
-            foreach (var node in _blown)
+            foreach (var node in new List<PowerNode>(_blown))   // a handler may take a tile out of the grid
             {
                 if (!_tileOf.TryGetValue(node, out var tile) || tile == null) continue;
                 if (!tile.TryGetComponent<ConduitBehaviourModule>(out _) || tile.Edges == null) continue;
+                if (Blown != null) { Blown(tile); continue; }
                 var outputs = new List<GridDirection>(tile.Edges.Outputs);
                 foreach (var face in outputs) tile.Edges.SetFace(face, FlowDirection.None);
                 Rewire(tile);

@@ -36,6 +36,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             PackFed = 7,     // a loader elsewhere took in a pack: its kind, its filled places and its contents, three ints (two before contents)
             EjectSwitch = 8, // a loader's eject switch thrown elsewhere: 1 on, 0 off, as an int
             ReactorDial = 9, // a reactor lever moved elsewhere: its axis (0 the master, then each chamber) as an int, and a float
+            CartridgeTug = 10, // the S1 reactor's cartridge tugged out (1) or pushed home (0) elsewhere, as an int
         }
 
         [Tooltip("Where the state is replicated. Any size with room for 3 + the modules' values; the log says if it is too small.")]
@@ -62,12 +63,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         private LoadingModule[] _loading;
         private Action[] _loadedHandlers;
         private LoaderBehaviourModule _loader;
+        private OverchargeVentModule _vent;
+        private ReactorCartridge _cartridge;
         private bool _usable;
 
         private void Awake()
         {
             _tile = GetComponent<GridNode>();
             _modules = GetComponents<INetworkedState>();
+            TryGetComponent(out _vent);
 
             _grid = FindFirstObjectByType<PowerGrid>();
 
@@ -90,6 +94,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             _data.OnMessageToController += OnMessageToController;
             _data.OnMessageToAll += OnMessageToAll;
             if (TryGetComponent(out _reactor)) _reactor.DialTurned += OnDialTurned;
+            if (TryGetComponent(out _cartridge)) _cartridge.Tugged += OnCartridgeTugged;
             if (TryGetComponent(out _disruptor))
             {
                 _disruptor.AimMoved += OnAimMoved;
@@ -124,6 +129,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             if (_data != null) _data.OnMessageToController -= OnMessageToController;
             if (_data != null) _data.OnMessageToAll -= OnMessageToAll;
             if (_reactor != null) _reactor.DialTurned -= OnDialTurned;
+            if (_cartridge != null) _cartridge.Tugged -= OnCartridgeTugged;
             if (_disruptor != null)
             {
                 _disruptor.AimMoved -= OnAimMoved;
@@ -153,6 +159,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             if (_disruptor != null) _disruptor.Decides = !IsLive || _data.Object.HasStateAuthority;
             if (_radar != null) _radar.Decides = !IsLive || _data.Object.HasStateAuthority;
             if (_loader != null) _loader.Decides = !IsLive || _data.Object.HasStateAuthority;
+            if (_vent != null) _vent.Decides = !IsLive || _data.Object.HasStateAuthority;
             if (!IsLive) return;
 
             if (_data.Object.HasStateAuthority)
@@ -296,6 +303,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             _data.RPC_SendMessageToController(MessageFrame.Pack((byte)ComponentMessageType.PackFed, payload));
         }
 
+        private void OnCartridgeTugged(bool open)
+        {
+            if (IsLive && !_data.Object.HasStateAuthority)
+                _data.RPC_SendMessageToController(MessageFrame.Pack((byte)ComponentMessageType.CartridgeTug, BitConverter.GetBytes(open ? 1 : 0)));
+        }
+
         private void OnEjectPressed(bool on)
         {
             if (IsLive && !_data.Object.HasStateAuthority)
@@ -365,6 +378,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
                     break;
                 case ComponentMessageType.EjectSwitch:
                     if (_loader != null && data.Length >= 4) _loader.Ejecting = BitConverter.ToInt32(data, 0) != 0;
+                    break;
+                case ComponentMessageType.CartridgeTug:
+                    if (_cartridge != null && data.Length >= 4) _cartridge.SetOpen(BitConverter.ToInt32(data, 0) != 0);
                     break;
                 default:
                     Debug.LogWarning($"ComponentNetwork: '{name}' got unknown message {id}", this);

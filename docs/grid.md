@@ -1,6 +1,12 @@
+---
+aliases:
+  - "The grid, slots and components"
+tags:
+  - structure
+---
 # The grid, slots and components
 
-**Status: rules agreed 2026-09-28, nothing built yet.** Where things sit on the grid and how big they are.
+Where things sit on the grid and how big they are.
 Written because there were no fixed rules for either, and every component solved it differently: a
 reactor sinking a quarter-metre into the floor, a footprint leaning one way while its model leaned the
 other once turned, a model 0.15 m off its own footprint, a 5 m cylinder in a 5.5 m footprint.
@@ -21,39 +27,18 @@ rules live.
 
 ## Slots
 
-**Decided 2026-09-28.**
+**Decided 2026-09-28.** The sizes, S0 to S5, and what each holds are in [[slots]].
 
-| Size | Shape | Cells (x × y × z) | Metres |
-|---|---|---|---|
-| S1 | cube | 4 × 4 × 4 | 2 × 2 × 2 |
-| S2 | rectangular | 6 × 4 × 4 | 3 × 2 × 2 |
-| S3 | cube | 8 × 8 × 8 | 4 × 4 × 4 |
-| S4 | rectangular | 10 × 8 × 8 | 5 × 4 × 4 |
-| S5 | cube | 10 × 10 × 10 | 5 × 5 × 5 |
-
-- **Odd-numbered sizes are cubes; even-numbered ones are rectangular**, with y and z two cells shorter
-  than x. Two, not one: every dimension stays even, so a slot's centre is always a grid corner and a slot
-  lands on whole cells whichever way it faces.
-- **There is exactly one S4 slot on the ship.** In honour of a numbering slip, S4 components are the
-  rarest and most powerful in the game, whatever they are: a gun that is overpowered, a reactor that
-  practically never runs dry, a radar that maps the galaxy in one pass. Examples, not decisions; the loot
-  side belongs in `the-loop.md`. That S4 is smaller than S5 makes no sense, and that is fine.
-- **Only an Sx component fits an Sx slot.**
-- **A slot's anchor is its centre** (a grid corner), and a component attaches there.
+- **A slot's anchor is its centre** (a grid corner; for S0, a cell centre), and a component attaches there.
 - **A slot has one front,** picked like a conduit's face, and its own up. A slotted component always
   faces the slot's front with the slot's up as its up, so a component never turns within a slot.
   By precedent (not a hard rule) a component's own front is +Z and its up +Y, models included:
-  `component-models.md` → The look.
+  [[component-models#The look|component-models → The look]].
 - **A slot's volume is reserved:** no conduits are generated inside it, empty or not. Cables run to its
   edge, where a component's ports meet them; to get past a slot, route round it.
 - **Slots are seen only as gizmos** while editing. Where they go on the ship is set by hand, by
   convention.
-- **The finished ship has more slots than it needs,** many small and very few large, so a crew chops
-  and changes to suit what it is doing.
 - **Later:** a dropped component snaps into a slot only when it is lined up closely enough.
-
-- **Idea, not confirmed: S0, 1 × 1 × 1 cells,** for small utilities like lights, if it proves doable. It
-  may turn out to be the addon system under another name; decide when it comes up.
 
 ## The slot is a thin wrapper
 
@@ -78,7 +63,7 @@ the component.
 
 ## Moving a component
 
-**Decided 2026-09-28.**
+**Status (2026-09-29):** decided 2026-09-28; tested in-world with many players.
 
 - **A hand picks up the component itself,** full size. One player can pick up anything for now; weight
   and carrying together are below (Weight and carrying together).
@@ -134,7 +119,60 @@ the component.
    else it falls. The client whose hand did it acts at once and tells the master through the slot's
    messages (`TakeOut`, `PutIn`), keeping its own occupant for 2 seconds while the master catches up. A
    slot emptied by a hand writes occupant -1, so the master never spawns a new starting component into it.
-5. **Pulled out live, 10% of maximum integrity lost (written 2026-09-29, untested).** See `polish.md`.
+5. **Pulled out live, 10% of maximum integrity lost (written 2026-09-29, untested).** A hand taking a component
+  out while power is flowing through it (arriving, produced or drawn) costs it 10% of its maximum
+  (`ComponentSlot`, tunable). Only where the lock is decided (the master), for a hand there or on another
+  client, so it is taken once; the component's data carries the new condition to everyone.
+
+### Handling a component
+
+**Status (2026-09-29):** written, compiles clean, untested in-world.
+
+- **Grab box bigger than the reactor (bug, seen 2026-09-29).** Slotted, you cannot press up against the
+  reactor's side, and the box gets in the way of grabbing the rod lever. Likely why: the fit leaves out
+  meshes under an object with its own hand interaction, but the lever's interactable is only on
+  `RodLever/Pivot/Handle`; `RodLever/Pivot/Arm` is outside it, so the box stretches out over the lever.
+  Fix: see the next item; the box goes.
+- **Components use their mesh colliders, not a box (Vulps, 2026-09-29).** The grab and the physics use
+  colliders on the model's own meshes, so what you touch and bump into is the shape you see. Leave out
+  the lever and anything else handled on its own; the grab interactable's collider list is these mesh
+  colliders. Unity only lets a moving (non-kinematic) Rigidbody use convex mesh colliders, so each mesh
+  collider is convex; a shape a single convex hull misrepresents is split into convex parts.
+- **Grab points:** `CarriedComponent` fits the grab box to the model's own meshes at start, leaving out
+  text, particles and anything with a hand interaction of its own (the reactor's lever), instead of the
+  slot's whole volume.
+- **Placement guide:** while a held component's centre is inside an empty slot of its size, the slot shows
+  its volume as a transparent box: red (neither), orange (positioned or aligned), green (both: letting go
+  snaps it in), with a buzz on the holding hand as it turns green. The checks are
+  `ComponentSlot.IsPositioned` and `IsAligned` (centre within 0.5 m, within 30° of square), the same ones
+  `Accepts` makes. Materials `SlotGuideRed/Orange/Green`, copies of `HoloUpgrade`. Local to the holder.
+- **Solid, and pushing each other:** `IgnoresPlayerBody` is on only while a hand holds the component, and
+  now lets its pairs collide again when switched off, so a component on the floor stops a player. When a
+  held component hits a loose one, this client asks for the loose one's authority through its
+  `NetworkGrabbable`, so the shove plays out on the holder's client (the suggestion from the list, built
+  as proposed; Vulps to confirm after testing).
+- **Weight:** the grab is velocity tracking, so a held component is physical: it follows the hand by a share
+  of the gap each step (1 at no mass, 0.15 at 2000 kg) and hangs up to 0.25 m below the hold
+  (`HeftGrabTransformer`, since XRI turns gravity off while held). Masses: Reactor 2000 kg (the figure in
+  [[#Weight and carrying together|Weight and carrying together]]), Battery 400 kg. All tunable on `CarriedComponent` and each prefab's Rigidbody.
+
+### A loose component keeps running
+
+**Status (2026-09-29):** written, compiles clean, sim tests pass, untested in-world.
+
+- **A loose component keeps running (decided 2026-09-29).** Taken out of its slot, a component gets a node
+  of its own with no conduits (`PowerGrid.Loosen`), starting at the heat it carried out, and gives it back
+  when it goes into a slot (`Unloosen`, keeping its heat; the grid gained `PowerGraph.RemoveNode`). Its
+  controls stay live: a running reactor keeps its rods up, keeps producing, has nowhere to send it and
+  heats up (sim: 100 W wasted, 271 C after a minute), and shuts down when its rods go in. Every client does
+  this, as everyone simulates the grid; the component's own data corrects it.
+
+### The handle bar's motion
+
+**Status:** planned.
+
+- **Slot handle bar motion.** The unlock is networked; the bar moving is not, so others do not see it
+  pulled (visible motion is networked). Planned: the reactor dial pattern through the slot's data.
 
 ## Components
 
@@ -159,9 +197,14 @@ the component.
 **The slot owns which component it holds.** Slots are scene objects, so the occupant (a component's
 network id) goes in the slot's own `NetworkBridgeData`, beside its lock; the master decides it.
 Components become registered network prefabs that the first master spawns into their slots, the way
-addons are now (`networking.md`), and each carries its own state (`ComponentNetwork`), so a
+addons are now ([[networking]]), and each carries its own state (`ComponentNetwork`), so a
 half-charged battery stays half-charged whichever slot it is in. A carried component's pose follows the
 hand through `NetworkGrabbable`.
+
+| State | Tier | Decided by | Travels as |
+|---|---|---|---|
+| A component's pose while carried | simulation | whoever holds it | `NetworkRigidbody3D` + `NetworkGrabbable` |
+| Which component a slot holds | fact | master, on the hand's request | the slot's `NetworkBridgeData` (occupant id, -1 once emptied) |
 
 ## Tools
 
@@ -169,9 +212,10 @@ hand through `NetworkGrabbable`.
 - Gizmos for slot volumes, fronts, and components' ports.
 - A warning when the grid is built for anything that breaks these rules.
 
-## Weight and carrying together (planned)
+## Weight and carrying together
 
+**Status (2026-09-28):** planned.
 
 Components have a configurable weight, and every player can lift up to 500 kg. Each hand on a component
 takes its share, so the weight each carries drops until it can be lifted: a 2,000 kg reactor needs four
-players. Logged 2026-09-28; for now one player can pick up anything (`grid.md` → Moving a component).
+players. Logged 2026-09-28; for now one player can pick up anything ([[#Moving a component|Moving a component]]).

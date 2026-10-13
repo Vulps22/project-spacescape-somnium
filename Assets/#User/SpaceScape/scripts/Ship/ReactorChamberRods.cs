@@ -27,6 +27,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private float _burningHeight = -0.2f;
         [Tooltip("Height of the waiting rod's centre, in the reactor's own space.")]
         [SerializeField] private float _waitingHeight = 0.95f;
+        [Tooltip("Show the waiting rod above the burning one. Off where the model has no room for it: the next rod then appears in place when the last is spent, without sliding down.")]
+        [SerializeField] private bool _showWaiting = true;
 
         [Header("Glow")]
         [Tooltip("Glow of a fresh rod.")]
@@ -155,7 +157,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 bool refuelled = _lastFuel[i] >= 0f && now > _lastFuel[i] + 0.5f;
                 bool emptied = _hadRod[i] && !chamber.HasRod;
                 if (refuelled || emptied) Drop(i);
-                if (refuelled) _slide[i] = _slideSeconds;
+                if (refuelled && _showWaiting) _slide[i] = _slideSeconds;
                 _lastFuel[i] = now;
                 _hadRod[i] = chamber.HasRod;
 
@@ -173,7 +175,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     var glow = Color.Lerp(own, heat.colour, heat.share) * (Mathf.Lerp(_idleGlow, 1f, load) * pulse);
                     Glow(_burning[i], glow);
                 }
-                bool waiting = i < fuel.Count && fuel[i] != null && fuel[i].HasItem;
+                bool waiting = _showWaiting && i < fuel.Count && fuel[i] != null && fuel[i].HasItem;
                 _waitingRods[i].gameObject.SetActive(waiting);
                 if (waiting) Glow(_waitingRods[i], _waiting);
             }

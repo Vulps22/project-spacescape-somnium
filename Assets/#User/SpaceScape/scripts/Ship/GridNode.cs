@@ -306,7 +306,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private string ReadoutText() => Node == null
             ? "unbound"
-            : $"in {Node.Arriving:0} W\nout {Node.Offered:0} W\nwasted {Node.Dumped:0} W\n{Node.Celsius:0.0} C";
+            : $"in {Units.Watts(Node.Arriving)}\nout {Units.Watts(Node.Offered)}\nwasted {Units.Watts(Node.Dumped)}\n{Units.Celsius(Node.Celsius)}";
 
         private void OnValidate()
         {

@@ -10,8 +10,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         /// Everything sits at this temperature when nothing is wasting power.
         public const double AmbientCelsius = 21.0;
 
-        /// Degrees a tile gains per watt it wastes, per second.
-        public double DegreesPerWastedWattSecond = 0.05;
+        /// Degrees a tile gains per watt it wastes, per second. Set for the new scale of power (2026-10-12): 59 kW wasted
+        /// heats a tile about 3 C a second, as 59 W did when everything was in watts.
+        public double DegreesPerWastedWattSecond = 0.00005;
 
         /// Degrees a tile sheds per second while it is not wasting anything.
         public double CoolingDegreesPerSecond = 0.2;
@@ -19,12 +20,19 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         /// Share of the gap between two tiles that travels along the conduit between them, per second.
         public double ConductionPerSecond = 4.0;
 
-        /// How long a 100 W tile sitting at 120 C lasts, on average, before it blows. This is the dial
-        /// for how fragile the grid is; the hazard constant is worked out from it.
-        public double PopSecondsAt100WAnd120C = 30.0;
+        /// How long a tile carrying Pop Reference Watts and sitting at Pop Reference Celsius lasts, on average, before it
+        /// blows. This is the dial for how fragile the grid is; the hazard constant is worked out from it.
+        public double PopSecondsAtReference = 30.0;
 
-        /// Below this a tile never blows, however much it is carrying.
-        public double PopFloorCelsius = 50.0;
+        /// The power the pop dial is measured at: 100 kW in the new scale of power (2026-10-12).
+        public double PopReferenceWatts = 100000.0;
+
+        /// The temperature the pop dial is measured at: a cable well on its way to its fire rating.
+        public double PopReferenceCelsius = 450.0;
+
+        /// Below this a tile never blows, however much it is carrying: where a mineral-insulated cable's insulation
+        /// starts to suffer (2026-10-12; it was 50 C). A thermal shielding upgrade will raise it.
+        public double PopFloorCelsius = 250.0;
 
         /// And it is never blamed for being less than this far over where it should be, so a reactor
         /// sitting at its own working temperature is never damaged for it.
@@ -46,6 +54,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         private Stack<PowerNode> _reachStack;
         private Random _rng;
         private List<PowerNode> _mergePoints;
+        private int _mergeRevision;
 
         /// Raised for a bare conduit the instant it blows.
         public event Action<PowerNode> Popped;
@@ -92,6 +101,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
             from.Outgoing.Add(edge);
             to.Incoming.Add(edge);
             _edges.Add(edge);
+            PowerNode.LinksChanged();
             return edge;
         }
 
@@ -120,6 +130,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
             edge.From.Outgoing.Remove(edge);
             edge.To.Incoming.Remove(edge);
             _edges.Remove(edge);
+            PowerNode.LinksChanged();
         }
 
         /// Advances the grid one tick. Every node reads the last tick's conduits, so order does not matter.
@@ -340,10 +351,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         /// not be the hottest one.
         private void RollForPops(double seconds)
         {
-            if (PopSecondsAt100WAnd120C <= 0.0) return;
+            if (PopSecondsAtReference <= 0.0) return;
             if (_rng == null) _rng = new Random(PopSeed);
 
-            double k = 1.0 / (100.0 * (120.0 - AmbientCelsius) * PopSecondsAt100WAnd120C);
+            double k = 1.0 / (PopReferenceWatts * (PopReferenceCelsius - AmbientCelsius) * PopSecondsAtReference);
 
             for (int i = 0; i < _nodes.Count; i++)
             {
@@ -397,10 +408,14 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
             Popped?.Invoke(node);
         }
 
-        /// Collects every tile where power enters a ring, from the conduits live this tick.
+        /// Collects every tile where power enters a ring, from the conduits live this tick. The rings change only when
+        /// the links do (a conduit joined or cut, a tile switched, blown or mended, a node added or taken out: every one
+        /// bumps PowerNode.LinkRevision), so the search runs only then; on a grid that is not changing it costs nothing.
         private void FindMergePoints()
         {
+            if (_mergePoints != null && _mergeRevision == PowerNode.LinkRevision) return;
             if (_mergePoints == null) _mergePoints = new List<PowerNode>();
+            _mergeRevision = PowerNode.LinkRevision;
             _mergePoints.Clear();
 
             foreach (var ring in FindRings(live: true))

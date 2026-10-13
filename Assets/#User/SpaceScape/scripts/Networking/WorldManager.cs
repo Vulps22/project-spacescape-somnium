@@ -12,6 +12,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         public static bool IsNetworkReady => WorldBridge.IsNetworkReady;
         public static bool HasRunner => WorldBridge.HasRunner;
         public static bool CanSpawn => WorldBridge.CanSpawn;
+        public static double SharedTime => WorldBridge.SharedTime;
 
         public static event Action NetworkReady
         {

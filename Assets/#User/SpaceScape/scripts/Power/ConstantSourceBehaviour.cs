@@ -17,6 +17,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         /// Nothing to advance; the output never varies on its own.
         public void ProvidePower(PowerNode node, double seconds) { }
 
-        public override string ToString() => $"{Watts:0.##} W constant";
+        public override string ToString() => $"{Units.Watts(Watts)} constant";
     }
 }

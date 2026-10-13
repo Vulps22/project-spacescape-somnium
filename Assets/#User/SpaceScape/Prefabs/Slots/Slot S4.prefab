@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &4623887156921653567
+--- !u!1 &8074602094415014044
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,264 +8,89 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 6688420451091136480}
-  - component: {fileID: 4452351809734922054}
+  - component: {fileID: 7193232993712152947}
+  - component: {fileID: 7287073326032226596}
+  - component: {fileID: 2463781278607372168}
   m_Layer: 0
-  m_Name: Front
+  m_Name: Plinth
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &6688420451091136480
+--- !u!4 &7193232993712152947
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4623887156921653567}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.25, z: 2.25}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 984582502106585986}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &4452351809734922054
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4623887156921653567}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a181f0e75fa5d7ca1895002a722a9789, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.ConduitLayoutDefinition
-  _cells: {x: 12, y: 7, z: 1}
-  _origin: {fileID: 0}
---- !u!1 &6133245374552702847
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 3553153455944202549}
-  - component: {fileID: 2230965251797291317}
-  m_Layer: 0
-  m_Name: Back
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &3553153455944202549
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6133245374552702847}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -2.25}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 984582502106585986}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2230965251797291317
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6133245374552702847}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a181f0e75fa5d7ca1895002a722a9789, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.ConduitLayoutDefinition
-  _cells: {x: 12, y: 8, z: 1}
-  _origin: {fileID: 0}
---- !u!1 &6179016568953253674
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2871438890450896327}
-  - component: {fileID: 4949552230231179076}
-  m_Layer: 0
-  m_Name: Top
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2871438890450896327
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6179016568953253674}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 2.25, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 984582502106585986}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &4949552230231179076
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6179016568953253674}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a181f0e75fa5d7ca1895002a722a9789, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.ConduitLayoutDefinition
-  _cells: {x: 12, y: 1, z: 10}
-  _origin: {fileID: 0}
---- !u!1 &6370337405281348979
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 984582502106585986}
-  m_Layer: 0
-  m_Name: Conduit Shell
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &984582502106585986
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6370337405281348979}
+  m_GameObject: {fileID: 8074602094415014044}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 2871438890450896327}
-  - {fileID: 2576476307032338799}
-  - {fileID: 9141287986713185500}
-  - {fileID: 3553153455944202549}
-  - {fileID: 6688420451091136480}
+  m_Children: []
   m_Father: {fileID: 6293626985704143049}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &7749014129641871196
-GameObject:
+--- !u!33 &7287073326032226596
+MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 9141287986713185500}
-  - component: {fileID: 9087766496613752914}
-  m_Layer: 0
-  m_Name: Right
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &9141287986713185500
-Transform:
+  m_GameObject: {fileID: 8074602094415014044}
+  m_Mesh: {fileID: 2192429539057574784, guid: f1a9457b6ea2b545897f76600ab53e5b, type: 3}
+--- !u!23 &2463781278607372168
+MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7749014129641871196}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.75, y: 0, z: -0.25}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 984582502106585986}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &9087766496613752914
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7749014129641871196}
+  m_GameObject: {fileID: 8074602094415014044}
   m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a181f0e75fa5d7ca1895002a722a9789, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.ConduitLayoutDefinition
-  _cells: {x: 1, y: 8, z: 9}
-  _origin: {fileID: 0}
---- !u!1 &8984058908956628181
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2576476307032338799}
-  - component: {fileID: 9128681095879920043}
-  m_Layer: 0
-  m_Name: Left
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2576476307032338799
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8984058908956628181}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -2.75, y: 0, z: -0.25}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 984582502106585986}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &9128681095879920043
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8984058908956628181}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a181f0e75fa5d7ca1895002a722a9789, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.ConduitLayoutDefinition
-  _cells: {x: 1, y: 8, z: 9}
-  _origin: {fileID: 0}
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 9b48a9ab6ca1b0e378eb89112091b7ec, type: 2}
+  - {fileID: 2100000, guid: 7bd40a22e751cddd1bdfd8670e841691, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
 --- !u!1001 &4963569438238187813
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -339,6 +164,11 @@ PrefabInstance:
       propertyPath: _size
       value: 4
       objectReference: {fileID: 0}
+    - target: {fileID: 7170423168644673788, guid: 386ca2b29ce4c86ba9d9b4c4fcd08bc1,
+        type: 3}
+      propertyPath: _plinth
+      value: 
+      objectReference: {fileID: 2463781278607372168}
     - target: {fileID: 9094110487917545318, guid: 386ca2b29ce4c86ba9d9b4c4fcd08bc1,
         type: 3}
       propertyPath: SortKey
@@ -360,7 +190,7 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1420129763352713708, guid: 386ca2b29ce4c86ba9d9b4c4fcd08bc1,
         type: 3}
       insertIndex: -1
-      addedObject: {fileID: 984582502106585986}
+      addedObject: {fileID: 7193232993712152947}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 386ca2b29ce4c86ba9d9b4c4fcd08bc1, type: 3}
 --- !u!4 &6293626985704143049 stripped

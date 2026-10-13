@@ -78,6 +78,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
             _moved = 0.0;
         }
 
-        public override string ToString() => $"{Charge:0.##}/{Capacity:0.##} J ({Fraction:P0})";
+        public override string ToString() => $"{Units.Joules(Charge)} / {Units.Joules(Capacity)} ({Fraction:P0})";
     }
 }

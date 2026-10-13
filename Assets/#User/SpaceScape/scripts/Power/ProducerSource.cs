@@ -19,6 +19,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
 
         public void ProvidePower(PowerNode node, double seconds) => _producer.ProducePower(seconds);
 
-        public override string ToString() => $"producing {_producer.WattsProduced:0.##} W";
+        public override string ToString() => $"producing {Units.Watts(_producer.WattsProduced)}";
     }
 }

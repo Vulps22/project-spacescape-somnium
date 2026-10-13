@@ -1,3 +1,9 @@
+---
+aliases:
+  - "Principles"
+tags:
+  - rules
+---
 # Principles
 
 The rules the design rests on. Each one was arrived at by working a mechanic through, and each one is
@@ -22,7 +28,7 @@ So every readout is **local to one station or one place in the ship**, and delib
 visible. No shared HUD. No god-view status screen. The moment a screen exists that shows everyone
 everything, the game is deleted.
 
-This is also why **instrumentation is a progression axis** (see `power.md`, fittings): every other
+This is also why **instrumentation is a progression axis** (see [[power]], fittings): every other
 game's upgrades make you stronger, these make you *less blind*.
 
 ## 3. Crises are self-inflicted, never rolled
@@ -49,7 +55,7 @@ consequences of a mismatch are the player's.** Run a T5 drive on a T1 reactor an
 and you risk overheating. Upgrade to a T10 reactor and jump into eternity. Both are fine. The design
 does not have an opinion.
 
-See `open-questions.md` → Rejected, so this does not get re-proposed.
+See [[jump-drive#Tried and rejected|jump-drive → Tried and rejected]], so this does not get re-proposed.
 
 ## 5. Priority is physical, never a setting
 
@@ -75,7 +81,7 @@ between what the cable count says and what the grid does is the entire reason to
 ## 6. An upgrade may extend reach, but confidence must decay with distance
 
 **Decided**, and it is the general solution to the automation problem. The worked example is the nav
-scanner's JPR stat (`the-loop.md`): a higher tier shows you routes further out, but confidence falls
+scanner's JPR stat ([[the-loop]]): a higher tier shows you routes further out, but confidence falls
 off with distance, so **there is always a frontier where a human has to guess.**
 
 A better scanner does not plan your route. It gives you bad data further away. The navigator's job

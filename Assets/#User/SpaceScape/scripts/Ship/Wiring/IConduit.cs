@@ -53,11 +53,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     public sealed class TileConduit : IConduit
     {
         private readonly Func<Vector3Int, GridNode> _tileAt;
+        private readonly Func<GridNode, bool> _removeAddon;
 
-        public TileConduit(GridNode tile, Func<Vector3Int, GridNode> tileAt)
+        /// removeAddon takes the addon off through the conduit's cell (ConduitCells), which then takes it off the tile;
+        /// left out, it is taken straight off the tile.
+        public TileConduit(GridNode tile, Func<Vector3Int, GridNode> tileAt, Func<GridNode, bool> removeAddon = null)
         {
             Tile = tile;
             _tileAt = tileAt;
+            _removeAddon = removeAddon;
         }
 
         public GridNode Tile { get; }
@@ -107,7 +111,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         public bool RemoveAddon()
         {
             var slot = Slot;
-            return slot != null && slot.Remove() != null;
+            if (slot == null || slot.Addon == null || slot.Addon.Item == null) return false;
+            if (_removeAddon != null) return _removeAddon(Tile);
+            return slot.Remove() != null;
         }
 
         public bool PairsOutward(GridDirection face)

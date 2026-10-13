@@ -1,12 +1,20 @@
+---
+aliases:
+  - "Power, heat and the machine"
+tags:
+  - system
+---
 # Power, heat and the machine
 
 The spine of the game. Everything here is implemented in `Assets/#User/SpaceScape/scripts/Power/` as
-plain C# with **no Unity references**, and is covered by 242 tests that run outside the Editor
-(`dotnet run` against the real source files, see `README.md`).
+plain C# with **no Unity references**, and is covered by the sim tests that run outside the Editor
+(`dotnet run` against the real source files, see [[README]]).
 
-Status markers: **Decided** — settled and built. **Open** — see `open-questions.md`.
+Status markers: **Decided** — settled and built. **Open** — not settled; each sits in its section.
 
 ## The grid is tiles
+
+**Status (2026-09-26):** built, tested in-world.
 
 **Decided.** Everything on the grid is the same kind of thing: a **tile**, one unit square, centred
 on an integer coordinate. A battery, a cable, a bulb and a splitter differ only by what is attached
@@ -57,6 +65,8 @@ remainder carrying on to the next one. That only worked because components were 
 they never are. Priority now comes from **branch depth and cable count**, nothing else.
 
 ## The flow model
+
+**Status (2026-09-26):** built, tested in-world.
 
 **Decided.** One rule, applied to every tile:
 
@@ -115,7 +125,22 @@ Double-buffered: every node reads last tick's conduits and writes to a fresh buf
 cannot matter and a tile can be added or removed mid-tick without a topological sort. Flows are
 recomputed from scratch every tick, so nothing drifts.
 
+### Conduits come and go
+
+**Status (2026-10-12):** built, sim tests pass; run in play mode, untested in-world.
+
+Conduits are installed and taken out while the ship runs ([[conduits#Cells|conduits → Cells]]), so the grid takes
+tiles at runtime: `PowerGrid.AddTile` registers a tile, maps its cells and wires it to its neighbours;
+`RemoveTile` takes it and every edge into and out of it away, and the nodes after it are renumbered.
+
+**The ring search runs only when the links change.** Finding rings (Tarjan's strongly connected components) walks
+every node and allocates, so its merge points are kept until `PowerNode.LinkRevision` moves: a node added or
+removed, a conduit joined or cut, a switch, a pop or a repair. On a grid that is not changing a tick allocates
+nothing (sim test). With the starting layout (277 nodes) `PowerGrid.Update` costs about 0.14 ms a frame.
+
 ## On, off, and wrecked
+
+**Status (2026-09-26):** built, tested in-world.
 
 **Decided.** Three different things, and conflating them caused real bugs.
 
@@ -160,7 +185,7 @@ a loop compounds on every lap. Conservation: `in = drawn + blocked + passed`, wi
 
 **A ring of conduits blows its merge point.** A cycle made only of forwarding tiles would circulate
 power forever, so the tile where power enters the ring is severed the tick power reaches it. A loop
-through any component is not a ring. See `modules.md` → One tick.
+through any component is not a ring. See [[modules#One tick|modules → One tick]].
 
 **Wrecked means broken, not removed.** A destroyed component stays wired in, keeps being fed, and
 does nothing with it — so it becomes a dead end cooking its own compartment. Busted pistons, engine
@@ -168,6 +193,8 @@ still running. Whether a wrecked thing does anything is asked in exactly one pla
 (`PowerNode.IsWrecked`, consulted by the graph), so every source and sink type gets it free.
 
 ## Sinks: everything is a load
+
+**Status (2026-09-26):** built, tested in-world.
 
 **Decided.** There is one sink type. A bulb, a helm and a gun differ only in their numbers.
 
@@ -207,6 +234,8 @@ A full accumulator stops drawing. Everything topped up means maximum surplus mea
 `WattsWanted` returning zero when full.
 
 ## Sources: producing and providing are different
+
+**Status (2026-09-26):** built, tested in-world.
 
 **Decided.** Two interfaces, because a battery is a source that produces nothing.
 
@@ -255,9 +284,10 @@ tick, and the 100 W it could not bank is heat on the cell. It never passes arriv
 | **safety** | does this run reach a component? | no | keeps pushing |
 | **smart** | is anything *asking*, and at what rate? | no | **stops** |
 
-**Open:** since the reachability rule, plain and safety behave the same, because the grid itself now
-refuses dead runs. The bottom rung needs a new question, or the ladder becomes two tiers. Smart still
-earns its place: it stops at a sated grid, where the other two keep pushing into full components.
+> [!question] Open
+> Since the reachability rule, plain and safety behave the same, because the grid itself now
+> refuses dead runs. The bottom rung needs a new question, or the ladder becomes two tiers. Smart still
+> earns its place: it stops at a sated grid, where the other two keep pushing into full components.
 
 The graph marks `ReachesConsumer` and `ReachesDemand` on every node in one backward walk per tick,
 from each receiver's feeders — not the receiver itself, so a battery never counts its own intake as
@@ -265,13 +295,20 @@ somewhere to deliver — and stops at components, since power does not pass thro
 
 ## Heat
 
+**Status (2026-09-26):** built, tested in-world.
+
 **Decided.** Heat is the price of waste.
 
 ```
-gain     Dumped × 0.05 °C per watt-second     (a wasting tile never cools)
+gain     Dumped × 0.00005 °C per watt-second  (a wasting tile never cools)
 shed     0.2 °C/s while not wasting           (down to its baseline, ambient by default)
 conduct  4.0 × the excess per second, per conduit
 ```
+
+**On the new scale of power (2026-10-12, Vulps):** the gain was 0.05 °C per watt-second when everything was in watts.
+With batteries and reactors in kilowatts and megawatts, a plain S1 battery (67 kW) feeding an S2 reactor's 8 kW of
+magnets put about +3,000 °C a second on the reactor, and every conduit between them popped at once. Divided by
+1,000, 59 kW wasted heats a tile about 3 °C a second, as 59 W used to. Sim test: `BatteryIntoReactorDoesNotFlashPop`.
 
 ### A tile can be meant to be hot
 
@@ -304,9 +341,22 @@ order matters and what one loses is exactly what the next gains.
 flat 1 °C/s and heat died two tiles from the source, because a five-tile run has five times the
 shedding capacity.
 
-**Heat has no ceiling and that is deliberate** — see the flash point note in `open-questions.md`.
+**Heat has no ceiling and that is deliberate.** A tile that is wasting power never cools, so its
+temperature climbs without bound. This is **not a bug and must not be "fixed" with a cap.** It is the hook
+for fire: at some flash point the tile ignites, and fire becomes a hazard in its own right that spreads,
+threatens the crew, and needs putting out rather than rewiring. Until fire exists, the pop roll is the only
+thing that ends the climb: a conduit severs and stops drawing, or a component is worn down to nothing. Both
+stop the tile being fed, so it cools. When fire is built, the seam is `PowerNode.Celsius` and a threshold
+beside `PopFloorCelsius`.
+
+**Heat and failure are invisible in the scene** (concern). Temperature shows on the debug labels and nowhere
+else. Cable colour still ramps on **load**, so a cooking conduit looks identical to a healthy one and a blown
+one looks perfectly normal while silently carrying nothing. `Popped`, `Damaged` and `Lost` all fire and nothing
+listens.
 
 ## Failure
+
+**Status (2026-09-26):** built, tested in-world.
 
 **Decided.** One hazard, two outcomes.
 
@@ -318,9 +368,14 @@ chance/tick = 1 − exp(−hazard · seconds)
 The exponential is a hazard rate rather than a clamped linear chance: memoryless, never exceeds 1,
 and composes correctly over time.
 
-**`k` is never exposed.** The only dial is `PopSecondsAt100WAnd120C = 30`, which reads as what it is,
-and `k` is derived. Measured over 400 runs: 30 s dial → 31.0 s mean; 5 s dial → 5.3 s; half the power
-→ 60.3 s. Below `PopFloorCelsius = 50` nothing fails at all, verified with 5 kW at 49 °C for 1000 s.
+**`k` is never exposed.** The only dial is `PopSecondsAtReference = 30`, how long a tile carrying
+`PopReferenceWatts` at `PopReferenceCelsius` lasts, and `k` is derived. On the new scale of power (2026-10-12) the
+reference is **100 kW at 450 °C** (it was 100 W at 120 °C). Measured over 400 runs: 30 s dial → 31 s mean; 5 s dial →
+5.3 s; half the power, about twice as long. Below `PopFloorCelsius` nothing fails at all: **250 °C** (Vulps,
+2026-10-12; it was 50 °C, chocolate), where a mineral-insulated cable's insulation starts to suffer. Verified with
+5 MW at 249 °C for 1000 s. The thermal shielding upgrade raises it ([[conduits#Upgrades thermal shielding|conduits → Upgrades: thermal shielding]]).
+The grid's older mechanics tests still run on the old settings, as they use old-scale numbers (`OldScale` in the
+sim test).
 
 Damage measures **what a tile is minus what it should be**, so a reactor is only ever damaged for
 running *hotter than its rating*, never for running.
@@ -358,27 +413,84 @@ sits on.
 Three events for the scene: `Popped` (a conduit severed), `Damaged` (a component took a hit — the
 hook for damage stages), `Lost` (condition reached zero).
 
+> [!question] Open
+> - **What is the player's counter to a thermal cascade?** A cascade decapitates: a fault on any branch kills the
+>   source about ten seconds later, so a breaker protects upstream, not the branch it sits on. That makes breakers
+>   close to mandatory rather than optional, which is worth deciding on purpose.
+> - **Can a switched-off component be damaged by heat?** A tile that is off carries no current, so its hazard is
+>   zero and you could protect something from a fire by flipping its switch. A *wrecked* component is a different
+>   case and is already handled: it stays wired in, keeps being fed, keeps wasting, and keeps taking rolls.
+> - **Is the misfire curve right at the edges?** `FailureChanceWhenSpent = 0.5`, scaling from zero at the 20% worn
+>   line. At 2% condition that is 95 misfires in 200 cycles, which may be past the point of being recoverable.
+
+**Two runaway loops is the budget** (concern). Conduit cascade and reactor feedback can already trigger each
+other. A third positive feedback system would make failures unreadable.
+
+## Networking
+
+**Status (2026-09-28):** written, compiles clean, sim tests pass; tested in-world with many players (2026-09-29).
+The rules are in [[networking#Rules|networking → Rules]].
+
+**Decided 2026-09-28.** Every client runs the grid from the same state. The master alone rolls pops
+and damage. Each component carries a `NetworkBridgeData` with its charge, heat, integrity, fuel and
+coolant, and the conduits' heat travels in the conduit cell chunks; the master writes both a few times a
+second and everyone else moves toward them, simulating in between so nothing steps. Conduit flow and
+charge are never sent: every client derives them by running the sim.
+
+Heat is sent because it is what players read (the glow, the meters), and rule 11 says readouts agree.
+It also means a joiner's cables are right from the first frame, not cold until they catch up.
+
+What it needs:
+
+- the tick counted from Fusion's network tick, not `Time.deltaTime`, so every client ticks the same
+  number of steps
+- pops and damage taken out of the local tick on non-masters, applied only when the master says
+- the component values as scaled ints, written a few times a second
+
+**Failures on the master only.** `PowerGraph.DecidesFailures` is false on every networked client but the master: heat pops, the
+damage they do and rings blowing are rolled once, by the master, and reach everyone through the
+conduit cell chunks and the components' state. A misfire (a worn load failing to start) is still rolled
+locally; the load's state is corrected four times a second, so it cannot drift far.
+**The grid still ticks on `Time.deltaTime`, not the network tick.** The corrections (4 times a
+second) already bound any drift from clients ticking at slightly different rates. Revisit if two
+clients visibly disagree between corrections.
+
+| State | Tier | Decided by | Travels as |
+|---|---|---|---|
+| A component's charge, heat, integrity, fuel, coolant, dial | fact (correction) | master | a `NetworkBridgeData` on the component |
+| Conduit heat | fact (correction) | master | its 16 bits in its cell's entry in the conduit cell chunks, 4 times a second |
+| Conduit flow and charge | derivation | nobody | not sent; every client runs the sim |
+| A conduit popping | fact | master rolls it | popped bit, plus a message for the effect |
+
 ## What is not built
 
+**Status:** not built.
+
 Breakers, conduit capacity, fire, and the fuel rack and coolant pad as real inventory. The reactor
-**is** built — see `reactor.md`. See `open-questions.md` for what is undecided.
+**is** built — see [[reactor]].
+
+**Conduit capacity** (worked through and parked). The viable shape is a **restrictor**: a cable carries at
+most its rating and the excess dumps as heat at the fork. The two alternatives both cascade the instant one
+cable is mismatched, with no player input at all. Capacity would make thin cable a deliberate regulator whose
+ratio is visible as thickness (the answer to "no 70/30 splitter"), at the cost of heat at the junction.
 
 ## Open: the scale of every number (logged 2026-10-08)
 
 Every rating is far too small for what the parts are. A battery the size of a person putting out 100 W
-feeds a disruptor **cannon**; the reactor, the biggest component in the game, makes at most 1 MW. Watts,
+feeds a disruptor **cannon**; the reactor, the biggest component in the game, makes at most 1 kW (1000 W). Watts,
 capacities and draws all need rebalancing and scaling up together, so the ratios that make the puzzle
 (duty cycle, heat, priority) survive. Until then new parts take numbers in today's scale: the loader draws
 50 W.
 
-## Open: the battery tier ladder
+**Batteries first (2026-10-10):** the battery capacities are set in the new scale
+([[battery#Capacities (Vulps and Claude, 2026-10-10)|battery → Capacities]]). The rest follows them. Jump drive charges
+and reactor output and heat are set too ([[jump-drive#Sizes|jump-drive → Sizes]],
+[[reactor#Output and heat (Vulps, 2026-10-11)|reactor → Output and heat]]).
 
 
-Plain and safety cells now behave the same, since the grid refuses dead runs itself. The bottom rung
-needs a new question, or the ladder becomes two tiers (`power.md` → Three cell tiers, `principles.md`
-10).
+## Why no conduit popped
 
-## Why no conduit popped (from the 2026-09-29 in-world test)
+**Status (2026-09-29):** a finding from the in-world test.
 
 **Not a networking bug; the ship as wired never got a conduit hot enough.** The master does roll (the 01:51
 log has the reactor `Damaged()`, which only a rolling grid does). The scene's layout rebuilt in the sim
@@ -393,3 +505,10 @@ Open: should a running reactor's input keep taking a cell's full discharge as he
 `DiodeStopsControlPowerLeakingOut` is the nearby case. One thing the sim did not match: in-world the log said
 the reactor was wasting 180 W (its own 80 W too), where the sim wastes 100 W; worth a look if the reactor ever
 seems to have no outlet.
+
+## Tried and rejected
+
+- **Throughput heat.** Segments heating by what flows through them. Physically correct, and it would make the
+  trunk the permanent answer to "what blew up". Dump heat only.
+- **Integer milliwatts instead of doubles.** Not needed: flows are recomputed from scratch every tick rather than
+  accumulated, so nothing drifts. Verified: 200 randomly generated grids all conserve to 1e-6.

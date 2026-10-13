@@ -15,21 +15,32 @@ A feature that works for one player and has not had that conversation is not rea
 
 ## Where things are
 
-- `docs/README.md`: the project, how to run the sim tests, and Editor gotchas.
-- `docs/principles.md`: the design rules. Read first.
-- `docs/grid.md`: slot sizes and the rules for sizing and placing components on the grid.
-- `docs/conduits.md`: where conduits come from, parked vs wired, and what each one costs.
-- `docs/assets.md`: Asset Store packs in the project, with their store links.
-- `docs/networking.md`: the networking plan: authority rules, steps, and notes as we go.
-- `docs/2d.md`: how a mouse-and-keyboard player does everything a VR player does. Draft.
-- `docs/polish.md`: **the current focus**: what the first many-player test turned up, and why.
+- `docs/README.md`: the project, and every doc grouped by kind. `docs/principles.md`: the design rules. Read first.
+- **Planning docs are thin:** `docs/todolist.md` (one line per item, pointing to its doc; removed when done),
+  `docs/polish.md` (what the many-player test turned up), and the arcs `docs/the-loop.md` and `docs/flight.md`.
 - **Next, and to be insisted on (2026-10-09): `docs/component-models.md`**, replacing every component model in the
   loader's look. Only a major bug comes before it.
-- `docs/todolist.md`: what is queued, one line per item pointing to its topic doc. Removed when done.
-- **One topic, one doc.** Everything about a topic, including what was tried and failed, lives in its doc:
-  `conduits.md` (conduits, holograms, addons, rings, cost), `data.md` (data, logic boards), `radar.md`,
-  `ship-structure.md` (containers, access panels, GridPin, rooms, corridors), `weapons.md`, `repair.md`,
-  `reactor.md`, `loading.md`, `power.md`, `grid.md` (slots, components, carrying), `component-hologram.md`, `modules.md`, `interaction.md`,
-  `training-room.md`, `felix.md`, `component-models.md`, `flight.md`. When an item is refined, its notes go into its topic doc, never the to-do list.
+- **One topic, one doc, and text is moved, never copied.** Everything about a thing, including what was tried and
+  failed, lives in its own doc; anywhere else that needs it links there in a sentence at most. A rough idea in a
+  planning doc moves out to its doc once refined. Links point from the specific to the general: a component or
+  conduit doc links to `grid` and `slots`, never the reverse, and a component's doc says which sizes it comes in.
+  - Components: `battery`, `reactor`, `jump-drive`, `radar`, `weapons`, `loader`.
+  - Conduits: `conduits` (the shared core), `item-conduit`, `addon`. Items: `fuel-rod`, `packs`, `addon`.
+  - Structure: `grid`, `slots`, `ship-structure`. Systems: `power`, `data`, `damage`.
+  - Mechanics: `loading`, `repair`, `navigation`. Interaction: `interaction`, `2d`, `component-hologram`, `training-room`.
+  - Game: `galaxy`. Easter eggs: `felix`. Tech and art: `modules`, `networking`, `tooling`, `component-models`.
+    Reference: `assets`, `credits`.
+- **A doc holds today's state and the refined plan,** each section or size with its own status line under a short,
+  stable heading (`**Status (date):** proposed / refined / built, untested in-world / tested`). Sizes are titled
+  `S1: Name` when they have a name (`battery.md` is the model). Each thing's networking is under its own
+  **Networking** heading; `networking.md` holds only the shared rules and plumbing.
+- **`docs/` is an Obsidian vault.** Link docs as `[[conduits]]`, a section as `[[networking#Rules|networking → Rules]]`
+  (Obsidian drops `:` from heading anchors), a bullet by a block id (`^no-commands`). **Inside a table, escape the
+  alias pipe** (`[[slots#S1\|S1]]`), or the table splits there and Obsidian's editor reshuffles the columns. Unsettled points are callouts:
+  `> [!question] Open`, `> [!info] Proposed`, `> [!warning] Pinned / Untested`, `> [!info] Networking`.
+  A new doc gets frontmatter `aliases` (its title) and `tags`: every kind it defines behaviour for, from `component`,
+  `conduit`, `item`, `structure`, `system`, `mechanic`, `interaction`, `game`, `easter-egg`, `tech`, `art`, `rules`,
+  `arc`, `tracking`, `reference`, `index`. Components get `sizes` (`S0` to `S5`, every size the doc covers at any
+  stage). Status is never doc-wide: each section or size carries its own. `Docs.base` has a view per kind. To-do items are `- [ ]`.
 - Scene: `Assets/#User/SpaceScape/SpaceScape.unity`. Code: `Assets/#User/SpaceScape/scripts/`.
   Editor-only tools: `Packages/com.spacescape.editor` (never uploaded).

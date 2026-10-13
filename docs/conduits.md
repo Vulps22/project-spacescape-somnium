@@ -1,58 +1,91 @@
+---
+aliases:
+  - "Conduits"
+tags:
+  - conduit
+---
 # Conduits
 
-**Written 2026-10-02.** What a conduit is once the ship is built out: where conduits come from, what a
-parked one is, and what each one costs. Status per section; the cost work is on branch
-`parked-conduits-as-data` (named before the plan changed: parked conduits are **not** data, see below).
+The conduit core every kind of conduit shares: where conduits can be installed, the cells they live in, the
+hologram, segments, and what each costs. Each kind of conduit has its own doc: [[item-conduit]] carries items, and
+power conduits are what most of this doc describes. What goes in a conduit's addon slot is [[addon]].
 
-## Conduits are everywhere a crew might need one
+## Cells
 
-Components can be moved and replaced during play, and a new component's ports can be anywhere on its faces
-(`grid.md`: swapping a component can mean re-running cables). Cables run for one component cannot follow it.
-So **every cell a crew might route through holds a conduit, parked until someone wires it**:
+**Status (2026-10-12):** built (Conduits V2), compiles clean, run in play mode on one client; untested in-world.
 
-| Where | How | Status |
-|---|---|---|
-| Inside walls | a `ConduitLayoutDefinition` on each conduit container fills its block | built |
-| Hand-drawn runs | `ConduitLayout` on Grid (the drawing tool): the ship's starting wiring | built; to change |
-| Around every slot | one cell around the slot's faces, so any component's ports have a conduit beside them | planned |
-| Along every floor | **the layer of cells immediately above the floor, all parked** (centred at y 0, on a floor whose top is y -0.25): one definition per room or corridor, to route across it | rule decided; definitions not placed |
+**A conduit exists only where the crew installed one.** Nothing is pre-placed and nothing fills the walls: the ship
+holds a list of installed cells, and the grid, the effects and the data network only ever see those.
+`ConduitCells` (on Item Conduits) is that list, keyed by cell, for both kinds:
 
-**Definitions route round slots.** A cell inside a component slot's volume is left out of every definition, in
-the Editor's gizmos and when the world builds its conduits: a slot's volume is reserved (`grid.md`). So a
-floor's layer runs round the slots standing on it, and a slot's own definitions (one on each face, on the slot
-prefab) supply the conduits beside its ports. Where a floor's cells and a slot's face cells overlap, the cell
-gets one conduit.
+| Per cell | |
+|---|---|
+| Kind | power or item: **one kind per cell** |
+| Faces | which of the six faces a segment is on |
+| Out | power only: which of those faces are Out; every other used face is In. Item conduits have no arrows |
+| Addon | an id in `ConduitLayout`'s **Addons** list, shared by both kinds and only ever added to |
+| Addon state, facing, turns, parked | the addon's own state and how it sits |
+| Popped | power only |
+| Heat | power only, sent for readouts |
 
-**Rings (built 2026-10-03).** Two runs come pre-wired along the walls, like a building's ring main: at the
-layout's **Ring Heights** (1 m and 2 m), every cell of a definition that **Carries Rings** (wall containers and
-corner pieces) is traced from one open end to the other: down a corridor, round the room, back up the other
-side. The first height runs one way, the next the other, so power can reach any point from either direction.
-A run never closes into a loop: a closed one-way loop is a ring that blows (`power.md`), so a height whose
-cells close or branch is left parked, with a warning. Everything else stays parked.
+**Two carriers read it.** `PowerConduits` makes a tile (`Conduit.prefab`: `GridNode`, `ConduitBehaviourModule`,
+`AddonModule`, `Conduit`, `NodeEdgeModule`) for every installed power cell and adds it to the grid
+(`PowerGrid.AddTile`), changes it when the cell changes, and destroys it (`RemoveTile`) when the cell goes. So
+addons, the voltmeter, pops and repair work on it as on any tile. `ItemConduits` draws tubes and moves items for
+the item cells. **The cell is the truth:** a hologram commit, an addon going in or out, a switch press and a pop all
+change the cell first, and the carrier follows.
 
-**The layout definitions are the ship's grid.** `ConduitLayout`'s drawing tool will become the way to wire the
-definitions' cells (the starting wiring painted onto conduits that are already there), not a way to put
-conduits anywhere. Eventually no drawn run exists outside the cells the definitions hold.
+### Installing
 
-Whether a slot's shell is exposed or behind housing panels is not decided.
+**Status (2026-10-12):** rules 2, 5 and 6 refined with Vulps after the first try in-world, and built; untested
+in-world. The empty cell's parked conduit is `ConduitCells.PendingAt`; uninstalling is `ConduitCells.UninstallLoose`,
+which the master runs after every edit, as a hologram closes (its own, or another player's by messages 5 and 6), and
+twice a second (a component taken away can leave a conduit with nothing pointing in).
 
-**Grown instead of pre-placed (idea, 2026-10-08).** Item conduits (`loading.md` → Item conduits) are not
-placed in every cell: a run grows from a port, and only its open tip has a parked node. If that works well, it
-could one day replace pre-placing parked conduits everywhere.
+1. **A cell can take a conduit only where something points into it:** a port's face, or an installed conduit's
+   segment. Any installed conduit counts, whether or not its run still reaches anything, so a break can be rebuilt
+   from either side.
+2. **An empty cell opens as a parked conduit:** every segment parked, its handles in the middle, nothing drawn in
+   the cell. It is taken to be a **power conduit** unless a segment is unparked onto a face toward an item port or an
+   installed item conduit, which makes it an item conduit. Unparking a segment pairs its arrow as any parked segment
+   does ([[#Segments]]): toward a neighbour's Out it is In, toward a neighbour's In it is Out, toward nothing it is Out.
+   A fully parked conduit is decided again the same way when a segment is unparked, unless it holds an addon only a
+   power conduit takes (anything but a junction): then it stays a power conduit.
+3. **Never** inside a slot's volume, in a cell another tile fills, or behind a shut access panel.
+4. **Both kinds pointing in:** an installed conduit's segment wins over a port, and power wins a tie.
+5. **A parked conduit takes an addon** like any other: an addon let go in its slot goes in, and the conduit is
+   installed with it, still fully parked.
+6. **Parked is not grounds for uninstalling.** A conduit should be uninstalled only when it is fully parked **and**
+   nothing (no port, no installed conduit's segment) points into it. Even then it waits for the hand: it is
+   uninstalled only once its hologram closes (the hand leaves the cell). **Only then** does an addon or upgrade in it
+   drop out as an item where the conduit was, as one taken out by hand does. A parked conduit with something pointing
+   into it stays installed and keeps its addon.
+7. **At most 1,000 cells** of both kinds together (`Max Cells`).
 
-## Parked and wired
+> [!info] Networking
+> Only the master uninstalls (`ConduitCells.Decides`), so a conduit goes and its addon drops once. It knows every open
+> hologram: its own, and everyone else's from messages 5 and 6 (a player leaving closes theirs). The dropped addon is
+> spawned by the master where the conduit was (`ConduitCellNetwork`), a junction keeping its count; with no network it
+> is made locally. Everyone else sees the cell go in the chunks.
 
-**A parked conduit is still there:** an object, a grid node, a network slot, like any other conduit. It just
-has no segment on any face, so it **draws nothing and does nothing**. It waits for a hand.
+### Access panels
 
-- **A hand in its cell opens its hologram.** `ConduitHolograms` finds the conduit from the cell the hand is
-  in (a dictionary lookup), so conduits never check for hands themselves.
-- **Wiring it** (a segment onto a face, or an addon in) makes it a cable: its stubs show, and it carries
-  power and heat like any other.
-- **Parking every segment again** makes it invisible and idle again. It stays where it is.
-- **A shut access panel** in front of it stops its hologram opening (`AccessPanel.Blocks`).
+A shut panel (`AccessPanel.Blocks`) still covers its cells: no hologram opens there and the master refuses a faces,
+addon or pose edit in them. A switch behind it can still be pressed: an addon's state goes through. What a panel
+covers is its own **Cover**: a block of cells along its own axes, centred on its **Cover Origin** (an empty child
+where the conduits run), leaving out any cell inside a slot (`ComponentSlot.InSlot`).
 
-## What a conduit costs (in progress)
+### The starting layout
+
+The ship starts with the hand-drawn wiring in engineering ([[#Drawn conduits]]). When the world starts, the master
+seeds `ConduitCells` from `ConduitLayout`'s drawn cells: they are grouped into runs (two cells are joined where each
+has a segment on the face between them), and a run is kept if any of its segments points into a slot or a component.
+The rest, drawn runs that start and end with nothing, are left out, with one log line saying how many.
+
+## What a conduit costs
+
+**Status (2026-10-07):** in progress, on branch `parked-conduits-as-data` (named before the plan changed: parked
+conduits are **not** data).
 
 The aim: **a parked conduit costs nothing**, and a wired one costs its drawing and its grid node, doing work
 only when something actually changed.
@@ -67,7 +100,7 @@ only when something actually changed.
 | Data pulse (debugging) | - | on a network that reaches a component's data port but joins no second component (`DataGrid.Reaches`): pulses from its own colour to Data blue over 2.5 s, back over 2.5 s, then rests 3 s (all three on the prefab; off with Pulse Where Data Reaches). One pulsing twin per colour band, animated once a frame, so every pulse is in step |
 | Name | set once, when built | set once |
 | Grid | a node with no edges | a node, joined to its neighbours |
-| Network | one slot in the conduit chunks | same |
+| Network | its cell's three ints in the conduit cell chunks | same |
 
 ### When a conduit updates
 
@@ -91,20 +124,13 @@ them. That is fine for hundreds of conduits and not for thousands.
 **Measuring it:** spawn the world with every conduit wired in one line and watch the frame rate. Not built;
 eyeballed for now.
 
-## Networking
+## The hologram
 
-Unchanged by any of this. Every conduit, parked or wired, is one slot in `ConduitNetwork`, numbered by cell
-in the same order on every client; the master writes every slot's faces and heat to the conduit chunks and
-everyone follows. A hand on a non-master client sends its edit to the master. Parked or wired is just what
-the faces say, so it reaches everyone and every late joiner the way any edit does. Hologram occupancy is
-shared as before (`ShipNetwork`).
+**Status (2026-10-07):** built; hover feedback untested in-world.
 
-## Live wiring: holograms, segments, addons (design 2026-09-26, built)
+Changing the ship's wiring while it runs, by hand. 
 
-
-Changing the ship's wiring while it runs, by hand. Design in progress (2026-09-26).
-
-#### Opening a conduit
+### Opening a conduit
 
 A hand inside a conduit's cell **holds it open**, and **the same hand can configure it** (changed
 2026-10-03: players kept grabbing the handles with the holding hand, which used to be ignored). A second hand
@@ -121,7 +147,7 @@ hand is inside one; segment handles, arrows and the addon handle swell while XRI
 (hovered) or has hold of them. They all share `ConduitHolograms`' Hover settings (grow 25%, over 0.12 s).
 This is local feedback only: no other player sees it.
 
-#### Segments
+### Segments
 
 A conduit has a **fixed number of segments**: two for a plain conduit. Each segment is either on a
 face or parked. The hologram shows, on every segment:
@@ -147,90 +173,24 @@ A conduit connects **only through its segments**; it no longer accepts power on 
 not an output. What you see is what is wired. The existing scene's conduits get their two segments
 from the faces they actually use.
 
-#### Addons and upgrades
+### The addon slot and the upgrade circle
 
 The hologram also has two slots:
 
-- **an addon box:** a small addon item the player installs, which applies to **this tile only** and
-  reshapes the conduit to suit it:
-  - **switch**: turns the conduit into a rocker switch (`RockerSwitch`). The rocker *is* the
-    switch; there is nothing else to operate
-  - **Junction +1 to +4**: one to four extra segments (3 to 6 in all), shown by a small box on the
-    conduit. Splitters and mergers are gone: a junction's arrows make it a split, a merge, or
-    anything else.
+- **an addon box:** one addon item, which applies to **this tile only** and reshapes the conduit to suit it.
+  What each addon does: [[addon]].
 - **an upgrade circle** above it: applies to the **whole branch**. Planned: coolant (see *Coolant upgrade for
-  branches*) and data (`data.md`). Items are not an upgrade: they travel in item conduits (`loading.md`).
+  branches*) and data ([[data]]). Items are not an upgrade: they travel in [[item-conduit|item conduits]].
 
-**How an addon is built (2026-09-26, slot flow 2026-09-27).** An addon only ever *adds* to the cable,
-never replaces it. Every conduit carries an `AddonModule`: the addon slot. Its **Installed** field is
-an addon prefab (the rocker is `RockerSwitch.prefab`, carrying `SwitchAddon`), and the module puts it
-on the cable at its **Mount** when the world starts, so **nothing of it is in the scene while
-editing**; a gizmo shows where it will be. `ConduitBehaviourModule` asks it questions (`Conducts`,
-`ExtraSegments`, the unlock point) and stays the only writer of the tile.
-
-The **carried item** (`Conduit Addons/Switch Addon.prefab`) is an `AddonItem`: a grab and a
-rigidbody that stays where it was put until a hand first takes it. The two prefabs point at each
-other: the item's **Installs** is the rocker, and the rocker's **Item** is the item.
-
-- **Taking one out:** an open conduit's hologram shows the installed addon's item, small, in the
-  addon slot. Grabbing it takes the addon off the cable; the item comes away full size in the hand.
-  A plain conduit conducts, so taking an open switch out closes the line.
-- **Putting one in:** let go of an item within **Install Radius** of an open, empty addon slot.
-- **A newly installed switch starts open**, since that is how the scene's cold-start switch began.
-
-**Repositionable addons (2026-09-27).** An addon with **Repositionable** ticked gets a capsule handle
-in the hologram, beside the segment handles. It is not a segment: it carries no power, and moving it
-is not rewiring. `ExtraSegments` is the other thing an addon can add, and the two are separate.
-
-- **Swing** it to any free face (one no segment is on; segments cannot take its face either).
-- **Twist** the wrist while holding it to turn the addon about the way it faces, in quarter turns
-  with a tick, counted from how the hand was turned when it took hold. The capsule stands along the
-  addon's up, so the twist reads at a glance.
-- **Park** it in the middle: the addon is off entirely and tucked away, the conduit is plain cable,
-  and the addon stays installed. A parked switch keeps its position for when it comes back out.
-- `AddonModule` stores **Facing**, **Turns** and **Parked** as plain fields. A newly installed addon
-  faces the free side nearest the player's head.
-
-**Hologram locks** are asked, not read: `ConduitBehaviourModule.ShouldBeLocked()` is virtual and asks
-the addon slot, which asks its working addon (`ConduitAddon.ShouldLockHologram()`, also virtual). A
-parked addon asks for nothing, since its unlock point is tucked away with it. The upgrade slot joins
-the same question when it is built, and a conduit with its own behaviour can override it and ask base
-first. The unlock cube was 2.5 mm, its scale applied twice; it is 10 cm on trial.
-
-An addon with something to press ticks **Require Hologram Unlock** and sets an **Unlock Transform**:
-the conduit then opens only after a hand passes through a pulsing cube there. With no transform set,
-the tick is dropped at `Awake`.
-
-**Voltmeter (written 2026-10-07, untested).** `VoltmeterAddon` on `Conduit/VoltMeterModule.prefab`
-shows the watts its conduit carries (`Inflow`), scaled to three digits and a unit: 450 W, 1.2 kW,
-85 MW. Over 900 GW it reads "Holy / Shit". It changes nothing about the cable and has no state
-(`NetworkState` 0): every client works the reading out from the same sim. It draws through `Readout`
-(`modules.md` → *Readouts*). Conduits themselves no longer carry text; a meter is how you read one. Its item is
-`Conduit Addons/Voltmeter Addon.prefab`, built like the switch's; it is addon 3 in `ConduitLayout`'s list.
-
-**Item dispensers (written 2026-10-07, untested).** `ItemDispenser` (scripts/Networking) puts an item
-(any `Item`: an addon item, or a loadable item like a fuel rod, `loading.md`) in its box collider whenever nothing solid is in the box: take one out and another appears. A new item hangs
-where it appears, out of physics (kinematic), until a hand first lets go of it; from then on it is an
-ordinary physics object for good (`Item.OnLetGo`). The item is a
-prefab set on the dispenser in the scene, and must be registered on SceneNetworking. A variant, like a +4
-junction, is the same prefab with the dispenser's **State** set (-1 keeps the prefab's own): the master
-spawns it and so holds its authority, and `AddonItemStateNetwork` carries the state to everyone. Only the master looks
-and spawns, through `WorldManager.Spawn`, so everyone, late joiners too, has the same items, and there is no
-other state. Triggers never count as something in the box. In the Editor with no network it makes the item
-locally.
-
-**One addon per tile, one upgrade per branch.** Whether a branch may take more than one upgrade is
-undecided; one for now.
+**One upgrade per branch.** Whether a branch may take more than one upgrade is undecided; one for now.
 
 **A branch** is a run of conduits ending at any fork, merge or component. **Components are part of
 the branch**, and a battery or reactor belongs to **both** branches it sits between, acting as the
 separator. It may later widen to "any run of basic conduits ending in anything that is not a basic
 conduit".
 
-Conduits can be slim, because nothing about a switch or a junction needs a bulky separate part.
-This replaces `modules.md` → *Conduit variants*.
 
-#### Handles and addon items do not collide with the player
+### Handles and addon items do not collide with the player
 
 A handle that follows a hand has no rigidbody, so when it meets the player's upright capsule (which
 stays under the head, so a leaning player reaches into it) the solver cannot move the handle and moves
@@ -249,55 +209,27 @@ hands would not grab them).
 **Somnium's guidance is to use `XRGrabInteractable` for anything grabbed.** The addon item uses it.
 Much of what is already built drives interaction by hand instead (the rocker reads hand positions; the
 lever and hologram handles are `XRSimpleInteractable` moved by our own scripts). That is why they feel
-clunky, and it will not survive networking: see *Interaction rework*.
+clunky, and it will not survive networking: see [[interaction#Interaction rework|interaction → Interaction rework]].
 
-#### What the grid needs
+### What the grid needs
 
-From `modules.md` → *Rewiring live*: `NodeEdgeModule` raising `Changed`, `PowerGrid.Rewire(tile)`
-reconnecting one tile and its neighbours, and `Disconnect` / `RemoveNode` in `PowerGraph`. Faces do
-not need to become local to the tile, since the hologram edits faces directly rather than rotating
-the tile.
+`PowerGrid.AddTile` and `RemoveTile` put a tile in and take it out while the grid runs, keeping its cell lookups and
+its neighbours' edges; `Rewire(tile)` reconnects one tile when its faces change ([[power#Conduits come and go|power →
+Conduits come and go]]).
 
-## Building the grid from a script (explored 2026-09-27; drawn conduits built, the rest superseded by layout definitions)
+> [!warning] Concern
+> **Flow direction has to be visible in the ship.** Allocation is readable from cable count and branch
+> depth, but only if you can see *which way power moves* — and a tile's output face is currently
+> invisible in game. Conduits need etched arrows, a travelling glow, or something equivalent.
 
+## Drawn conduits
 
-The real ship will have hundreds of conduits, too many to place and face by hand. Generate them
-instead. Explored 2026-09-27; nothing built, nothing decided.
+**Status (2026-10-12):** built; the drawing is now only the starting layout.
 
-#### Order of work (2026-09-27)
-
-1. **Engineering bay.** Lay the scene out as a room, less prototype, so the switch can sit on a wall.
-2. **Populate the grid from a script** (this section).
-3. **Component slots:** places on the grid where interchangeable components go. The scripted grid
-   is the natural first step toward them.
-
-**Conduits live behind walls; always the plan.** Walls, floors and ceilings are `conduitContainer`
-prefabs with a channel for the conduit, fitting whole cells (not reporting a scale). Each has an
-**access panel** in front: pressed with a tool until it dissolves, or pulled off to float or fall
-(undecided, later). A panel that is still on is one more answer to `ShouldBeLocked()`; once it is
-off, the cell is exposed and a hand reaching in opens the hologram as it does today.
-
-**Where an addon sits is the addon's call:** `ConduitAddon.Outward`, 0 in the middle of the cable
-(a junction's box) to 1 flush with the cell face, in the panel's opening (the switch). Kept separate
-from Repositionable on purpose.
-
-**Cell size: 0.5 m (decided 2026-09-27).** `GridCell` is the only place a cell becomes metres. A
-wall holding a conduit layer is one cell thick with its room face on the cell face; `Prefabs/Walls/ConduitContainerWall` is
-two 0.17 m skins with the channel hollow between them. Its `ConduitContainer` keeps it on the grid
-while editing: width and height snap to whole cells (the root's scale is the size in metres), depth
-stays one cell, it turns in quarter turns, and its edges land on cell faces with the channel on a line
-of cell centres. Panels come later. Placed tiles keep their `Size` in cells, so the battery (1) and reactor (5) footprints are
-now half their old size in metres; set them to match their models when placing (an even size leans
-toward the high side). Power moves a tile a tick and heat conducts per tile, so `power.md`'s per-tile
-numbers now mean half the distance.
-
-#### Drawn conduits (built 2026-09-27)
-
-Conduits are no longer placed. `ConduitLayout` (on Grid) holds them as one packed `long` each
-(`ConduitCode`: faces, addon id, facing, turns, parked, and x/y/z in 13 bits each), shows them as gizmos
-while editing, and builds them from `Conduit.prefab` when the world starts, just before `PowerGrid`
-builds. A placed tile in a drawn cell wins. Its **Addons** list may only be added to: a conduit
-stores its addon by position in it.
+`ConduitLayout` (on Grid) holds the ship's starting wiring as one packed `long` per cell (`ConduitCode`: faces,
+addon id, facing, turns, parked, and x/y/z in 13 bits each) and shows it as gizmos while editing. When the world
+starts it is seeded into `ConduitCells` ([[#The starting layout]]). Its **Addons** list may only be added to: every
+conduit, of either kind, stores its addon by position in it.
 
 The drawing tool is `ConduitLayoutEditor`, in the local package `Packages/com.spacescape.editor`
 (Editor-only, never uploaded). Select Grid and pick a mode in the layout's Inspector:
@@ -308,93 +240,72 @@ The drawing tool is `ConduitLayoutEditor`, in the local package `Packages/com.sp
 - **Erase:** click or drag.
 - **Select:** click a conduit to set its six faces and its addon (facing, quarter turns, parked).
 
-**A drawn conduit on a ring joins it (2026-10-09).** Rings are traced through drawn cells, and a drawn cell on one
-takes the ring's two faces wherever its own drawing leaves a face None. So a run joins a ring, or leaves one, by
-drawing just the cell where they meet, with a Junction for its third face. Before this, drawing a ring cell took it
-out of the ring, splitting the ring into pieces whose first cell had no way in.
+> [!warning] Engineering's starting wiring is broken (2026-10-12)
+> Seeded in play mode: 254 cells kept, 52 in 4 runs left out. Only the reactor S5, the radar and the disruptor are
+> joined. **Batteries S1 (2) to S1 (5) are not:** the drawn runs beside them point into the side of each battery at
+> y 1, where the new S1 battery has no port (its In, Data and Out face +Z at y 0, z -64), and the reactor's feed into
+> them went through the wall rings, which V2 removed. The test hall's wiring was made by hand at runtime and never
+> drawn, so it is not there either. Needs redrawing.
 
-**Engineering, rewired 2026-10-09 through the hall's wall rings:** the reactor's Out climbs the wall behind it into
-the y=4 ring (east, down the east wall, west along the south wall) and drops off it into batteries S1 (3),
-S1 (4) and S1 (5). Those three batteries' Outs all join **one trunk** along the battery room's back wall (floor
-level), which branches to the loaders just past the last battery and runs on to the radar and disruptor:
-everything but the reactor runs off it. Battery S1 (2)'s Out climbs into the y=2 ring (the other way round) and leaves it behind the reactor into the
-reactor's In, through a **switch on the east hall wall** (cell 80, 2, -15, facing the hall): the reactor's feed.
-The two floor runs that did this before are gone.
+## Networking
 
-#### What the current code forces on any generator
+**Status (2026-10-12):** built (Conduits V2), compiles clean; untested with a second player. The rules every system
+follows are in [[networking#Rules|networking → Rules]].
 
-- **Walls must sit on the lattice.** `GridNode.Coordinate` rounds to integers, so cells are centred on
-  whole numbers and their boundaries are at halves. The scene's `Wall` is centred at (0,2,3) and
-  scaled 10x4x0.2, so its edges land on cell boundaries and it is 10 or 11 cells wide depending on
-  rounding. Reading rows and columns off a wall's scale is ambiguous. Fix: the component holds its
-  size **in cells** and sets the wall's scale from that, never the other way round.
-- **Cables would float off the wall.** The nearest cell centre to that wall's face is 0.9 m away.
-  Because the coordinate is rounded, a conduit can be nudged up to 0.49 m toward the wall and still
-  count as the same cell, so only the model moves and the grid logic stays the same. Side effect:
-  at an inside corner a nudged cable will not line up exactly with its neighbour on the other surface.
-- **Where each wall's conduits get stored matters.**
-  - Edit-mode generation needs no Editor code: `[ExecuteAlways]` and `[ContextMenu]` are in
-    `UnityEngine`, so a generator can live in the SpaceScape assembly. This corrects the earlier
-    note that it could not.
-  - Without `PrefabUtility` the copies are unlinked: about 20 KB each (the size of
-    `Conduit.prefab`) against roughly 6 KB for a prefab instance. 500 baked conduits would add about
-    10 MB to the scene, and prefab edits would stop reaching them.
-- **A filled wall of wired conduits would destroy itself.** Every conduit forwarding in a rectangle
-  is a set of rings, and a ring blows its merge point on the first tick. Generated conduits start
-  with both segments parked, or with wiring you draw in.
+| State | Owner | How it travels |
+|---|---|---|
+| Every installed cell, both kinds: kind, faces, Out, addon, its state and pose, popped | the master | `ConduitCellState` chunks |
+| Power conduit heat | the master | the same chunks, 4 times a second |
+| A hand's edit (faces, addon in or out, pose, a switch press) | the hand's client | applied there at once, then ship message 8, **ConduitCellEdited**, to the master |
+| Who has a cell's hologram open | the opener | ship messages 5 and 6 by cell, to everyone; nothing kept for late joiners |
+| The hologram's ghost while dragging | the editor's client | nothing until release; discarded if the hand leaves |
+| The starting layout | the scene | nothing: the master seeds it, and everyone else reads the chunks |
 
-#### Options
+### Conduit cell state
 
-| | How it works | Good | Bad |
-|---|---|---|---|
-| **A. Surface component** | `GridSurface` on a wall, floor or ceiling: size in cells, which side faces the room | Placing a wall places its conduits; easy to follow | Corners, doors and overlaps need care; one wall at a time |
-| **B. Room volumes** | Rooms are whole-cell boxes; the grid is each room's inner shell, minus doorways | Corners and floors for free; could build the walls too | Ship must be boxy (the lattice already makes it so) |
-| **C. Layout file** | A text map per deck | Short, diffable, easy to rebuild | Nothing to see in the scene while editing; a schematic, not a place |
-| **D. Paint brush** | Editor brush that paints cells | Full hand control | Editor code in the separate package; a lot of clicking at ship scale |
+`ConduitCellNetwork` (on Item Conduits) owns the transport. The master spawns as many `ConduitCellState` chunks
+(`Prefabs/Networking/ConduitCellState.prefab`, a Data64) as the cells need, twenty cells each, and writes them when the
+cells change and 4 times a second for heat. A chunk is four header ints (stamp, index, length, total chunks), then
+three ints a cell:
 
-#### Proposed: A, feeding one shared set of cells
+1. the cell, 10 bits an axis (±512), and its kind
+2. faces, Out, addon id, addon state, facing, turns, parked, popped
+3. heat in 16 bits (0.05 °C steps from -100 °C); 16 bits spare for layout saving
 
-- **One set, many sources.** Every `GridSurface` adds its cells to one set, and one pass turns the set
-  into conduits. An inside corner claimed by two walls is added once and joins both runs. Outside
-  corners are diagonal and need one bridging cell. Room volumes (B) could later be another source.
-- **Hand-placed wins.** The generator skips any cell that already holds a `GridNode`, so the current
-  scene's reactor, batteries, switch and wiring keep working and generated conduits fill the gaps.
-- **Doors cut holes.** A door carries a `GridBlocker` volume and cells inside it are skipped. Move the
-  door and the hole follows.
-- **Built at runtime, previewed as gizmos in edit mode.** `PowerGrid.Awake` calls the builder before
-  `Build()`. The scene stays small, prefab edits keep reaching every conduit, and every client builds
-  the same grid from the same inputs, so networking only syncs what the crew changes (segment faces,
-  addons).
+Everyone else puts the chunks back together in order and makes its cells match, cell by cell, so its own pops are
+undone too. **Conduit cells are stored by position in a host-owned list**: the cell is in the entry, so nothing
+depends on two clients building the same list.
 
-```csharp
-[ExecuteAlways]
-public sealed class GridSurface : MonoBehaviour
-{
-    [SerializeField] private Vector2Int _cells = new Vector2Int(3, 2);   // columns, rows
-    [SerializeField] private GridDirection _facing = GridDirection.ZMinus; // into the room
-    [SerializeField] private Transform _wallModel;                      // scaled from _cells
+### Joining
 
-    public IEnumerable<Vector3Int> Cells { get { /* one layer of cells on the _facing side */ } }
-    private void OnDrawGizmos() { /* wire cube per cell */ }
-}
-// GridBuilder: gather every surface's cells, drop blocked and occupied ones,
-// Instantiate(Conduit) with segments parked. PowerGrid.Awake calls it before Build().
-```
+The sim is one machine, so a client cannot simulate any of it until it has all of it. A joiner holds its grid still
+(`PowerGrid.Held`) until it has read chunks 0 to total-1 at one write; the master skips the wait, since it writes
+them. With no network at all the grid simply runs. Only the master's grid rolls failures.
 
-#### Open
+### Edits from non-masters
 
-1. **Every cell a conduit, or empty sockets?** A full lattice means the crew only change segments on
-   conduits that are already there, but a 10x10x4 engine room alone is about 360 conduits. Sockets
-   mean the crew carry conduits and fit them: more physical work (principle 1), far cheaper, but it
-   changes live wiring, which assumes the conduit already exists.
-2. **What wiring does a new ship start with?** **Decided 2026-09-28:** the hand-painted runs; every
-   other conduit parked. The ship ships working but off (`networking.md` → *The ship's conduits*).
-3. **Cost at scale, not measured.** Every conduit runs `Fit`, `Tint` and `Rename` in `LateUpdate` each
-   frame; every `GridNode` becomes a `PowerNode`; the ring check walks every live conduit each tick.
-   Parked conduits may need to skip all of that. Time 1,000 unconnected nodes in the simtest harness
-   before committing.
+A hand on a non-master changes its own cell at once (`ConduitCells.EditByHand`) and sends message 8 (edit, cell,
+kind, two values) to the master, which checks it by the same rules (`ConduitCells.Apply`, which refuses an edit
+behind a shut panel unless it is a switch's state) and writes it to everyone. **That one cell** keeps the editor's
+version against corrections for 2 seconds while the master catches up; every other cell, and its heat, keeps
+updating. An addon item taken out is spawned as before (`AddonItemNetwork`).
 
-## Upgrades: coolant for branches (planned)
+### Holograms open elsewhere
+
+Opening and closing a hologram is a `ShipNetwork` message to everyone (5 and 6: the cell and the player id), for
+either kind. Another player's open conduit is boxed tight in `HoloHandle.mat` and cannot be opened here. Two opening
+at once: the lower player id keeps it. A player leaving clears theirs.
+
+## Upgrades: thermal shielding
+
+**Status (2026-10-12):** idea (Vulps).
+
+A branch upgrade that raises the **pop floor** of every conduit on its branch from 250 °C to **1000 °C**: below it a
+conduit never pops, however much it carries ([[power#Failure|power → Failure]]). For runs next to hot machines.
+
+## Upgrades: coolant for branches
+
+**Status:** planned.
 
 An upgrade that can be applied to a branch of the grid. Once applied, **coolant flows between
 adjacent `CoolantModule`s**, including upgraded conduits, and carries heat away so it does not
@@ -407,9 +318,22 @@ accumulate along that branch.
 - open: where the coolant comes from (the reactor's drum, a separate tank, both), and whether flow
   follows the power's direction or just any adjacent coolant module
 
-A branch takes one upgrade: coolant, data (`data.md`) or items (`loading.md`), only one.
 
-## Logic gates (idea, 2026-10-03)
+A branch takes one upgrade: coolant or data ([[data]]), only one.
 
-Gates are conduit addons that decide whether power crosses from what arrives at their faces: AND, OR, NOT,
-relays, thresholds. The switch is already one. Everything about them is in `data.md` (Two tiers of logic).
+## Tried and rejected
+
+- **Building the grid from a script** (explored 2026-09-27): a `GridSurface` on each wall, floor or ceiling feeding
+  one shared set of cells, against room volumes, a layout file per deck, or a paint brush. Replaced by layout
+  layout definitions on the conduit containers (since removed: Conduits V2 needs no wall volumes, and a panel holds
+  its own cover). What it taught: walls must hold their size **in cells** and set
+  their scale from it, never the other way round; a filled wall of wired conduits is a set of rings and blows on
+  the first tick, so generated conduits start parked; unlinked baked copies cost about 20 KB each against roughly
+  6 KB for a prefab instance.
+- **A lattice of parked conduits in every wall, with two pre-wired rings** (built 2026-10-03, replaced 2026-10-12 by
+  Conduits V2): `ConduitLayout` generated 14,544 power conduits from the layout definitions (one per wall container, corner, slot
+  face and the engineering floor), each a grid node ticked
+  20 times a second, and the tick's ring search allocated over every node. With every machine off the world ran at
+  about 25 FPS (`PowerGrid.Update` 20 ms a frame, 2 MB of garbage). Installing on demand: 90 FPS, 0.14 ms.
+- **Every cell a conduit, or empty sockets the crew fit?** Asked 2026-09-27. Conduits V2 answers it: a conduit is
+  installed where a port or segment points, so nothing is pre-placed.

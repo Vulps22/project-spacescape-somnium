@@ -1,7 +1,10 @@
+---
+aliases:
+  - "Modules"
+tags:
+  - tech
+---
 # Modules
-
-**Status: built** (2026-09-26). The sim, the Unity modules, and the scene and prefabs migrated onto
-them. Compiles clean and runs in Play mode; not yet uploaded to Somnium.
 
 A conduit and a component are the same kind of thing. Both take power in, hold it, do something
 with it, and put power out. What differs is the *something*. So every tile on the grid is a
@@ -9,6 +12,8 @@ with it, and put power out. What differs is the *something*. So every tile on th
 feature or a behaviour.
 
 ## The four kinds
+
+**Status (2026-09-26):** built, tested in-world.
 
 | Kind | Concrete | Owns | How many per tile |
 |---|---|---|---|
@@ -228,7 +233,7 @@ is drawn from the first.
 (house load), and the input fills it only when the core cannot, which is a cold start. Grid power
 never leaves by the output. The dial (`TargetWithdrawal`) belongs to the crew: while the magnets
 grip, the rods head for it; without grip they fall; when grip comes back they head for it again.
-See `reactor.md`.
+See [[reactor]].
 
 ## One tick
 
@@ -275,23 +280,9 @@ A tile takes power only on a face set to `In`, so a conduit that accepts from an
 every face that is not an `Out`. Faces are **world directions** for now; making them turn with the
 tile is part of live rewiring, below.
 
-## Conduit variants — pinned until after the first static upload
-
-**Superseded (2026-09-26)** by the hologram design in `conduits.md` → *Live wiring*: a switch or a
-junction is now an **addon** installed into an open conduit, which reshapes it, rather than a part
-placed on top of it. Splitters and mergers are gone in favour of Junction +1 to +4. The rest of this
-section is what the scene still does today.
-
-Switches and splitters are going to be parts a player **places on top of a conduit**. The model fits
-seamlessly into the cable, and the part **takes over that conduit's behaviour**. How that works
-while the ship is running comes after something static has been uploaded to Somnium.
-
-Until then, the scene bakes them in. The switch is the rocker, named in that conduit's
-`AddonModule` and put on the cable when the world starts (see `conduits.md` → *Addons and upgrades*), and the splitter is an extra `Out` face on that tile's `NodeEdgeModule`. The
-`SwitchModule` and `SplitterModule` prefabs survive only as script-less markers that show where
-they are. Their names predate "module" meaning what it does now.
-
 ## Rewiring live — after the MVP
+
+**Status (2026-09-28):** partly built: the hologram rewires one tile ([[conduits#The hologram|conduits → The hologram]]); faces local to the tile are not.
 
 **Not part of the MVP.** The MVP is the current scene in VR, with its wiring fixed and its parts
 interactable. Changing the wiring by hand comes after that. This section records what that step
@@ -321,53 +312,18 @@ integrity belong to the tile, not to its edges, so they survive a rewire.
 An edge carries one tick's flow at most, so dropping one mid-flight loses at most one tick of power.
 It is counted as waste on the sending tile, so the books still balance.
 
-## What changed from the old model
-
-- **A component never passes power through.** A full battery mid-run dumps what arrives as heat on
-  itself, and everything downstream of a battery gets at most its discharge rate: a real UPS.
-- **A battery cannot offer more than it holds.** It used to offer its full rating whenever it had any
-  charge at all, and the grid handed that out before the battery found it could not pay, so a
-  nearly empty cell on a trickle put out its full rating from nothing. Found in Play mode on
-  2026-09-26; `WattsOffered` now takes the tick's length.
-- **The reactor's dial is the crew's.** It used to zero itself when the magnets lost grip, which also
-  made a cold start impossible, since the magnets have no grip on the first tick.
-- **A ring of conduits blows its merge point.** It used to compound quietly on every lap.
-- `PowerNode.PassesThrough` is gone; `Validate()` reports rings instead of every cycle.
-
-Everything else came through with the same numbers. The harness went from 224 to 242 checks, with
-the old expectations changed only where one of the rules above says they should.
-
-## Renames
-
-| Was | Is |
-|---|---|
-| `ConduitModule` (abstract, switch + splitter) | gone |
-| `SplitterModule` | one more `Out` face on `NodeEdgeModule` |
-| `SwitchModule` | `SwitchConduitBehaviourModule` |
-| `BatteryModule` + `CellTier` | `CapacitorModule` + `BatteryBehaviourModule` / `Safety…` / `Smart…` |
-| `LightModule`, `AccumulatorModule` | `CapacitorModule` + `LightBehaviourModule` / `LoadBehaviourModule` |
-| `ReactorModule` | `CapacitorModule` + `ReactorBehaviourModule` |
-| `ConstantSourceModule` | `ConstantSourceBehaviourModule` |
-| `GridNode._outputs` / `_inputs` | `NodeEdgeModule`'s six faces |
-| `EnergyStore`, `SafetyStore`, `SmartStore` | `BatteryBehaviour`, `SafetyBatteryBehaviour`, `SmartBatteryBehaviour` |
-| `Accumulator` | `LoadBehaviour` |
-| `Reactor` | `ReactorBehaviour` |
-| `ConstantSource` | `ConstantSourceBehaviour` |
-| `Durability` | `Integrity` |
-| `Conduit` | unchanged; it is the cable's look, not a module |
-
-The scene and prefabs were migrated in the Editor: every old component's serialized fields were
-snapshotted to JSON while the old scripts were still loaded, then applied to the new modules and
-checked back tile by tile.
-
 ## Damage models are two plain arrays
+
+**Status (2026-09-26):** built.
 
 `IntegrityModule`'s damage list is `float[] _damageThresholds` beside `GameObject[] _damageModels`,
 same length, not an array of pairs. Arrays of custom `[Serializable]` classes arrive **empty** from a
 Somnium bundle export while plain arrays survive (Project Garden lost uploads to this before it was
 understood). Below each threshold its model is shown and the rest are hidden.
 
-## Readouts (written 2026-10-07, untested in-world)
+## Readouts
+
+**Status (2026-10-07):** written, untested in-world.
 
 Readouts are for players, not a debug overlay. Playing with others showed the old debug labels were
 vital but hard to read, so each module now writes **only its own stats** on its own `_readout` text,
@@ -388,6 +344,11 @@ place without walking to it.
 **Every component has a readout.** Still without one: `LoadBehaviourModule`, `LightBehaviourModule` and
 `ConstantSourceBehaviourModule`.
 
+**Every reading is scaled the same way** (Vulps, 2026-10-13): watts, joules, degrees, litres, anything with a unit,
+by kilo, mega, giga, tera and on, to at most three digits: 450 W, 1.2 kW, 33 MW, 1.32 MJ, 1.5 L/s. One place writes
+them all, `Units` (`scripts/Power/Units.cs`, shared with the sim test): every readout, the voltmeter, the black hole
+and the sim's own descriptions call it rather than formatting a number themselves.
+
 `Readout` (`scripts/Ship/Readout.cs`) does the drawing. It redraws when its module says something
 changed, never more than every 0.1 s, only while a camera can see the text (`Renderer.isVisible`), and
 it writes the text only when the words differ. A change it could not draw waits for the next grid
@@ -398,9 +359,18 @@ tick. Numbers that follow the grid change every tick; integrity redraws only whe
 every tick (`PowerNode.Hold`), because data transfer will need the same number. A correction from the
 network does not count, so players who aren't the master see no spikes.
 
-**Networking:** readouts hold no state. Charge, heat and integrity come from the master; flow is
-worked out by every client running the same sim (`networking.md`, rule 11).
+> [!info] Networking
+> Readouts hold no state. Charge, heat and integrity come from the master; flow is
+> worked out by every client running the same sim ([[networking]], rule 11).
 
-## Loading: a LoadingModule (planned)
+## Concerns
 
-Moved to `loading.md`.
+**Status:** open.
+
+**A tile with no faces is completely invisible.** It renders nothing, which reads as broken rather
+than unconfigured. `Validate()` could warn; a tile using no faces is almost always a mistake.
+
+**`internal` currently means nothing.** There is no asmdef under `SpaceScape`, so everything compiles
+into one assembly and the Unity layer can write `node.Drawn = 999` straight into the sim. An asmdef
+around `scripts/Power/` would make `internal` mean "the graph only" and make a Unity type in the sim
+a compile error rather than a rule to remember.

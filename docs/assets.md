@@ -1,14 +1,21 @@
+---
+aliases:
+  - "Assets"
+tags:
+  - reference
+---
 # Assets
 
 Unity Asset Store packs used in SpaceScape: where each came from and where it sits in the project. Anything
-that needs crediting in-world goes in `credits.md` (and the `Credits` prefab) as well.
+that needs crediting in-world goes in [[credits]] (and the `Credits` prefab) as well.
 
 | Pack | Source | In the project | Used for |
 |---|---|---|---|
 | UI Mechanical (Free Sample Pack) | https://assetstore.unity.com/packages/audio/sound-fx/ui-mechanical-free-sample-pack-148704 | not imported yet | |
-| Energy Cells (Free) | https://assetstore.unity.com/packages/3d/environments/sci-fi/energy-cells-free-166830 | not imported yet | the jump drive's fuel cells, when the jump drive is built (`the-loop.md` → Jump fuel) |
-| Vehicle Essentials | store link to add | `Assets/Vehicle_Essentials` | the item port's doors: `Vehicle_Car_Trunk_Open_Button` and `Vehicle_Car_Trunk_Close_Impact` (`loading.md`) |
+| Energy Cells (Free) | https://assetstore.unity.com/packages/3d/environments/sci-fi/energy-cells-free-166830 | not imported yet | the jump drive's fuel cells, when the jump drive is built ([[jump-drive#Fuel\|jump-drive → Fuel]]) |
+| Vehicle Essentials | store link to add | `Assets/Vehicle_Essentials` | the item port's doors: `Vehicle_Car_Trunk_Open_Button` and `Vehicle_Car_Trunk_Close_Impact` ([[loading]]) |
 | Sci-Fi Guns SFX Pack | https://assetstore.unity.com/packages/audio/sound-fx/sci-fi-guns-sfx-pack-181144 | `Assets/Scifi Guns SFX Pack` | |
 | ProBuilder (Unity package `com.unity.probuilder` 6.1.2, added 2026-10-07) | Package Manager | `Packages/manifest.json` | shaping simple meshes by hand, like the Disruptor's screen. **Before an upload**, export each ProBuilder mesh as an asset (ProBuilder → Export → Asset) or strip its scripts (Tools → ProBuilder → Actions → Strip ProBuilder Scripts): Somnium has no ProBuilder, so a `ProBuilderMesh` arrives as a missing script |
 | Modern ProBuilder Window | Asset Store | `Assets/Modern ProBuilder Window` | a replacement ProBuilder window; needs the ProBuilder package above, and without it fails to compile, which blocks every Editor script and Play mode |
+| Electrified SFX Library (291 sounds, added 2026-10-11; royalty free, per its ReadMe) | https://assetstore.unity.com/packages/audio/sound-fx/electrified-sfx-library-2823 | `Assets/Electrified SFX Library` | the S5 battery's arc crack, `Cinematic_Electric_Burst_06`, its vent strike, `MenuHud_Robotic_Transition_02`, and its hum, `Interior_Electric_GeneratorRoom_03`; the S3 battery's hum, `Machine_Electric_StaticLoop_01` ([[battery#S5 The Ring\|battery → S5]]) |
 | Sci-Fi Styled Modular Pack | https://assetstore.unity.com/packages/3d/environments/sci-fi/sci-fi-styled-modular-pack-82913 | `Assets/Sci-Fi Styled Modular Pack` | wall, panel and ceiling art in the conduit containers and corridor segments |

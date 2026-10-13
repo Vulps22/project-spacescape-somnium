@@ -125,6 +125,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             picture.transform.localRotation = Quaternion.identity;
             picture.transform.localScale = prefab.transform.localScale;
             picture.Hold();
+            picture.Body.interpolation = RigidbodyInterpolation.None;   // carried only by its place, as ItemPack.Seat
             if (picture.CarriesState) picture.State = StateAt(place);
             AddonPictureMade?.Invoke(picture);
             picture.Grab.selectEntered.AddListener(OnPictureTaken);

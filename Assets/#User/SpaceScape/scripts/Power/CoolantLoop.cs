@@ -46,6 +46,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         public void Refill(double litres) => Litres += litres;
 
         public override string ToString() =>
-            $"{Litres:0} L, {ActualFlow:0.##} L/s{(AtCeiling ? " (PUMP MAXED)" : "")}";
+            $"{Units.Format(Litres, "L")}, {Units.Format(ActualFlow, "L/s")}{(AtCeiling ? " (PUMP MAXED)" : "")}";
     }
 }

@@ -67,6 +67,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
             Hold.Fill(watts * seconds);
         }
 
-        public override string ToString() => $"{Hold}, offering {_offered:0.##} W";
+        public override string ToString() => $"{Hold}, offering {Units.Watts(_offered)}";
     }
 }

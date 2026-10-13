@@ -1,0 +1,107 @@
+filters:
+  and:
+    - file.ext == "md"
+formulas:
+  links_in: file.backlinks.length
+  links_out: file.links.length
+properties:
+  formula.links_in:
+    displayName: Linked from
+  formula.links_out:
+    displayName: Links to
+  file.mtime:
+    displayName: Last changed
+  note.sizes:
+    displayName: Sizes
+views:
+  - type: table
+    name: Components
+    filters:
+      and:
+        - file.hasTag("component")
+    order:
+      - file.name
+      - aliases
+      - note.sizes
+      - file.mtime
+  - type: table
+    name: Conduits and items
+    filters:
+      or:
+        - file.hasTag("conduit")
+        - file.hasTag("item")
+    order:
+      - file.name
+      - aliases
+      - file.tags
+      - file.mtime
+  - type: table
+    name: Structure and systems
+    filters:
+      or:
+        - file.hasTag("structure")
+        - file.hasTag("system")
+    order:
+      - file.name
+      - aliases
+      - file.tags
+      - formula.links_in
+      - file.mtime
+  - type: table
+    name: Mechanics and interaction
+    filters:
+      or:
+        - file.hasTag("mechanic")
+        - file.hasTag("interaction")
+    order:
+      - file.name
+      - aliases
+      - file.tags
+      - file.mtime
+  - type: table
+    name: Game, tech and art
+    filters:
+      or:
+        - file.hasTag("game")
+        - file.hasTag("easter-egg")
+        - file.hasTag("tech")
+        - file.hasTag("art")
+    order:
+      - file.name
+      - aliases
+      - file.tags
+      - file.mtime
+  - type: table
+    name: Planning
+    filters:
+      or:
+        - file.hasTag("arc")
+        - file.hasTag("tracking")
+    order:
+      - file.name
+      - aliases
+      - file.tags
+      - file.mtime
+  - type: table
+    name: Rules and reference
+    filters:
+      or:
+        - file.hasTag("rules")
+        - file.hasTag("reference")
+        - file.hasTag("index")
+    order:
+      - file.name
+      - aliases
+      - file.tags
+      - file.mtime
+  - type: table
+    name: Recently changed
+    order:
+      - file.name
+      - aliases
+      - file.tags
+      - file.mtime
+    sort:
+      - property: file.mtime
+        direction: DESC
+    limit: 10

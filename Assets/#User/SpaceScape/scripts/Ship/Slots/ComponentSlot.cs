@@ -7,8 +7,9 @@ using UnityEngine.Serialization;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
 {
-    /// The five slot sizes (docs/grid.md). Only an Sx component fits an Sx slot.
-    public enum SlotSize { S1 = 1, S2 = 2, S3 = 3, S4 = 4, S5 = 5 }
+    /// The six slot sizes (docs/grid.md). Only an Sx component fits an Sx slot. S0 is a single cell
+    /// (docs/battery.md).
+    public enum SlotSize { S0 = 0, S1 = 1, S2 = 2, S3 = 3, S4 = 4, S5 = 5 }
 
     /// A place on the ship a component of one size sits in. Its volume is reserved: no conduits inside it.
     /// It shows nothing in-world but its grab handle; the volume, front and up are gizmos.
@@ -17,9 +18,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// away, and every question is answered by whatever is installed. To the component it is the grid: the
     /// component is bound to the slot's node and never knows the slot is there. Empty, it is inert.
     ///
-    /// Its anchor is its centre, which is always a grid corner, since every size is an even number of
-    /// cells each way. The front and up are picked like a conduit's faces, and the slot turns itself to
-    /// match, so the handle on its front bottom edge follows.
+    /// Its anchor is its centre, which is a grid corner, since every size is an even number of cells each
+    /// way; except S0, a single cell, whose centre is that cell's centre (NearestAnchor). The front and up
+    /// are picked like a conduit's faces, and the slot turns itself to match, so the handle on its front
+    /// bottom edge follows.
     [ExecuteAlways]
     [DefaultExecutionOrder(-200)]   // makes its starting component before the grid builds
     public sealed class ComponentSlot : MonoBehaviour
@@ -32,6 +34,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private GridDirection _up = GridDirection.YPlus;
         [Tooltip("The grab handle, kept on the middle of the front bottom edge.")]
         [SerializeField] private Transform _handle;
+        [Tooltip("The empty slot's plinth, its size on top (Meshes/SlotS1.fbx and so on): drawn only while no component is installed.")]
+        [SerializeField] private Renderer _plinth;
         [Tooltip("The component prefab in this slot when the world starts, or none. Drawn in place while editing; made when the world starts, seated at the slot's centre facing its front.")]
         [FormerlySerializedAs("_component")]
         [SerializeField] private GridNode _startsWith;
@@ -96,6 +100,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             if (component == null || _component != null || !Fits(component)) return false;
             _component = component;
+            ShowPlinth();
             if (component.TryGetComponent<SlottedComponent>(out var slotted)) slotted.Slot = this;
             if (component.TryGetComponent<Rigidbody>(out var body) && !body.isKinematic)
             {
@@ -118,6 +123,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             var component = _component;
             if (component == null) return null;
             _component = null;
+            ShowPlinth();
             if (component.TryGetComponent<SlottedComponent>(out var slotted) && slotted.Slot == this) slotted.Slot = null;
             if (_node == null) return component;
 
@@ -127,6 +133,16 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _grid.Rewire(GetComponent<GridNode>());
             _grid.Loosen(component);
             return component;
+        }
+
+        /// Draws the plinth only while the slot is empty (while editing, while it starts empty), so a slot reads at a
+        /// glance. Follows the installed component, which every client already shares: nothing is sent for it. Not
+        /// saved, so editing never dirties the scene.
+        private void ShowPlinth()
+        {
+            if (_plinth == null) return;
+            bool hidden = Application.isPlaying ? _component != null : _startsWith != null;
+            if (_plinth.forceRenderingOff != hidden) _plinth.forceRenderingOff = hidden;
         }
 
         /// Hands the node whatever is installed, or leaves it inert.
@@ -262,6 +278,16 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         public bool IsAligned(GridNode component) =>
             Quaternion.Angle(component.transform.rotation, SeatFor(component)) <= _seatAngle;
 
+        /// True when a cell is inside any component slot's volume: a slot's volume is reserved (grid.md), so no
+        /// conduit is installed there and no access panel covers it.
+        public static bool InSlot(Vector3Int cell)
+        {
+            Vector3 centre = GridCell.ToWorld(cell);
+            foreach (var slot in Slots)
+                if (slot != null && slot.gameObject.activeInHierarchy && slot.Contains(centre)) return true;
+            return false;
+        }
+
         /// True when a point in the world is inside the slot's volume.
         public bool Contains(Vector3 world)
         {
@@ -336,6 +362,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             switch (size)
             {
+                case SlotSize.S0: return new Vector3Int(1, 1, 1);
                 case SlotSize.S1: return new Vector3Int(4, 4, 4);
                 case SlotSize.S2: return new Vector3Int(6, 4, 4);
                 case SlotSize.S3: return new Vector3Int(8, 8, 8);
@@ -365,6 +392,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             float Snap(float v) => Mathf.Round((v - half) / GridCell.Size) * GridCell.Size + half;
         }
 
+        /// Where a slot of this size centres near a point: the nearest grid corner, or for S0, a single cell,
+        /// the nearest cell centre.
+        public static Vector3 NearestAnchor(Vector3 world, SlotSize size) =>
+            size == SlotSize.S0 ? GridCell.ToWorld(GridCell.ToCell(world)) : NearestCorner(world);
+
         /// Every world cell inside the slot's volume.
         public System.Collections.Generic.IEnumerable<Vector3Int> WorldCells
         {
@@ -386,6 +418,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private void Awake()
         {
             PlaceHandle();
+            ShowPlinth();
         }
 
         /// Makes the starting component here and installs it, for a world with no network. Networked, the
@@ -511,9 +544,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 return;
             }
             PlaceHandle();
-            // While editing: sit on a grid corner and turn to face the front.
-            var corner = NearestCorner(transform.position);
-            if ((transform.position - corner).sqrMagnitude > 1e-8f) transform.position = corner;
+            ShowPlinth();
+            // While editing: sit on a grid corner (an S0, on a cell centre) and turn to face the front.
+            var anchor = NearestAnchor(transform.position, _size);
+            if ((transform.position - anchor).sqrMagnitude > 1e-8f) transform.position = anchor;
             if (Quaternion.Angle(transform.rotation, Facing) > 0.01f) transform.rotation = Facing;
             if (transform.localScale != Vector3.one) transform.localScale = Vector3.one;
         }

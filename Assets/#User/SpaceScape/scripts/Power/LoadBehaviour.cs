@@ -120,6 +120,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         }
 
         public override string ToString() =>
-            $"{Hold}, {(Working ? "working" : "dark")}, wants {WattsWanted:0.##} W{(Enabled ? "" : " (off)")}";
+            $"{Hold}, {(Working ? "working" : "dark")}, wants {Units.Watts(WattsWanted)}{(Enabled ? "" : " (off)")}";
     }
 }

@@ -12,7 +12,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     ///
     /// The items in it are never spawned. The pack keeps which of its places are filled, and shows a local
     /// picture of the item in each. A short tug up on the lid starts it rising, lifting the pictures clear of the
-    /// box; a short push down on the open lid starts it sinking shut. A hand taking a picture is given a real,
+    /// box; a short push down on the open lid starts it sinking shut (the lid is a TugSlide). A hand taking a picture is given a real,
     /// spawned item instead (TakeOut, set by the networking) and the place empties; an item of its type let go
     /// near an empty place in the open pack is removed and the place fills. The count lamps show how many are in.
     ///
@@ -29,26 +29,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private int _startsWith = 4;
 
         [Header("Lid")]
-        [Tooltip("Moved up to open: the lid's grip and the places hang under it.")]
-        [SerializeField] private Transform _lidTrack;
-        [Tooltip("The lid a hand tugs: an XRGrabInteractable with a SlideGrabTransformer that slides both ways.")]
-        [SerializeField] private XRGrabInteractable _lid;
-        [Tooltip("How far the lid rises when open, in metres.")]
-        [SerializeField] private float _rise = 1.08f;
-        [Tooltip("Seconds the lid takes to rise or sink.")]
-        [SerializeField] private float _riseSeconds = 2f;
-        [Tooltip("Share of the lid's slide a tug or push must reach to start it, 0 to 1.")]
-        [SerializeField, Range(0.1f, 1f)] private float _tugShare = 0.8f;
-        [Tooltip("Seconds the lid takes to slide home in its track once let go.")]
-        [SerializeField] private float _returnSeconds = 0.15f;
-
-        [Header("Sound")]
-        [Tooltip("Played as the lid starts to rise.")]
-        [SerializeField] private AudioClip _openClip;
-        [Tooltip("Played as the lid starts to sink.")]
-        [SerializeField] private AudioClip _closeClip;
-        [Tooltip("Plays the lid sounds. A child object on the Environment layer, so the player's volume controls apply.")]
-        [SerializeField] private AudioSource _sound;
+        [Tooltip("The lid: a tug opens it and lifts the places clear of the box, a push shuts it. Its track carries the places.")]
+        [SerializeField] private TugSlide _lid;
 
         [Header("Taking back")]
         [Tooltip("How near an empty place an item's centre must be let go to go back in, in metres.")]
@@ -63,13 +45,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private static readonly List<Collider> Colliders = new List<Collider>();
         private LoadableItem[] _pictures = new LoadableItem[0];
         private Material[] _lampOn = new Material[0];
-        private SlideGrabTransformer _slide;
-        private Vector3 _closedAt;
         private int _filled = -1;
-        private bool _open;
-        private float _raised;   // 0 shut to 1 open
-        private bool _tugged;    // the held lid has already started a move this grab
-        private bool _soundedOpen;
         private int _shownFilled = -1;
         private float _shownRaised = -1f;
 
@@ -102,7 +78,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         public Material LampOff => _lampOff;
 
         /// True while the lid is open or opening.
-        public bool Open => _open;
+        public bool Open => _lid != null && _lid.Open;
 
         /// How many are in.
         public int Count
@@ -127,7 +103,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         }
 
         /// How far the lid has risen: 0 shut, 1 open.
-        protected float Raised => _raised;
+        protected float Raised => _lid != null ? _lid.Raised : 0f;
 
         /// Where each item hangs: an item's centre and turn.
         protected Transform PlaceAt(int place) => place >= 0 && place < _places.Length ? _places[place] : null;
@@ -147,7 +123,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         public void Apply(int filled, bool open)
         {
             _filled = filled & ((1 << _places.Length) - 1);
-            _open = open;
+            if (_lid != null) _lid.Apply(open);
         }
 
         private void Awake()
@@ -157,8 +133,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             Grab.useDynamicAttach = true;
             Grab.farAttachMode = InteractableFarAttachMode.Far;
             Grab.selectMode = InteractableSelectMode.Multiple;
-            if (_lid != null) _slide = _lid.GetComponent<SlideGrabTransformer>();
-            if (_lidTrack != null) _closedAt = _lidTrack.localPosition;
+            if (_lid != null) _lid.ChangedByHand += OnLidMoved;
             _lampOn = new Material[_lamps.Length];
             for (int i = 0; i < _lamps.Length; i++) _lampOn[i] = _lamps[i] != null ? _lamps[i].sharedMaterial : null;
             _pictures = new LoadableItem[_places.Length];
@@ -192,60 +167,21 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private void Update()
         {
-            UpdateLid();
-
-            // Each client plays the lid's sounds from its own lid, so nothing is sent for them.
-            if (_open != _soundedOpen)
-            {
-                _soundedOpen = _open;
-                var clip = _open ? _openClip : _closeClip;
-                if (clip != null && _sound != null) _sound.PlayOneShot(clip);
-            }
-
-            float was = _raised;
-            _raised = Mathf.MoveTowards(_raised, _open ? 1f : 0f, Time.deltaTime / Mathf.Max(0.01f, _riseSeconds));
-            if (_lidTrack != null && _raised != was)
-                _lidTrack.localPosition = _closedAt + Vector3.up * (_rise * Mathf.SmoothStep(0f, 1f, _raised));
-
-            if (Filled != _shownFilled || _raised != _shownRaised) Show();
+            if (Filled != _shownFilled || Raised != _shownRaised) Show();
         }
 
         private void OnDestroy()
         {
+            if (_lid != null) _lid.ChangedByHand -= OnLidMoved;
             foreach (var picture in _pictures)
                 if (picture != null) picture.Grab.selectEntered.RemoveListener(OnPictureTaken);
         }
 
-        /// A tug up on the shut lid opens it; a push down on the open lid shuts it. Either lets go of the lid, as
-        /// it moves off by itself. Let go, it slides home in its track.
-        private void UpdateLid()
+        /// A hand here opened or shut the lid: the pack's state changed with it, for the networking to share.
+        private void OnLidMoved()
         {
-            if (_lid == null || _slide == null) return;
-            bool settled = _raised <= 0f || _raised >= 1f;
-            if (_lid.enabled != (settled || _lid.isSelected)) _lid.enabled = settled || _lid.isSelected;
-
-            if (_lid.isSelected)
-            {
-                if (_tugged || !settled) return;
-                bool tugged = !_open && _slide.Pulled >= _slide.Travel * _tugShare;
-                bool pushed = _open && _slide.TravelDown > 0f && _slide.Pulled <= -_slide.TravelDown * _tugShare;
-                if (!tugged && !pushed) return;
-                _tugged = true;
-                _filled = Filled;
-                _open = tugged;
-                ChangedByHand?.Invoke();
-                LetGoOf(_lid);
-                return;
-            }
-
-            _tugged = false;
-            var t = _lid.transform;
-            if (t.localPosition != _slide.RestPosition)
-            {
-                float most = Mathf.Max(_slide.Travel, _slide.TravelDown);
-                t.localPosition = Vector3.MoveTowards(t.localPosition, _slide.RestPosition,
-                    most / Mathf.Max(0.01f, _returnSeconds) * Time.deltaTime);
-            }
+            _filled = Filled;
+            ChangedByHand?.Invoke();
         }
 
         /// A hand took the picture in a place: the place empties, and the hand is given a real item. With no
@@ -282,7 +218,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// An item of its type let go near an empty place in the open pack goes back in.
         private void OnItemLetGo(LoadableItem item)
         {
-            if (item == null || item.Picture || _raised < 1f || !Accepts(item) || !item.Grab.enabled) return;
+            if (item == null || item.Picture || Raised < 1f || !Accepts(item) || !item.Grab.enabled) return;
             int best = -1;
             float nearest = _returnDistance;
             for (int i = 0; i < _places.Length; i++)
@@ -308,8 +244,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private void Show()
         {
             _shownFilled = Filled;
-            _shownRaised = _raised;
-            bool visible = _raised > 0f, takeable = _raised >= 1f, appeared = false;
+            _shownRaised = Raised;
+            bool visible = Raised > 0f, takeable = Raised >= 1f, appeared = false;
             for (int i = 0; i < _pictures.Length; i++)
             {
                 var picture = _pictures[i];
@@ -344,6 +280,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             picture.transform.localPosition = Vector3.zero;
             picture.transform.localRotation = Quaternion.identity;
             picture.Body.isKinematic = true;
+            // Carried only by its place: interpolating would write a lagging pose back over the parent's, and where
+            // the pack is moved by its transform (any client but the holder's) the picture creeps out of its place.
+            picture.Body.interpolation = RigidbodyInterpolation.None;
             picture.gameObject.SetActive(false);
         }
 
@@ -357,12 +296,6 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             Colliders.Clear();
         }
 
-        protected static void LetGoOf(XRGrabInteractable grab)
-        {
-            var manager = grab.interactionManager;
-            if (manager == null) return;
-            for (int i = grab.interactorsSelecting.Count - 1; i >= 0; i--)
-                manager.SelectExit(grab.interactorsSelecting[i], grab);
-        }
+        protected static void LetGoOf(XRGrabInteractable grab) => TugSlide.LetGoOf(grab);
     }
 }

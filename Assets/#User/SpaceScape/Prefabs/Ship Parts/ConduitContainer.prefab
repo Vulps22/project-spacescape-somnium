@@ -71,7 +71,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6513789663175579875}
-  - component: {fileID: 3643362901743654009}
   - component: {fileID: 1227325960318172461}
   - component: {fileID: 7182240867004283921}
   m_Layer: 0
@@ -100,21 +99,6 @@ Transform:
   - {fileID: 5310964718370432375}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &3643362901743654009
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5495842941381278993}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a181f0e75fa5d7ca1895002a722a9789, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.ConduitLayoutDefinition
-  _cells: {x: 7, y: 6, z: 1}
-  _origin: {fileID: 5984038613654076378}
-  _carriesRings: 1
 --- !u!65 &1227325960318172461
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -148,6 +132,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ff9ce2ab48409b80fbf88334f8b0d1f3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Ship.AccessPanel
+  _cover: {x: 7, y: 6, z: 1}
+  _coverOrigin: {fileID: 5984038613654076378}
   _panel: {fileID: 195190751335152262}
   _sockets:
   - {fileID: 5310964718370432375}

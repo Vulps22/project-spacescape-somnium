@@ -13,7 +13,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
     /// It has one or more fuel chambers, each with its own rod, lever and fuel (reactor.md → Chambers). Its dials,
     /// for RodLevers: axis 0 is the master, which moves freely while held and sets every chamber when let go; axis 1
     /// to the chamber count is each chamber's own. SCRAM sets them all at once. Chamber i is fed by the i-th LoadingModule taking fuel rods.
-    [RequireComponent(typeof(CapacitorModule))]
+    ///
+    /// A reactor with no magnets (the S1 RTG, reactor.md → S1) has no hold and no house load: its rods are never
+    /// dropped, and only its dials move them.
     public sealed class ReactorBehaviourModule : BehaviourModule, INetworkedState, ILeverDial
     {
         [Header("Core")]
@@ -30,6 +32,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Tooltip("Seconds one fuel rod runs at full output. It burns proportionally slower with the rods part way. Each chamber starts with one rod in; its next comes from its LoadingModule for fuel rods (loading.md).")]
         [FormerlySerializedAs("_fuelSeconds")]
         [SerializeField] private double _fuelSecondsPerRod = 3600.0;
+        [Tooltip("Each chamber starts with a rod in. Off for a reactor that is fuelled by hand before it runs (the S1 RTG's cartridge).")]
+        [SerializeField] private bool _startsWithRods = true;
 
         [Header("Rods")]
         [Tooltip("The master lever: 0 is rods fully in (off), 1 fully out (full power). Setting it sets every chamber; each chamber's rods head for their own lever while the magnets grip.")]
@@ -40,6 +44,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private double _dropPerSecond = 0.5;      // gravity, fast
 
         [Header("Control magnets")]
+        [Tooltip("Off for a reactor with no rod magnets (the S1 RTG): no hold, no house load, nothing to start it; the rods are only ever moved by its dials.")]
+        [SerializeField] private bool _magnets = true;
         [Tooltip("Watts the rod magnets need to keep their grip. A running core covers it; a cold one needs it from the input.")]
         [SerializeField] private double _controlWatts = 20.0;
 
@@ -82,8 +88,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     {
                         int chamber = i;
                         core.Chambers[i].Refuel = () => TakeRod(chamber);
+                        if (!_startsWithRods) core.Chambers[i].Fuel = 0.0;
                     }
-                    var magnets = new LoadBehaviour(Hold, _controlWatts) { Integrity = Integrity };
+                    var magnets = _magnets && Hold != null ? new LoadBehaviour(Hold, _controlWatts) { Integrity = Integrity } : null;
                     var coolant = new CoolantLoop
                     {
                         Litres = _coolantLitres,
@@ -118,6 +125,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         /// How many fuel chambers it has.
         public int ChamberCount => Reactor.Core.ChamberCount;
+
+        /// Litres in a full coolant drum, for a model that shows how full it is.
+        public double FullCoolantLitres => _coolantLitres;
 
         /// One chamber, for its visuals: its rod position, fuel and lever.
         public FuelChamber Chamber(int index) => Reactor.Core.Chambers[index];
@@ -212,7 +222,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             to[at] = _targetWithdrawal;
             to[at + 1] = (float)r.Coolant.Litres;
             to[at + 2] = (float)_flow;
-            to[at + 3] = r.Control.Working ? 1f : 0f;
+            to[at + 3] = r.RodsHeld ? 1f : 0f;
             var chambers = r.Core.Chambers;
             for (int i = 0; i < _chambers; i++)
             {
@@ -235,7 +245,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             r.Coolant.Litres = from[at + 1];
             _flow = from[at + 2];
             r.Coolant.Flow = _flow;
-            r.Control.CorrectWorking(from[at + 3] > 0.5f);
+            r.Control?.CorrectWorking(from[at + 3] > 0.5f);
             var chambers = r.Core.Chambers;
             for (int i = 0; i < _chambers && i < chambers.Count; i++)
             {
@@ -256,8 +266,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _reactor.Core.FuelSecondsPerRod = _fuelSecondsPerRod;
             _reactor.Core.HeatRatio = _heatRatio;
             _reactor.Core.WorkingCelsius = _workingCelsius;
-            _reactor.Control.DrawWatts = _controlWatts;
-            _reactor.Control.DrainWatts = _controlWatts;
+            if (_reactor.Control != null)
+            {
+                _reactor.Control.DrawWatts = _controlWatts;
+                _reactor.Control.DrainWatts = _controlWatts;
+            }
             _reactor.Coolant.Flow = _flow;
             _reactor.Coolant.MaxFlowLitresPerSecond = _maxFlowLitresPerSecond;
             _reactor.Coolant.DegreesPerLitre = _degreesPerLitre;
@@ -280,9 +293,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             // The text is left-aligned so the table's columns line up; the lines above it are centred by tag.
             return
                 "<align=center>" +
-                $"{r.Core.WattsProduced:0} W   master {_targetWithdrawal:P0}{(r.RodsHeld ? "" : "  NO GRIP")}\n" +
-                $"{celsius:0} / {r.Core.BaselineCelsius:0} C\n" +
-                $"{r.Coolant.Litres:0} L @ {r.Coolant.ActualFlow:0.#}/s{(r.Coolant.AtCeiling ? " MAX" : "")}" +
+                $"{Units.Watts(r.Core.WattsProduced)}{(r.Core.ChamberCount > 1 ? $"   master {_targetWithdrawal:P0}" : "")}{(r.RodsHeld ? "" : "  NO GRIP")}\n" +
+                $"{Units.Celsius(celsius)} / {Units.Celsius(r.Core.BaselineCelsius)}\n" +
+                $"{Units.Format(r.Coolant.Litres, "L")} @ {Units.Format(r.Coolant.ActualFlow, "L/s")}{(r.Coolant.AtCeiling ? " MAX" : "")}" +
                 "</align>\n" +
                 ChamberTable(r.Core, celsius);
         }
@@ -308,7 +321,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             Row("fuel", (c, i) => c.HasRod ? $"{c.Fuel * 100.0:0}" : "\u00b7");
             Row("position", (c, i) => $"{c.Withdrawal * 100.0:0}");
             Row("temp", (c, i) => c.HasRod
-                ? $"{PowerGraph.AmbientCelsius + c.Load * (core.WorkingCelsius - PowerGraph.AmbientCelsius) + above:0}"
+                ? Units.Celsius(PowerGraph.AmbientCelsius + c.Load * (core.WorkingCelsius - PowerGraph.AmbientCelsius) + above)
                 : "\u00b7");
             return table.ToString().TrimEnd('\n');
         }

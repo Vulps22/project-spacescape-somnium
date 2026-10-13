@@ -128,7 +128,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
             string rods = _chambers.Count == 1
                 ? $"rods {_chambers[0].Withdrawal:P0} of {FuelChamber.Clamp(_chambers[0].TargetWithdrawal):P0}, fuel {_chambers[0].Fuel:P0}"
                 : $"{_chambers.Count} chambers, rods {Withdrawal:P0} on average";
-            return $"{WattsProduced:0} W, {rods}{(Gripped ? "" : " NO GRIP")}, {BaselineCelsius:0} C nominal";
+            return $"{Units.Watts(WattsProduced)}, {rods}{(Gripped ? "" : " NO GRIP")}, {Units.Celsius(BaselineCelsius)} nominal";
         }
     }
 }

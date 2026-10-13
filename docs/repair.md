@@ -1,7 +1,13 @@
+---
+aliases:
+  - "Repair"
+tags:
+  - mechanic
+---
 # Repair
 
 Restoring what heat and damage have broken: components (repair games in a component hologram), conduits,
-and later the hull (`damage.md`). Not built yet.
+and later the hull ([[damage]]). Not built yet.
 
 ## Repairing
 
@@ -12,7 +18,9 @@ A way for the crew to restore what heat has broken:
   mended (ties into live wiring)
 - **damaged components:** `Integrity.Restore` exists in the sim but nothing in the world calls it
 
-#### Repair games (decided 2026-10-01)
+#### Repair games
+
+**Status (2026-10-01):** decided; not built.
 
 A component below its maximum integrity shows a **repair game** in its hologram. The only input is the
 integrity missing; more missing means more to do. Nothing else is simulated: no invented faults.
@@ -33,7 +41,3 @@ integrity missing; more missing means more to do. Nothing else is simulated: no 
   `Integrity.Restore` its share; nothing else is stored. Leave halfway and the next player opens a
   smaller game.
 - Undecided: a component with several games, split the missing integrity between them or pick one.
-
-#### The component hologram
-
-Where the repair games show: `component-hologram.md`.

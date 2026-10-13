@@ -1,3 +1,9 @@
+---
+aliases:
+  - "Credits"
+tags:
+  - reference
+---
 # Credits
 
 Third-party work used in SpaceScape. Everything here must also appear in-world on the `Credits`

@@ -1,17 +1,27 @@
+---
+aliases:
+  - "Ship structure"
+tags:
+  - structure
+---
 # Ship structure
 
 Walls, floors, ceilings, rooms and corridors: how the ship is built in the Editor, and the parts of it players
-touch. The conduits inside them are in `conduits.md`.
+touch. The conduits inside them are in [[conduits]].
 
-## Conduit containers (built 2026-10-01)
+## Conduit containers
 
-`Prefabs/Ship Parts/ConduitContainer`: a wall section (the Sci-Fi Styled Modular Pack's art) with a
-`ConduitLayoutDefinition` on its root holding its channel of conduits (`conduits.md`), and an `AccessPanel`.
+**Status (2026-10-01):** built.
+
+`Prefabs/Ship Parts/ConduitContainer`: a wall section (the Sci-Fi Styled Modular Pack's art) with an `AccessPanel`
+on its root, whose **Cover** is the channel of cells behind it ([[conduits#Access panels|conduits → Access panels]]).
 Its art stands on the floor (art children at local y -0.25, on a floor whose top is y -0.25). The art sits
 about a quarter cell off the grid (local z -4.27), so where two walls meet there is a small gap or an overlap,
 never flush; overlaps hide inside the art.
 
-## Access panels (built 2026-10-01)
+## Access panels
+
+**Status (2026-10-01):** built.
 
 `AccessPanel` on a container's root. A hand passed through any of its **sockets** (pulsing cubes, the
 `HologramUnlock` prefab, previewed in the Editor) opens it: the panel's art **smokes away** (the
@@ -28,7 +38,7 @@ the switch is placed. A locked conduit's unlock cube is at the conduit's middle.
 Networking: `PanelNetwork` keeps every panel's open or shut as one bit in one `NetworkBridgeData`, panels
 numbered by position. The master opens a panel when a hand there or a message asks, and shuts it once nobody
 is in its box; everyone else follows. The scene object `PanelNetwork` (added 2026-10-07; it was missing,
-so panels were not shared at all) carries a NetworkObject (Flags 524289, `networking.md` rule), a
+so panels were not shared at all) carries a NetworkObject (Flags 524289, [[networking]] rule), a
 `NetworkBridgeData4` (128 panels) and `PanelNetwork`.
 
 The dissolve plays only where a camera can see the panel as it starts to open or shut (its bounds against
@@ -38,42 +48,60 @@ each camera's view; walls in the way do not count). Anywhere else it jumps strai
 
 `GridPin` pins an object's origin and its **direct children's** to the 0.5 m grid while editing, one layer
 down only (a corridor segment pins its containers, not the art inside them). Left alone: its Exclude list,
-empties (sockets, markers), a definition's Origin, and slots (whose centres sit on .25 and .75).
-`ConduitLayoutDefinition` keeps a container's root on a cell centre and its Origin on the grid by parity.
+empties (sockets, markers), a panel's Cover Origin, and slots (whose centres sit on .25 and .75).
+`AccessPanel` keeps a container's root on a cell centre and its Cover Origin on the grid by parity.
 
 ## Corridors and rooms
 
 `Prefabs/Ship Parts/CorridorSegment`: two containers facing each other with a ceiling (on its `GridPin`'s
-Exclude list); about 2.94 m wide inside. `CorridorCornerOutside`: a corner piece with a one-column definition.
-The engineering room (2026-10-02) is one root, `engineering`, whose own definition is the floor's layer of
-conduits, with its walls and corners under it.
+Exclude list); about 2.94 m wide inside. `CorridorCornerOutside`: a corner piece whose panel covers one column.
+The engineering room (2026-10-02) is one root, `engineering`, with its walls and corners under it.
 
-## Room and corridor prefabs (planned)
+## Item dispensers
 
+**Status (2026-10-07):** built, untested in-world.
+
+`ItemDispenser` (scripts/Networking) puts an item
+(any `Item`: an addon item, or a loadable item like a fuel rod, [[loading]]) in its box collider whenever nothing solid is in the box: take one out and another appears. A new item hangs
+where it appears, out of physics (kinematic), until a hand first lets go of it; from then on it is an
+ordinary physics object for good (`Item.OnLetGo`). The item is a
+prefab set on the dispenser in the scene, and must be registered on SceneNetworking. A variant, like a +4
+junction, is the same prefab with the dispenser's **State** set (-1 keeps the prefab's own): the master
+spawns it and so holds its authority, and `AddonItemStateNetwork` carries the state to everyone. Only the master looks
+and spawns, through `WorldManager.Spawn`, so everyone, late joiners too, has the same items, and there is no
+other state. Triggers never count as something in the box. In the Editor with no network it makes the item
+locally.
+
+## Room and corridor prefabs
+
+**Status:** planned.
 
 Building a room means placing dozens of conduit containers by hand. Make **room and corridor prefabs** that
 are dropped in whole: walls (conduit containers with their access panels), ceiling, and the floor's layer of
-parked conduits (`conduits.md`), already lined up on the grid. A corridor segment (`Ship Parts/CorridorSegment`)
+parked conduits ([[conduits]]), already lined up on the grid. A corridor segment (`Ship Parts/CorridorSegment`)
 is the first of these. Nothing about sizes or how they join is decided.
 
-## Loading bay doors for engineering (planned)
+## Loading bay doors for engineering
 
+**Status:** planned.
 
 Components have to get into and out of the engineering bay, and the corridors are far too narrow: the inside
 is about 3.4 m wide, so an S5 (5 m) could never be changed out, and even an S1 (2 m) is a squeeze. The bay
 needs **loading bay doors** big enough for the largest component it holds: the ceiling opening, or a wall,
 or something else. Nothing decided.
 
-## Writeable signs (planned)
+## Writeable signs
 
+**Status:** planned.
 
 Signs the crew can write on, to label wiring and controls ("REACTOR FEED", "DO NOT OPEN"). Two shapes in
 mind, undecided: a conduit addon, or a sign placed anywhere in the world that pins itself to the grid cells
 it sits on without changing the cells or the grid. How the text is written (VR and 2D) and how it reaches
 other players and late joiners (it is state) still to be discussed.
 
-## Climbing (planned)
+## Climbing
 
+**Status:** planned.
 
 Players scale their avatars, and many like being small. A small player cannot reach a high conduit or
 control, so **walls and components must be climbable**: hand over hand up the wall to whatever is out
