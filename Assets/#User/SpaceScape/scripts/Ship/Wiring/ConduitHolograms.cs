@@ -79,6 +79,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private float _buzzSeconds = 0.05f;
         [Tooltip("How much bigger the centre cube grows while a held handle is in the middle, where letting go parks it: 1 is double.")]
         [SerializeField] private float _parkGrow = 1f;
+        [Tooltip("While a handle is held: a ring the size of a handle on every place it could land (each free face, and the middle to park), turned toward the player. An unlit material; empty shows none.")]
+        [SerializeField] private Material _landingMaterial;
+        [SerializeField] private Color _landingColour = Color.white;
+        [Tooltip("The ring the held handle would land on if let go now.")]
+        [SerializeField] private Color _landingLitColour = new Color(0.3f, 1f, 0.4f);
+        [Tooltip("The rings' line width, in metres.")]
+        [SerializeField] private float _landingWidth = 0.004f;
 
         [Header("Addons")]
         [Tooltip("How close to the addon slot's centre an addon item must be let go to install it, in metres.")]
@@ -270,6 +277,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     BuzzSeconds = _buzzSeconds,
                     ParkGrow = _parkGrow,
                     AddonItemFill = _addonItemFill,
+                    LandingMaterial = _landingMaterial,
+                    LandingColour = _landingColour,
+                    LandingLitColour = _landingLitColour,
+                    LandingWidth = _landingWidth,
                     ItemShown = item => ItemShown?.Invoke(item),
                     ItemTakenOut = (item, prefab) => ItemTakenOut?.Invoke(item, prefab),
                 };

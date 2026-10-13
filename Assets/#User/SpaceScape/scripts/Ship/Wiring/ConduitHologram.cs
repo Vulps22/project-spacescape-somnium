@@ -42,6 +42,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             public float BuzzSeconds;
             public float ParkGrow;
             public float AddonItemFill;
+            public Material LandingMaterial;
+            public Color LandingColour;
+            public Color LandingLitColour;
+            public float LandingWidth;
             public Action<IConduit, IReadOnlyList<GridDirection>, IReadOnlyList<bool>> Commit;
             public Action<IConduit, GridDirection, int, bool> CommitAddon;
             public Action<IConduit> Removed;
@@ -59,6 +63,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             GridDirection.YPlus, GridDirection.YMinus,
             GridDirection.ZPlus, GridDirection.ZMinus,
         };
+
+        private static readonly List<ConduitHologram> Live = new List<ConduitHologram>();
 
         private readonly List<SegmentHologram> _segments = new List<SegmentHologram>();
         private readonly List<GridDirection> _faceOf = new List<GridDirection>();
@@ -86,6 +92,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private bool _slideOutward;
         private float _nextBuzz;
         private float _parkHover;
+
+        private const int RingPoints = 32;
+        private readonly LineRenderer[] _rings = new LineRenderer[Faces.Length + 1];   // a face each, and the middle
+        private MaterialPropertyBlock _ringColour;
+        private float _ringRadius;
 
         private AddonItem _display;
         private AddonItem _displayPrefab;
@@ -157,14 +168,22 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             return hologram;
         }
 
-        /// Opens the ghost over a conduit, from wherever it has got to if it was already on this one.
+        private void Awake() => Live.Add(this);
+
+        private void OnDestroy() => Live.Remove(this);
+
+        /// Opens the ghost over a conduit, from wherever it has got to if it was already on this one. Taking over a
+        /// cell another hologram is showing (an empty cell's parked conduit becoming a power conduit as its first
+        /// segment is laid, or back), it carries on from that one's opening and that one goes at once, so the hand
+        /// can keep working instead of watching it close and this one open.
         public void Show(IConduit conduit)
         {
             if (conduit != Conduit)
             {
                 CancelDrag();
+                float carried = TakeOver(conduit.Coordinate);
                 Conduit = conduit;
-                _open = 0f;
+                _open = carried;
                 Layout(conduit);
             }
             _opening = true;
@@ -174,6 +193,32 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 _ambience.time = Random.Range(0f, _ambience.clip.length);
                 _ambience.Play();
             }
+        }
+
+        /// How far open another hologram on this cell had got, hiding it; 0 when none was.
+        private float TakeOver(Vector3Int cell)
+        {
+            foreach (var other in Live)
+            {
+                if (other == this || other == null || other.Conduit == null || other._open <= 0f || other.Conduit.Coordinate != cell) continue;
+                float open = other._open;
+                other.HideNow();
+                return open;
+            }
+            return 0f;
+        }
+
+        /// Closes at once, with no animation.
+        private void HideNow()
+        {
+            CancelDrag();
+            PoseRings();
+            _opening = false;
+            _open = 0f;
+            Conduit = null;
+            DropDisplay();
+            if (_ambience != null) _ambience.Stop();
+            gameObject.SetActive(false);
         }
 
         /// Lays the ghost out again after the conduit changed under it, such as an addon going in or out.
@@ -419,6 +464,62 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
             if (_drag == Drag.Tip || _drag == Drag.Addon) DragTip();
             else if (_drag == Drag.Arrow) DragArrow();
+            PoseRings();
+        }
+
+        /// While a handle is held, a ring on every place it could land (each free face, and the middle), lit on the
+        /// one it would land on if let go now; hidden otherwise.
+        private void PoseRings()
+        {
+            bool holding = (_drag == Drag.Tip || _drag == Drag.Addon) && _motion.LandingMaterial != null;
+            for (int i = 0; i < _rings.Length; i++)
+            {
+                bool middle = i == Faces.Length;
+                bool show = holding && (middle || IsFree(Faces[i], _drag == Drag.Addon ? -1 : _dragged, _drag == Drag.Addon));
+                if (!show)
+                {
+                    if (_rings[i] != null) _rings[i].enabled = false;
+                    continue;
+                }
+                var ring = _rings[i] != null ? _rings[i] : _rings[i] = MakeRing();
+                ring.enabled = true;
+                var segment = _drag == Drag.Addon ? _addonHandle : _segments[_dragged];
+                Vector3 centre = middle ? transform.position : transform.TransformPoint(Faces[i].Vector() * segment.FaceDistance);
+                bool lit = middle ? _targetPark : !_targetPark && _target == Faces[i];
+                DrawRing(ring, centre, lit);
+            }
+        }
+
+        private LineRenderer MakeRing()
+        {
+            var go = new GameObject("Landing Ring");
+            go.transform.SetParent(transform, false);
+            var ring = go.AddComponent<LineRenderer>();
+            ring.useWorldSpace = true;
+            ring.loop = true;
+            ring.positionCount = RingPoints;
+            ring.widthMultiplier = _motion.LandingWidth;
+            ring.sharedMaterial = _motion.LandingMaterial;
+            ring.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            ring.receiveShadows = false;
+            return ring;
+        }
+
+        /// A circle round a point, turned toward the player's head, the size of a handle.
+        private void DrawRing(LineRenderer ring, Vector3 centre, bool lit)
+        {
+            if (_ringColour == null) _ringColour = new MaterialPropertyBlock();
+            _ringColour.SetColor("_BaseColor", lit ? _motion.LandingLitColour : _motion.LandingColour);
+            ring.SetPropertyBlock(_ringColour);
+
+            Vector3 normal = PlayerHands.TryHead(out var head) && (head - centre).sqrMagnitude > 1e-6f ? (head - centre).normalized : Vector3.forward;
+            Vector3 a = Vector3.Cross(normal, Mathf.Abs(normal.y) < 0.9f ? Vector3.up : Vector3.right).normalized;
+            Vector3 b = Vector3.Cross(normal, a);
+            for (int i = 0; i < RingPoints; i++)
+            {
+                float t = i * Mathf.PI * 2f / RingPoints;
+                ring.SetPosition(i, centre + (a * Mathf.Cos(t) + b * Mathf.Sin(t)) * _ringRadius);
+            }
         }
 
         /// Starts a drag, unless something is already being dragged. Either hand can, the one holding it open
@@ -431,6 +532,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _drag = kind;
             _dragged = index;
             _dragger = interactor;
+            var held = kind == Drag.Addon ? _addonHandle : index >= 0 ? _segments[index] : null;
+            var sphere = held != null && held.Tip != null ? held.Tip.GetComponentInChildren<Renderer>() : null;
+            if (sphere != null) _ringRadius = sphere.bounds.extents.x / (1f + _motion.HoverGrow);
             _target = GridDirection.None;
             _targetPark = false;
             if (kind == Drag.Tip) { _segments[index].TipHeld = true; return; }

@@ -142,6 +142,16 @@ An open conduit shows a **hologram**: a ghost of the conduit. The conduit itself
 until the hologram is released**; then it takes the ghost's shape and the grid rewires it as
 normal. If the holding hand leaves mid-drag, the ghost is discarded and nothing happened.
 
+**Handing over a cell** (2026-10-13, untested in-world): an empty cell's parked conduit and an installed power conduit
+are shown by different holograms, so laying the first segment swapped them: the old one played its close while the
+new one opened from nothing, and the conduit could not be worked for about a second. Now a hologram opening on a cell
+another is showing carries on from that one's opening, and the other goes at once (`ConduitHologram.TakeOver`).
+
+**Landing rings** (2026-10-13, untested in-world): while a handle is held, a ring the size of a handle stands on every
+place it could land (each free face, and the middle, where letting go parks it), turned toward the player: white, and
+green on the one it would land on if let go now. Local, like the rest of the hologram's feedback. Set on
+`ConduitHolograms` (**Landing Material**, colours, width); line renderers in `HighlightWhite.mat`.
+
 **Everything in the hologram answers a hand in reach** (2026-10-07, untested). The addon slots swell while a
 hand is inside one; segment handles, arrows and the addon handle swell while XRI says a hand could grab them
 (hovered) or has hold of them. They all share `ConduitHolograms`' Hover settings (grow 25%, over 0.12 s).

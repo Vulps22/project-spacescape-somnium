@@ -250,6 +250,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     {
                         c.Addon = code.Addon;
                         c.AddonState = AddonPrefab(code.Addon).NetworkState;
+                        // The layout has no room for a junction's count, so a drawn junction gets enough for its faces.
+                        if (AddonPrefab(code.Addon) is JunctionAddon)
+                            c.AddonState = Mathf.Clamp(Mathf.Max(c.AddonState, Count(c.Used) - ConduitHologram.PlainSegments), JunctionAddon.MinExtra, JunctionAddon.MaxExtra);
                         c.Facing = code.AddonFacing == GridDirection.None ? GridDirection.ZPlus : code.AddonFacing;
                         c.Turns = code.AddonTurns;
                         c.Parked = code.AddonParked;

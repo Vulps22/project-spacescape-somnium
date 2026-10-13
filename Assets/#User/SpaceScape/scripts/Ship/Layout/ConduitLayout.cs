@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 
 namespace SomniumSpace.Worlds.SpaceScape.Ship
@@ -13,6 +14,14 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private ConduitAddon[] _addons = new ConduitAddon[0];
         [Tooltip("The drawn conduits, packed: the ship's starting wiring. Edit them with the drawing tool, not by hand.")]
         [SerializeField] private long[] _cells = new long[0];
+        [Tooltip("Play mode, on the master's client only: after every change to a conduit or a slot's component (anyone's), log the whole layout, cell by cell, with the packed numbers for Cells. The last print is the wiring to copy into the scene.")]
+        [SerializeField] private bool _logLayout;
+        [Tooltip("Seconds of quiet after a change before the layout is logged, so one edit logs once.")]
+        [SerializeField] private float _logDelay = 0.5f;
+
+        private int _loggedRevision = -1;
+        private int _loggedSlots;
+        private float _changedAt = -1f;
 
         private Dictionary<Vector3Int, int> _index;
 
@@ -86,6 +95,78 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         }
 
         private void OnValidate() => _index = null;
+
+        private void Update()
+        {
+            if (!_logLayout) return;
+            var cells = ConduitCells.Current;
+            if (cells != null && !cells.Decides) return;   // only the master's client logs; it sees every change
+            int revision = cells != null ? cells.Revision : 0;
+            int slots = SlotsSignature();
+            if (revision != _loggedRevision || slots != _loggedSlots)
+            {
+                _loggedRevision = revision;
+                _loggedSlots = slots;
+                _changedAt = Time.time;
+            }
+            if (_changedAt >= 0f && Time.time - _changedAt >= _logDelay)
+            {
+                _changedAt = -1f;
+                LogLayout(cells);
+            }
+        }
+
+        private static int SlotsSignature()
+        {
+            int hash = 17;
+            foreach (var slot in ComponentSlot.All)
+                hash = hash * 31 + (slot != null && slot.Component != null ? slot.Component.GetInstanceID() : 0);
+            return hash;
+        }
+
+        /// The ship's wiring as it is now: every installed conduit cell, every slot's component, and the packed
+        /// numbers for Cells (power conduits only: the layout draws no item conduits).
+        private void LogLayout(ConduitCells cells)
+        {
+            var text = new StringBuilder();
+            var packed = new List<long>();
+            var sorted = new List<KeyValuePair<Vector3Int, ConduitCells.Cell>>();
+            if (cells != null) sorted.AddRange(cells.All);
+            sorted.Sort((a, b) => a.Key.x != b.Key.x ? a.Key.x.CompareTo(b.Key.x) : a.Key.y != b.Key.y ? a.Key.y.CompareTo(b.Key.y) : a.Key.z.CompareTo(b.Key.z));
+
+            text.AppendLine($"[SpaceScape] ConduitLayout: {sorted.Count} conduit cells, {ComponentSlot.All.Count} slots");
+            foreach (var pair in sorted)
+            {
+                var c = pair.Value;
+                var code = new ConduitCode { Cell = pair.Key, Addon = c.Addon, AddonFacing = c.Facing, AddonTurns = c.Turns, AddonParked = c.Parked };
+                text.Append($"cell {pair.Key} {c.Kind}");
+                foreach (GridDirection face in System.Enum.GetValues(typeof(GridDirection)))
+                {
+                    int bit = ConduitCells.Bit(face);
+                    if (bit == 0 || (c.Used & bit) == 0) continue;
+                    bool isOut = (c.Out & bit) != 0;
+                    code.SetFace(face, isOut ? FlowDirection.Out : FlowDirection.In);
+                    text.Append(c.Kind == ConduitCells.Kind.Power ? $" {face}:{(isOut ? "Out" : "In")}" : $" {face}");
+                }
+                if (c.Used == 0) text.Append(" (all parked)");
+                if (c.Addon != 0)
+                {
+                    var addon = c.Addon <= _addons.Length ? _addons[c.Addon - 1] : null;
+                    text.Append($" addon {c.Addon} '{(addon != null ? addon.name : "?")}' state {c.AddonState} facing {c.Facing} turns {c.Turns}{(c.Parked ? " parked" : "")}");
+                }
+                if (c.Popped) text.Append(" POPPED");
+                text.AppendLine();
+                if (c.Kind == ConduitCells.Kind.Power) packed.Add(code.Pack());
+            }
+            foreach (var slot in ComponentSlot.All)
+            {
+                if (slot == null) continue;
+                text.AppendLine($"slot '{slot.name}' at {slot.transform.position} {slot.Size}: {(slot.Component != null ? slot.Component.name : "empty")}");
+            }
+            text.AppendLine("cells: " + string.Join(",", packed));
+
+            Debug.Log(text.ToString(), this);
+        }
 
         private void OnDrawGizmos()
         {

@@ -323,57 +323,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _lasers.Clear();
         }
 
-#if UNITY_EDITOR
-        private void OnValidate() => UnityEditor.EditorApplication.delayCall += FindClips;
-
-        /// Fills Clips from the sounds folder: stepN (any audio file of that name) is clip N-1.
-        [ContextMenu("Find Step Sounds")]
-        private void FindClips()
-        {
-            if (this == null || Application.isPlaying || !UnityEditor.AssetDatabase.IsValidFolder(_soundsFolder)) return;
-            var found = new AudioClip[_steps.Count];
-            foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:AudioClip", new[] { _soundsFolder }))
-            {
-                var path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
-                var name = System.IO.Path.GetFileNameWithoutExtension(path);
-                if (!name.StartsWith("step", StringComparison.OrdinalIgnoreCase) || !int.TryParse(name.Substring(4), out int n)) continue;
-                if (n >= 1 && n <= found.Length) found[n - 1] = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>(path);
-            }
-            bool changed = found.Length != _clips.Length;
-            for (int i = 0; !changed && i < found.Length; i++) changed = found[i] != _clips[i];
-            if (!changed) return;
-            _clips = found;
-            UnityEditor.EditorUtility.SetDirty(this);
-        }
-
-        /// The script as written (docs/tutorial-proposal.md, Plan D), its targets left to set in the scene.
-        private void Reset()
-        {
-            _steps = new List<Step>();
-            void Add(string line, Wait wait, GridDirection face = GridDirection.None, float seconds = 2f) =>
-                _steps.Add(new Step { Line = line, Wait = wait, Face = face, Seconds = seconds });
-            Add("A power surge has wreaked havoc on engineering. This is a great time to learn the fundamentals.", Wait.None);
-            Add("First things first: we need power flowing. Look at the reactor.", Wait.Seen);
-            Add("Good, it still has a fuel rod. So we just need to repair the conduit that feeds it for a cold start. Open the access panel: wave a hand through the glowing cube.", Wait.PanelOpen);
-            Add("See the sparks? That conduit was damaged. Put a hand on it to open it up.", Wait.HologramOpen);
-            Add("Drag the sphere from the centre out to fill the gap and complete the circuit.", Wait.CellMended);
-            Add("Excellent. You can tell a conduit is powered when it lights up like that. Now try the lever on the reactor. A little goes a long way with an S2.", Wait.ReactorRunning);
-            Add("Great. Now let's put the switch back on the conduit you just repaired.", Wait.AddonHeld);
-            Add("Open the conduit again and drop the switch in the blue square.", Wait.AddonInstalled);
-            Add("It goes in off. That's fine: a running reactor doesn't need its starter.", Wait.Pause, seconds: 2f);
-            Add("Bridge says they aren't getting any power. Let's check the battery banks for damage.", Wait.Seen);
-            Add("There. That S1 battery says it's wrecked. We'll have to replace it. Pull the red handle to unlock it.", Wait.SlotUnlocked);
-            Add("Now drag it out of its slot.", Wait.SlotEmpty);
-            Add("Our engineers have just delivered a replacement. Install it in the empty slot.", Wait.SlotLocked);
-            Add("Hmm. Something's not right. Check the ports on the back of the battery.", Wait.Seen);
-            Add("That explains it. Those three ports are on every component, at least one of them. Blue takes power in, red is data, and green sends power out.", Wait.None);
-            Add("Put a hand next to the green port and drag the spheres out, like you did to repair the conduit.", Wait.ConduitOnFace);
-            Add("Good. Any port or conduit with a dead end lets you install a new conduit like that, power or item.", Wait.None);
-            Add("Now lay a line from it to the end of the bridge feed.", Wait.ConduitOnFace);
-            Add("The end of the feed got knocked aside. Open it and drag its handle round to meet your line.", Wait.ConduitOnFace);
-            Add("Now its arrow. Slide it in, toward the centre, so power comes in from your line.", Wait.SegmentIn);
-            Add("There. Bridge has power.", Wait.Powered);
-        }
-#endif
+        /// For the Editor tools (SurgeScriptMenu): the sounds folder, the lines, and setting them.
+        public string SoundsFolder => _soundsFolder;
+        public int StepCount => _steps.Count;
+        public void SetClips(AudioClip[] clips) => _clips = clips;
+        public void SetSteps(List<Step> steps) => _steps = steps;
     }
 }

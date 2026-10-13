@@ -28,6 +28,16 @@ dark backing, a skirt low down, and half a rib at each edge, so containers side 
 origin the middle of its top, so it sits on the floor at y -0.25 with its edges on cell boundaries when centred on one).
 Both use the sample's materials (`ShipPanel`, `ShipSkirt`, `ShipFloor`, `FuelPackMetal`, `FuelPackDark`).
 
+**Panels with an alcove** (2026-10-13, untested in-world): `ConduitContainer S0` is a variant whose panel is
+`Meshes/WallPanelS0.fbx`: an alcove in the middle of the bottom-right panel (seen from the room) for an
+[[slots#S0|S0]] slot sunk a whole cell into the wall, in the container's channel cell at local (-1, 1, -4.5), 12 cm
+behind the panel's face. The opening is the cell plus 1 cm at the top, sides and back, its floor level with the cell's
+bottom. Its first 12 cm in are the wall's dark cut edge, then a lining in the panel's grey with a darker back and
+floor; framed in gunmetal. The lining is part of the panel, so it smokes away with it. The light panels stop 5 mm short
+of the opening, under the trim (they z-fought with its inner faces). `wall_big` is unchanged. Put the slot in that cell, facing the room; its side ports then meet the channel's cells either
+side. The alcove is a parameter of `wall()` in `ShipWalls.py`, so other slot sizes and places are one more export
+each; a variant per slot size and place is expected.
+
 ## Access panels
 
 **Status (2026-10-01):** built.
