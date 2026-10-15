@@ -101,6 +101,24 @@ namespace SomniumSpace.Worlds.SpaceScape.Player
             return true;
         }
 
+        /// Where the local player's head is and how it is turned, roll included, falling back to the main camera in
+        /// the Editor and in 2D.
+        public static bool TryHeadRotation(out Vector3 position, out Quaternion rotation)
+        {
+            position = default;
+            rotation = Quaternion.identity;
+            var body = _instance != null && _instance._players != null && _instance._players.LocalPlayer != null
+                ? _instance._players.LocalPlayer.References?.Body
+                : null;
+            if (body != null && body.Head != null) { position = body.Head.position; rotation = body.Head.rotation; return true; }
+
+            var camera = Camera.main;
+            if (camera == null) return false;
+            position = camera.transform.position;
+            rotation = camera.transform.rotation;
+            return true;
+        }
+
         private void OnValidate()
         {
             if (_players == null) _players = GetComponent<SomniumPlayersContainer>();

@@ -13,6 +13,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private double _chargeWatts = 100.0;
         [Tooltip("Most it puts out, in watts, when its release rule allows. Never more than it holds.")]
         [SerializeField] private double _dischargeWatts = 100.0;
+        [Tooltip("Never runs down: it discharges without spending its hold. For the tutorial, where nobody should be left in the dark for taking their time.")]
+        [SerializeField] private bool _fuckLoadsOfPower;
 
         [Header("Readout")]
         [Tooltip("Text showing what kind of cell it is, and any setting the crew has dialled in. Its charge is on the Capacitor Module's readout. Optional.")]
@@ -28,8 +30,20 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             {
                 if (_battery == null) _battery = Create(Hold, _chargeWatts, _dischargeWatts);
                 _battery.Enabled = enabled;
+                _battery.Infinite = _fuckLoadsOfPower;
                 Push(_battery);
                 return _battery;
+            }
+        }
+
+        /// The Fuck Loads Of Power box, for a script to turn on and off while running (the surge tutorial).
+        public bool Infinite
+        {
+            get => _fuckLoadsOfPower;
+            set
+            {
+                _fuckLoadsOfPower = value;
+                if (_battery != null) _battery.Infinite = value;
             }
         }
 
@@ -67,6 +81,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _battery.ChargeWatts = _chargeWatts;
             _battery.DischargeWatts = _dischargeWatts;
             _battery.Enabled = enabled;
+            _battery.Infinite = _fuckLoadsOfPower;
             Push(_battery);
             _readoutShown?.Changed();
         }

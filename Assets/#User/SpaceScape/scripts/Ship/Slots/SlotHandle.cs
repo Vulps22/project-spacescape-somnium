@@ -25,6 +25,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// The bar a hand grabs, or null.
         public Transform Bar => _bar != null ? _bar.transform : null;
 
+        /// False and no hand can take the bar, so the slot cannot be unlocked by hand.
+        public bool Grabbable
+        {
+            get => _bar != null && _bar.enabled;
+            set { if (_bar != null) _bar.enabled = value; }
+        }
+
         /// The bar's renderer, coloured by the slot's lock.
         public Renderer BarRenderer => _barRenderer;
 

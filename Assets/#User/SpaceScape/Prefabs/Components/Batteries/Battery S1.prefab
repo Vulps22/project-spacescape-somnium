@@ -388,6 +388,7 @@ GameObject:
   - component: {fileID: 8244425255442745308}
   - component: {fileID: 3033911582571925517}
   - component: {fileID: 238029984737818998}
+  - component: {fileID: -2538712405315824093}
   m_Layer: 0
   m_Name: Battery S1
   m_TagString: Untagged
@@ -472,6 +473,7 @@ MonoBehaviour:
   _capacityJoules: 1000000
   _startFull: 1
   _readout: {fileID: 1959840173100890891}
+  _debugCharge: 0
 --- !u!114 &3070622359727791729
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -795,7 +797,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7fedddb4d2e961dd186717cd7b2d1c74, type: 3}
   m_Name: 
   m_EditorClassIdentifier: SpaceScape::SomniumSpace.Worlds.SpaceScape.Player.IgnoresPlayerBody
-  _reapplySeconds: 0.25
 --- !u!114 &3033911582571925517
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -850,6 +851,28 @@ MonoBehaviour:
   _filling: {r: 0.45, g: 0.12, b: 1, a: 1}
   _full: {r: 0.95, g: 0.93, b: 1, a: 1}
   _glow: {x: 0.6, y: 2.2}
+--- !u!64 &-2538712405315824093
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4501853603252209032}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 0}
 --- !u!1 &8207650291189826107
 GameObject:
   m_ObjectHideFlags: 0

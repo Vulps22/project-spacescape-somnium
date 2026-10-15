@@ -282,6 +282,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         public void Bind(PowerNode node)
         {
             Node = node;
+            node.DecidesOwnFailures = LocalZone.Contains(transform.position);
             if (DrivesNode) node.On = _on;
             DataGrid.Invalidate();   // a component going into a slot brings its data ports
         }

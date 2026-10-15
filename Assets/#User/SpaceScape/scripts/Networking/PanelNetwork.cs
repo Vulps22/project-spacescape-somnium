@@ -72,6 +72,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             for (int i = 0; i < shared; i++)
             {
                 var panel = _panels[i];
+                if (LocalZone.Contains(panel.transform.position)) { panel.Decides = true; continue; }
                 panel.Decides = decides;
                 int word = i / 32, bit = 1 << (i % 32);
                 if (decides)
@@ -89,6 +90,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
 
         private void Ask(int index)
         {
+            if (index >= 0 && index < _panels.Count && LocalZone.Contains(_panels[index].transform.position)) { _panels[index].SetOpen(true); return; }
             if (Live) _data.RPC_SendMessageToController(MessageFrame.Pack((byte)PanelMessageType.Open, BitConverter.GetBytes(index)));
         }
 

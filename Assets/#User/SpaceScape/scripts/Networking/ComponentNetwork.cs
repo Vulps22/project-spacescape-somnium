@@ -81,7 +81,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
 
             if (_data == null)
             {
-                Debug.LogError($"ComponentNetwork: '{name}' has no NetworkBridgeData; it will not be shared", this);
+                if (!LocalZone.Contains(transform.position)) Debug.LogError($"ComponentNetwork: '{name}' has no NetworkBridgeData; it will not be shared", this);
                 return;
             }
             if (_data.IntCount < count + 1)
@@ -318,7 +318,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         /// Spawns a pack leaving the loader, on the master. Made here with no network.
         private ItemPack PutOutPack(ItemPack prefab, Vector3 at, Quaternion turn)
         {
-            if (!IsLive) return Instantiate(prefab, at, turn);
+            if (!IsLive) return LocalZone.Contains(at) ? LocalZone.MakeLocal(prefab.gameObject, at, turn).GetComponent<ItemPack>() : Instantiate(prefab, at, turn);
             if (!WorldManager.CanSpawn || !prefab.TryGetComponent<NetworkObject>(out var networked)) return null;
             var spawned = WorldManager.Spawn(networked, at, turn, $"pack '{prefab.name}' put out by loader '{name}'");
             return spawned != null ? spawned.GetComponent<ItemPack>() : null;
@@ -327,7 +327,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         /// Spawns an item falling out of a cut-off item conduit, on the master. Made here with no network.
         private LoadableItem DropOutItem(LoadableItem prefab, Vector3 at, Quaternion turn)
         {
-            if (!IsLive) return Instantiate(prefab, at, turn);
+            if (!IsLive) return LocalZone.Contains(at) ? LocalZone.MakeLocal(prefab.gameObject, at, turn).GetComponent<LoadableItem>() : Instantiate(prefab, at, turn);
             if (!WorldManager.CanSpawn || !prefab.TryGetComponent<NetworkObject>(out var networked)) return null;
             var spawned = WorldManager.Spawn(networked, at, turn, $"item '{prefab.name}' fell out of loader '{name}''s item conduit");
             return spawned != null ? spawned.GetComponent<LoadableItem>() : null;

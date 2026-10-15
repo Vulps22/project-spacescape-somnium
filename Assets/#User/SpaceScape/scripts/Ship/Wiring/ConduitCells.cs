@@ -262,7 +262,27 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     CellChanged?.Invoke(cell);
                 }
             }
-            Debug.Log($"ConduitCells: starting layout {kept} power conduit cell(s); left out {dropped} cell(s) in {runsDropped} run(s) that reach nothing");
+            // Item conduits: the layout's item cells, as drawn (no arrows; a junction's count from its faces).
+            int items = 0;
+            foreach (var code in _layout.Items)
+            {
+                if (_cells.ContainsKey(code.Cell)) continue;
+                var c = new Cell { Kind = Kind.Item };
+                foreach (var face in AllFaces)
+                    if (code.GetFace(face) != FlowDirection.None) c.Used |= Bit(face);
+                if (code.Addon > 0 && AddonPrefab(code.Addon) is JunctionAddon)
+                {
+                    c.Addon = code.Addon;
+                    c.AddonState = Mathf.Clamp(Count(c.Used) - ConduitHologram.PlainSegments, JunctionAddon.MinExtra, JunctionAddon.MaxExtra);
+                    c.Facing = code.AddonFacing == GridDirection.None ? GridDirection.ZPlus : code.AddonFacing;
+                    c.Turns = code.AddonTurns;
+                    c.Parked = code.AddonParked;
+                }
+                _cells[code.Cell] = c;
+                items++;
+                CellChanged?.Invoke(code.Cell);
+            }
+            Debug.Log($"ConduitCells: starting layout {kept} power conduit cell(s), {items} item conduit cell(s); left out {dropped} cell(s) in {runsDropped} run(s) that reach nothing");
             Revision++;
             Changed?.Invoke();
         }
@@ -421,10 +441,22 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         // ---- Editing
 
+        private bool _ignorePanels;
+
+        /// Changes a cell as damage does, not a hand: a shut access panel does not stop it, and nothing is told. For
+        /// scripted breaks in a local zone (SurgeBreaks). True when it changed.
+        public bool Break(Edit edit, Vector3Int cell, int a, int b)
+        {
+            _ignorePanels = true;
+            try { return Apply(edit, cell, a, b); }
+            finally { _ignorePanels = false; }
+        }
+
         /// Changes a cell as a hand on this client did, and tells the network. True when it changed.
         public bool EditByHand(Edit edit, Vector3Int cell, int a, int b)
         {
             if (!Apply(edit, cell, a, b)) return false;
+            if (LocalZone.Contains(cell)) return true;   // this client's own copy: nothing to tell anyone
             _heldUntil[cell] = Time.time + _editHoldSeconds;
             EditedByHand?.Invoke(edit, cell, a, b);
             return true;
@@ -434,7 +466,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         public bool Apply(Edit edit, Vector3Int cell, int a, int b)
         {
             _cells.TryGetValue(cell, out var c);
-            if (edit != Edit.AddonState && AccessPanel.Blocks(cell)) return false;
+            if (edit != Edit.AddonState && !_ignorePanels && AccessPanel.Blocks(cell)) return false;
             switch (edit)
             {
                 case Edit.Faces:
@@ -548,10 +580,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// point nowhere, so taking one out never leaves another loose. True when any went.
         private bool UninstallLoose()
         {
-            if (!Decides) return false;
             _toUninstall.Clear();
             foreach (var pair in _cells)
-                if (pair.Value.Used == 0 && !IsOpen(pair.Key) && !PointedInto(pair.Key)) _toUninstall.Add(pair.Key);
+                if ((Decides || LocalZone.Contains(pair.Key)) && pair.Value.Used == 0 && !IsOpen(pair.Key) && !PointedInto(pair.Key)) _toUninstall.Add(pair.Key);
             foreach (var cell in _toUninstall)
             {
                 var c = _cells[cell];
@@ -584,9 +615,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// Three ints per installed cell.
         public int[] Write()
         {
-            var ints = new int[_cells.Count * IntsPerCell];
+            var shared = _cells.Where(p => !LocalZone.Contains(p.Key)).OrderBy(p => PackCell(p.Key)).ToList();   // a local zone's cells stay here
+            var ints = new int[shared.Count * IntsPerCell];
             int i = 0;
-            foreach (var pair in _cells.OrderBy(p => PackCell(p.Key)))
+            foreach (var pair in shared)
             {
                 var c = pair.Value;
                 ints[i++] = PackCell(pair.Key) | ((int)c.Kind << 30);
@@ -631,7 +663,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             bool any = false;
             foreach (var pair in incoming)
             {
-                if (Held(pair.Key)) continue;
+                if (Held(pair.Key) || LocalZone.Contains(pair.Key)) continue;
                 if (_cells.TryGetValue(pair.Key, out var mine) && mine.SameAs(pair.Value)) continue;
                 _cells[pair.Key] = pair.Value;
                 Changed1(pair.Key);
@@ -639,7 +671,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             }
             foreach (var cell in _cells.Keys.ToList())
             {
-                if (incoming.ContainsKey(cell) || Held(cell)) continue;
+                if (incoming.ContainsKey(cell) || Held(cell) || LocalZone.Contains(cell)) continue;
                 _cells.Remove(cell);
                 Changed1(cell);
                 any = true;

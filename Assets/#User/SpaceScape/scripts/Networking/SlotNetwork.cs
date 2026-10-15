@@ -66,6 +66,17 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
 
         private void Update()
         {
+            if (LocalZone.Contains(transform.position))
+            {
+                // This client's own copy of the slot: it decides, and makes its starting component itself, unshared.
+                _slot.Decides = true;
+                if (!_local && (WorldManager.IsNetworkReady || (Application.isEditor && !WorldManager.HasRunner && Time.timeSinceLevelLoad > OfflineAfterSeconds)))
+                {
+                    _local = true;
+                    _slot.StartLocally();
+                }
+                return;
+            }
             if (!WorldManager.IsNetworkReady || !Live)
             {
                 _slot.Decides = true;
@@ -161,6 +172,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
 
         private void OnPullRequested()
         {
+            if (LocalZone.Contains(transform.position)) { _slot.Unlock(); return; }
             if (Live) _data.RPC_SendMessageToController(MessageFrame.Pack((byte)SlotMessageType.Pull, null));
         }
 
@@ -172,7 +184,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
 
         private void Tell(SlotMessageType type, GridNode component)
         {
-            if (!Live) return;
+            if (!Live || LocalZone.Contains(transform.position)) return;
             if (_slot.Decides) { WriteOccupant(); return; }
             _keepLocalUntil = Time.time + KeepLocalSeconds;
             _data.RPC_SendMessageToController(MessageFrame.Pack((byte)type, BitConverter.GetBytes(IdOf(component))));

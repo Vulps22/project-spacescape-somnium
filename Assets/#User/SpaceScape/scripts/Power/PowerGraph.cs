@@ -257,11 +257,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
             }
 
             Conduct(seconds);
-            if (DecidesFailures)
-            {
-                RollForPops(seconds);
-                BlowMergePoints();
-            }
+            RollForPops(seconds);
+            if (DecidesFailures) BlowMergePoints();
 
             for (int i = 0; i < _nodes.Count; i++)
             {
@@ -359,6 +356,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
             for (int i = 0; i < _nodes.Count; i++)
             {
                 var node = _nodes[i];
+                if (!DecidesFailures && !node.DecidesOwnFailures) continue;
                 if (node.IsPopped) continue;
                 if (node.Celsius < PopFloorCelsius) continue;
                 if (node.Celsius < node.BaselineCelsius + PopFloorAboveBaseline) continue;

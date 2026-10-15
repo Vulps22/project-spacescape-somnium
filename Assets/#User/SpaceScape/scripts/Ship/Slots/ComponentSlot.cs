@@ -431,7 +431,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 Debug.LogWarning($"'{name}' ({_size}) starts with '{_startsWith.name}', which is not a {_size} component; left empty", this);
                 return;
             }
-            var made = Instantiate(_startsWith, transform.position, SeatFor(_startsWith));
+            var made = LocalZone.Contains(transform.position)
+                ? LocalZone.MakeLocal(_startsWith.gameObject, transform.position, SeatFor(_startsWith)).GetComponent<GridNode>()
+                : Instantiate(_startsWith, transform.position, SeatFor(_startsWith));
             made.name = _startsWith.name;
             Install(made);
         }

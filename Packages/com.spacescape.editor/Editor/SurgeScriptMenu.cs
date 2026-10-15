@@ -37,6 +37,43 @@ namespace SomniumSpace.Worlds.SpaceScape.EditorTools
             Debug.Log($"[SpaceScape] Surge: found {count} of {found.Length} step sounds in {script.SoundsFolder}", script);
         }
 
+        /// What each line asks for, shown in a box once it finishes. Empty where a line asks for nothing.
+        private static readonly string[] Tasks =
+        {
+            "",
+            "Look at the reactor",
+            "Wave a hand through the glowing cube to open the panel",
+            "Put a hand on the sparking conduit",
+            "Drag the sphere from the centre out to close the gap",
+            "Pull the lever on the reactor until the output reads 70 kW",
+            "Pick up a switch from the shelves by the entrance",
+            "Open the conduit and drop the switch in the blue square",
+            "",
+            "Find the broken battery",
+            "Pull the red handle on the wrecked battery",
+            "Pull the battery out of its slot",
+            "Put the new battery in the empty slot",
+            "Look at the ports on the back of the new battery",
+            "",
+            "Put a hand by the green port and drag a sphere into the green port",
+            "",
+            "Lay conduits from the green port to the bridge feed on the wall above you",
+            "Open the feed's end and drag its handle round to meet your line",
+            "Slide its arrow in, toward the centre",
+            "",
+            "",
+        };
+
+        /// Replaces the task lines alone, keeping the targets and everything else set in the scene.
+        [MenuItem("CONTEXT/SurgeScript/Fill Tasks From The Script")]
+        private static void FillTasks(MenuCommand command)
+        {
+            var script = (SurgeScript)command.context;
+            Undo.RecordObject(script, "Fill Tasks From The Script");
+            script.SetTasks((string[])Tasks.Clone());
+            EditorUtility.SetDirty(script);
+        }
+
         /// Replaces the lines with the script as written, waits included, targets left to set in the scene.
         [MenuItem("CONTEXT/SurgeScript/Fill Lines From The Script")]
         private static void FillLines(MenuCommand command)
@@ -65,9 +102,11 @@ namespace SomniumSpace.Worlds.SpaceScape.EditorTools
             Add("Now lay a line from it to the end of the bridge feed.", SurgeScript.Wait.ConduitOnFace);
             Add("The end of the feed got knocked aside. Open it and drag its handle round to meet your line.", SurgeScript.Wait.ConduitOnFace);
             Add("Now its arrow. Slide it in, toward the centre, so power comes in from your line.", SurgeScript.Wait.SegmentIn);
-            Add("There. Bridge has power.", SurgeScript.Wait.Powered);
+            Add("There. Bridge has power.", SurgeScript.Wait.None);
+            Add("And now you know the fundamentals of repairing and maintaining a star ship!", SurgeScript.Wait.None);
             Undo.RecordObject(script, "Fill Lines From The Script");
             script.SetSteps(steps);
+            script.SetTasks((string[])Tasks.Clone());
             EditorUtility.SetDirty(script);
         }
     }

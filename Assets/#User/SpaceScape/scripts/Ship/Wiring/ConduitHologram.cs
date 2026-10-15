@@ -83,7 +83,14 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private float _open;
         private bool _opening;
 
+        /// Cells whose handles may only land to the left or right of the player, as they face the cell when they
+        /// take hold: up, down, toward and away from them are shut. The surge tutorial's sparked conduit, so a
+        /// player cannot mend it onto a face that leads nowhere.
+        public static readonly HashSet<Vector3Int> SideToSide = new HashSet<Vector3Int>();
+
         private Drag _drag;
+        private bool _sideToSide;      // this drag is in a SideToSide cell
+        private bool _facingAlongX;    // and the player faced it along X when they took hold, so X is shut too
         private int _dragged = -1;
         private IXRSelectInteractor _dragger;
         private GridDirection _target;
@@ -537,6 +544,14 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (sphere != null) _ringRadius = sphere.bounds.extents.x / (1f + _motion.HoverGrow);
             _target = GridDirection.None;
             _targetPark = false;
+            var look = Vector3.forward;
+            _sideToSide = Conduit != null && SideToSide.Contains(GridCell.ToCell(Conduit.Centre))
+                && PlayerHands.TryHeadPose(out _, out look);
+            if (_sideToSide)
+            {
+                var facing = transform.InverseTransformDirection(look);
+                _facingAlongX = Mathf.Abs(facing.x) >= Mathf.Abs(facing.z);
+            }
             if (kind == Drag.Tip) { _segments[index].TipHeld = true; return; }
             if (kind == Drag.Addon)
             {
@@ -620,6 +635,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _drag = Drag.None;
             _dragged = -1;
             _dragger = null;
+            _sideToSide = false;
         }
 
         /// Moves the held handle freely with the hand anywhere inside the tile, noting which zone it is in:
@@ -685,9 +701,20 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// like a junction's box in the middle of the cable, holds no face.
         private bool IsFree(GridDirection face, int exceptSegment, bool exceptAddon = false)
         {
+            if (Shut(face)) return false;
             for (int i = 0; i < _segmentCount; i++)
                 if (i != exceptSegment && _faceOf[i] == face) return false;
             return exceptAddon || !_hasHandle || _addonParked || _addonFace != face;
+        }
+
+        /// True for a face a SideToSide drag may not land on: up, down, and toward or away from the player.
+        private bool Shut(GridDirection face)
+        {
+            if (!_sideToSide) return false;
+            if (face == GridDirection.YPlus || face == GridDirection.YMinus) return true;
+            return _facingAlongX
+                ? face == GridDirection.XPlus || face == GridDirection.XMinus
+                : face == GridDirection.ZPlus || face == GridDirection.ZMinus;
         }
 
         /// The flow a segment pulled out onto a face should have: whatever meets the neighbour on that side,

@@ -14,6 +14,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private ConduitAddon[] _addons = new ConduitAddon[0];
         [Tooltip("The drawn conduits, packed: the ship's starting wiring. Edit them with the drawing tool, not by hand.")]
         [SerializeField] private long[] _cells = new long[0];
+        [Tooltip("The drawn item conduits, packed the same way (a used face is stored as In; item conduits have no arrows). Seeded as they are, after the power conduits.")]
+        [SerializeField] private long[] _itemCells = new long[0];
         [Tooltip("Play mode, on the master's client only: after every change to a conduit or a slot's component (anyone's), log the whole layout, cell by cell, with the packed numbers for Cells. The last print is the wiring to copy into the scene.")]
         [SerializeField] private bool _logLayout;
         [Tooltip("Seconds of quiet after a change before the layout is logged, so one edit logs once.")]
@@ -38,6 +40,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         public IEnumerable<ConduitCode> All
         {
             get { foreach (var packed in _cells) yield return ConduitCode.Unpack(packed); }
+        }
+
+        /// Every drawn item conduit.
+        public IEnumerable<ConduitCode> Items
+        {
+            get { foreach (var packed in _itemCells) yield return ConduitCode.Unpack(packed); }
         }
 
         /// The conduit drawn in a cell, if there is one.
@@ -125,11 +133,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         }
 
         /// The ship's wiring as it is now: every installed conduit cell, every slot's component, and the packed
-        /// numbers for Cells (power conduits only: the layout draws no item conduits).
+        /// numbers for Cells and Item Cells.
         private void LogLayout(ConduitCells cells)
         {
             var text = new StringBuilder();
             var packed = new List<long>();
+            var packedItems = new List<long>();
             var sorted = new List<KeyValuePair<Vector3Int, ConduitCells.Cell>>();
             if (cells != null) sorted.AddRange(cells.All);
             sorted.Sort((a, b) => a.Key.x != b.Key.x ? a.Key.x.CompareTo(b.Key.x) : a.Key.y != b.Key.y ? a.Key.y.CompareTo(b.Key.y) : a.Key.z.CompareTo(b.Key.z));
@@ -145,7 +154,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     int bit = ConduitCells.Bit(face);
                     if (bit == 0 || (c.Used & bit) == 0) continue;
                     bool isOut = (c.Out & bit) != 0;
-                    code.SetFace(face, isOut ? FlowDirection.Out : FlowDirection.In);
+                    code.SetFace(face, isOut && c.Kind == ConduitCells.Kind.Power ? FlowDirection.Out : FlowDirection.In);
                     text.Append(c.Kind == ConduitCells.Kind.Power ? $" {face}:{(isOut ? "Out" : "In")}" : $" {face}");
                 }
                 if (c.Used == 0) text.Append(" (all parked)");
@@ -157,6 +166,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 if (c.Popped) text.Append(" POPPED");
                 text.AppendLine();
                 if (c.Kind == ConduitCells.Kind.Power) packed.Add(code.Pack());
+                else packedItems.Add(code.Pack());
             }
             foreach (var slot in ComponentSlot.All)
             {
@@ -164,6 +174,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 text.AppendLine($"slot '{slot.name}' at {slot.transform.position} {slot.Size}: {(slot.Component != null ? slot.Component.name : "empty")}");
             }
             text.AppendLine("cells: " + string.Join(",", packed));
+            text.AppendLine("items: " + string.Join(",", packedItems));
 
             Debug.Log(text.ToString(), this);
         }

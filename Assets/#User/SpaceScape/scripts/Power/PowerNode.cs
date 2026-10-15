@@ -58,6 +58,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         /// stops doing anything with it, so it becomes a dead end that cooks its own compartment.
         public Integrity Integrity;
 
+        /// True for a tile in a local zone (every client has its own copy): its pops and damage are decided here even
+        /// where the grid does not decide failures.
+        public bool DecidesOwnFailures;
+
         /// Set when the component here holds power. The grid closes out its rate at the end of every tick.
         public Capacitor Hold;
 

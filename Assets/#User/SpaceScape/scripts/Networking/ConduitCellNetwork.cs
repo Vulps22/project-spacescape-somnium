@@ -59,7 +59,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
             if (prefab == null) return;
             var at = GridCell.ToWorld(cell);
             AddonItem item = null;
-            if (WorldManager.IsNetworkReady)
+            if (LocalZone.Contains(cell)) LocalZone.MakeLocal(prefab.gameObject, at, Quaternion.identity).TryGetComponent(out item);
+            else if (WorldManager.IsNetworkReady)
             {
                 if (!WorldManager.CanSpawn || !prefab.TryGetComponent<NetworkObject>(out var networked)) return;
                 var spawned = WorldManager.Spawn(networked, at, Quaternion.identity, $"addon item '{prefab.name}' dropped by an uninstalled conduit");

@@ -130,7 +130,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Networking
         private void SendCellHologram(ShipMessageType type, Vector3Int cell)
         {
             var me = PlayerManager.LocalPlayer;
-            if (!me.Exists || !_messenger.CanSend) return;
+            if (!me.Exists || !_messenger.CanSend || LocalZone.Contains(cell)) return;
             byte[] id = Encoding.UTF8.GetBytes(me.Id);
             byte[] payload = new byte[12 + id.Length];
             Buffer.BlockCopy(new[] { cell.x, cell.y, cell.z }, 0, payload, 0, 12);

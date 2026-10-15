@@ -24,17 +24,20 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             AddonInstalled,  // an addon (Addon, if set) in the conduit in Target's cell
             SlotUnlocked,    // the slot on or above Target unlocked
             SlotEmpty,       // that slot holding nothing
-            SlotLocked,      // that slot holding a component, locked
+            SlotLocked,      // that slot holding a component that is not wrecked, locked
             ConduitOnFace,   // a conduit installed in Target's cell, with a segment on Face (any, for None)
             SegmentIn,       // the conduit in Target's cell with an In segment on Face
             Powered,         // the conduit in Target's cell carrying power
         }
 
-        [Serializable]
+        /// One line, put together at runtime from the flat arrays below. Never serialized itself: a Somnium world
+        /// build drops a list of a world's own classes (it arrives empty), so the lines are kept as plain arrays.
         public sealed class Step
         {
             [Tooltip("The line, as spoken. For reading in the Inspector; the voice is the sound file.")]
             [TextArea(1, 4)] public string Line;
+            [Tooltip("What to do, shown in a box once the line finishes, until its wait is met. Empty: no box.")]
+            public string Task;
             public Wait Wait;
             [Tooltip("What the wait reads: the thing to see, a marker in a conduit's cell, the panel, slot or reactor.")]
             public Transform Target;
@@ -44,7 +47,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             public ConduitAddon Addon;
             [Tooltip("Pause: seconds after the line finishes.")]
             public float Seconds = 2f;
-            [Tooltip("Turned on as this line starts: the delivered battery, say.")]
+            [Tooltip("Seen: degrees from where the head points that count as looking at it. 0: Seen Degrees.")]
+            public float SeenDegrees;
+            [Tooltip("Turned on as this line starts.")]
             public GameObject Reveal;
             [Tooltip("Marked with a white box round their renderers while this line waits: components.")]
             public Transform[] Boxes = Array.Empty<Transform>();
@@ -64,6 +69,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Tooltip("Clip N-1 is stepN. Filled from the sounds folder in the Editor.")]
         [SerializeField] private AudioClip[] _clips = Array.Empty<AudioClip>();
 
+        [Header("HUD")]
+        [Tooltip("Shows the line as a subtitle, then the task in a box, and an arrow toward the target while it is out of view.")]
+        [SerializeField] private SurgeHud _hud;
+
         [Header("Seen")]
         [SerializeField] private float _seenDegrees = 15f;
         [SerializeField] private float _seenSeconds = 0.5f;
@@ -73,28 +82,108 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Header("Highlights")]
         [Tooltip("An unlit white material for the boxes and lasers.")]
         [SerializeField] private Material _highlightMaterial;
+        [Tooltip("The component boxes' line width, in metres.")]
         [SerializeField] private float _lineWidth = 0.015f;
+        [Tooltip("The lasers' width, in metres: a little thicker than a conduit's 3 cm cable.")]
+        [SerializeField] private float _laserWidth = 0.04f;
+        [Tooltip("Boxes and lasers flash between these two colours.")]
+        [SerializeField] private Color _flashA = Color.white;
+        [SerializeField] private Color _flashB = new Color(0.3f, 1f, 0.4f);
+        [Tooltip("Flashes a second (one white and one green each).")]
+        [SerializeField] private float _flashesPerSecond = 2f;
         [Tooltip("Metres the laser stands above what it marks.")]
         [SerializeField] private float _laserHeight = 2f;
 
-        [Header("Lines")]
-        [SerializeField] private List<Step> _steps = new List<Step>();
+        [Header("The surge")]
+        [Tooltip("Breaks the bay as line Surge At Line starts, and delivers the battery as line Deliver At Line starts.")]
+        [SerializeField] private SurgeBreaks _breaks;
+        [SerializeField] private int _surgeAtLine = 1;
+        [SerializeField] private int _deliverAtLine = 13;
+
+        [Header("The starter battery")]
+        [Tooltip("The slot holding the battery that feeds the reactor's cold start. Its handle cannot be grabbed, and its battery never runs down from the cube until the reactor runs.")]
+        [SerializeField] private ComponentSlot _starterSlot;
+        [Tooltip("The reactor's slot: once its reactor runs, the starter battery runs down as usual again.")]
+        [SerializeField] private ComponentSlot _reactorSlot;
+
+        [Header("Side to side")]
+        [Tooltip("Markers in cells whose handles may only land left or right of the player while the tutorial runs: the sparked conduit.")]
+        [SerializeField] private Transform[] _sideToSideCells = Array.Empty<Transform>();
+
+        [Header("Lines (one entry per line, in order; plain arrays so a world build keeps them)")]
+        [SerializeField, TextArea(1, 3)] private string[] _lines = Array.Empty<string>();
+        [SerializeField] private string[] _tasks = Array.Empty<string>();
+        [SerializeField] private int[] _waits = Array.Empty<int>();          // a Wait each
+        [SerializeField] private Transform[] _targets = Array.Empty<Transform>();
+        [SerializeField] private int[] _faces = Array.Empty<int>();          // a GridDirection each
+        [SerializeField] private ConduitAddon[] _addons = Array.Empty<ConduitAddon>();
+        [SerializeField] private float[] _seconds = Array.Empty<float>();
+        [SerializeField] private float[] _seenDegreesPerLine = Array.Empty<float>();
+        [SerializeField] private GameObject[] _reveals = Array.Empty<GameObject>();
+        [Header("Highlights (each with the line it belongs to, from 1)")]
+        [SerializeField] private Transform[] _boxTargets = Array.Empty<Transform>();
+        [SerializeField] private int[] _boxLines = Array.Empty<int>();
+        [SerializeField] private Transform[] _laserTargets = Array.Empty<Transform>();
+        [SerializeField] private int[] _laserLines = Array.Empty<int>();
+
+        private List<Step> _steps = new List<Step>();
 
         private static readonly Vector3[] Hands = new Vector3[8];
         private static readonly RaycastHit[] Hits = new RaycastHit[16];
 
         private int _at = -1;          // the line playing or waiting; -1 before the cube, Count when finished
+        private BatteryBehaviourModule _starter;   // the starter battery while it is endless
         private float _lineEnds;
         private float _seenFor;
         private bool _warned;
+        private bool _tasked;          // the line has finished and its task is up
         private readonly List<LineRenderer> _boxes = new List<LineRenderer>();
         private readonly List<LineRenderer> _lasers = new List<LineRenderer>();
 
         /// The line playing or waiting, from 1; 0 before the cube is hit.
         public int Line => _at < 0 ? 0 : Mathf.Min(_at + 1, _steps.Count);
 
+        private void Awake() => _steps = BuildSteps();
+
+        /// The lines as Steps, from the flat arrays.
+        private List<Step> BuildSteps()
+        {
+            var steps = new List<Step>();
+            for (int i = 0; i < _lines.Length; i++)
+            {
+                var boxes = new List<Transform>();
+                var lasers = new List<Transform>();
+                for (int b = 0; b < _boxTargets.Length && b < _boxLines.Length; b++) if (_boxLines[b] == i + 1 && _boxTargets[b] != null) boxes.Add(_boxTargets[b]);
+                for (int l = 0; l < _laserTargets.Length && l < _laserLines.Length; l++) if (_laserLines[l] == i + 1 && _laserTargets[l] != null) lasers.Add(_laserTargets[l]);
+                steps.Add(new Step
+                {
+                    Line = _lines[i],
+                    Task = i < _tasks.Length ? _tasks[i] : "",
+                    Wait = i < _waits.Length ? (Wait)_waits[i] : Wait.None,
+                    Target = i < _targets.Length ? _targets[i] : null,
+                    Face = i < _faces.Length ? (GridDirection)_faces[i] : GridDirection.None,
+                    Addon = i < _addons.Length ? _addons[i] : null,
+                    Seconds = i < _seconds.Length ? _seconds[i] : 2f,
+                    SeenDegrees = i < _seenDegreesPerLine.Length ? _seenDegreesPerLine[i] : 0f,
+                    Reveal = i < _reveals.Length ? _reveals[i] : null,
+                    Boxes = boxes.ToArray(),
+                    Lasers = lasers.ToArray(),
+                });
+            }
+            return steps;
+        }
+
+        // The slot's handle is turned off once, here: a player who unlocked the starter did not know how to put it back.
+        private void Start()
+        {
+            var handle = _starterSlot != null ? _starterSlot.GetComponentInChildren<SlotHandle>(true) : null;
+            if (handle != null) handle.Grabbable = false;
+            else if (_starterSlot != null) Debug.LogWarning("[SpaceScape] Surge: the starter slot has no handle", this);
+        }
+
         private void Update()
         {
+            EndStarterOnceReactorRuns();
             if (_at < 0)
             {
                 if (HandInCube()) Begin(0);
@@ -104,7 +193,40 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
             var step = _steps[_at];
             UpdateHighlights(step);
-            if (Time.time >= _lineEnds && Met(step)) Begin(_at + 1);
+            if (Time.time < _lineEnds) return;
+            if (Met(step)) Begin(_at + 1);
+            else if (!_tasked)
+            {
+                _tasked = true;
+                if (_hud != null) _hud.Task(step.Task);
+            }
+        }
+
+        /// A player taking their time must not find the starter flat: endless from the cube until the reactor runs.
+        private void StartStarter()
+        {
+            _starter = _starterSlot != null && _starterSlot.Component != null
+                ? _starterSlot.Component.GetComponentInChildren<BatteryBehaviourModule>()
+                : null;
+            if (_starter == null)
+            {
+                Debug.LogWarning("[SpaceScape] Surge: no battery in the starter slot to keep charged", this);
+                return;
+            }
+            _starter.Infinite = true;
+        }
+
+        /// Endless no longer once the reactor runs, so it cannot be farmed.
+        private void EndStarterOnceReactorRuns()
+        {
+            if (_starter == null) return;
+            var reactor = _reactorSlot != null && _reactorSlot.Component != null
+                ? _reactorSlot.Component.GetComponentInChildren<ReactorBehaviourModule>()
+                : null;
+            if (reactor == null || !reactor.Reactor.Core.Running) return;
+            _starter.Infinite = false;
+            _starter = null;
+            Debug.Log("[SpaceScape] Surge: reactor running; the starter battery runs down again", this);
         }
 
         private bool HandInCube()
@@ -123,15 +245,25 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _at = index;
             _seenFor = 0f;
             _warned = false;
+            _tasked = false;
             if (index == 0 && _cube != null) _cube.gameObject.SetActive(false);
+            if (index == 0)
+            {
+                StartStarter();
+                foreach (var t in _sideToSideCells) if (t != null) ConduitHologram.SideToSide.Add(GridCell.ToCell(t.position));
+            }
             if (index >= _steps.Count)
             {
                 Debug.Log("[SpaceScape] Surge: finished", this);
+                if (_hud != null) _hud.Clear();
+                foreach (var t in _sideToSideCells) if (t != null) ConduitHologram.SideToSide.Remove(GridCell.ToCell(t.position));
                 return;
             }
 
             var step = _steps[index];
             if (step.Reveal != null) step.Reveal.SetActive(true);
+            if (_breaks != null && index + 1 == _surgeAtLine) _breaks.Surge();
+            if (_breaks != null && index + 1 == _deliverAtLine) _breaks.Deliver();
             var clip = index < _clips.Length ? _clips[index] : null;
             if (clip != null && _voice != null)
             {
@@ -146,6 +278,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 Debug.LogWarning($"[SpaceScape] Surge: no sound for step{index + 1}{(_voice == null ? " (no voice source)" : "")}", this);
             }
             MakeHighlights(step);
+            if (_hud != null)
+            {
+                _hud.Say(step.Line);
+                _hud.Point(step.Wait == Wait.None || step.Wait == Wait.Pause ? null : PointAt(step));
+            }
             Debug.Log($"[SpaceScape] Surge: step{index + 1}, waits for {step.Wait}", this);
         }
 
@@ -159,52 +296,73 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             {
                 case Wait.None: return true;
                 case Wait.Pause: return Time.time >= _lineEnds + step.Seconds;
-                case Wait.Seen: return Seen(step.Target);
-                case Wait.PanelOpen: return Find<AccessPanel>(step)?.Open ?? true;
-                case Wait.HologramOpen: return cells == null || step.Target == null || cells.IsOpen(cell);
-                case Wait.CellMended: return c != null && !c.Popped || Missing(step, cells);
-                case Wait.ReactorRunning: return Find<ReactorBehaviourModule>(step)?.Reactor.Core.Running ?? true;
+                case Wait.Seen: return Seen(step.Target, step.SeenDegrees > 0f ? step.SeenDegrees : _seenDegrees);
+                case Wait.PanelOpen: return Find<AccessPanel>(step)?.Open ?? false;
+                case Wait.HologramOpen: return !Missing(step, cells) && cells.IsOpen(cell);
+                case Wait.CellMended: return !Missing(step, cells) && c != null && !c.Popped;
+                case Wait.ReactorRunning: return Find<ReactorBehaviourModule>(step)?.Reactor.Core.Running ?? false;
                 case Wait.AddonHeld:
                     foreach (var item in AddonItem.All)
                         if (item != null && item.Grab != null && item.Grab.isSelected && (step.Addon == null || item.Installs == step.Addon))
                             return true;
                     return false;
                 case Wait.AddonInstalled:
-                    return c != null && c.Addon != 0 && (step.Addon == null || cells.AddonPrefab(c.Addon) == step.Addon) || Missing(step, cells);
-                case Wait.SlotUnlocked: return Find<ComponentSlot>(step)?.Unlocked ?? true;
+                    return !Missing(step, cells) && c != null && c.Addon != 0 && (step.Addon == null || cells.AddonPrefab(c.Addon) == step.Addon);
+                case Wait.SlotUnlocked: return Find<ComponentSlot>(step)?.Unlocked ?? false;
                 case Wait.SlotEmpty:
                 {
                     var slot = Find<ComponentSlot>(step);
-                    return slot == null || slot.Component == null;
+                    return slot != null && slot.Component == null;
                 }
                 case Wait.SlotLocked:
                 {
                     var slot = Find<ComponentSlot>(step);
-                    return slot == null || slot.Component != null && !slot.Unlocked;
+                    if (slot == null || slot.Component == null || slot.Unlocked) return false;
+                    var integrity = slot.Component.GetComponentInChildren<IntegrityModule>();
+                    return integrity == null || !integrity.Integrity.IsDestroyed;   // the wrecked one put back does not count
                 }
-                case Wait.ConduitOnFace: return c != null && (bit == 0 || (c.Used & bit) != 0) || Missing(step, cells);
-                case Wait.SegmentIn: return c != null && (c.Used & bit) != 0 && (c.Out & bit) == 0 || Missing(step, cells);
+                case Wait.ConduitOnFace: return !Missing(step, cells) && c != null && (bit == 0 || (c.Used & bit) != 0);
+                case Wait.SegmentIn: return !Missing(step, cells) && c != null && (c.Used & bit) != 0 && (c.Out & bit) == 0;
                 case Wait.Powered:
                 {
                     var node = PowerGrid.Current != null && step.Target != null ? PowerGrid.Current.TileAt(cell)?.Node : null;
-                    return node != null ? node.Inflow > 0.0 : Missing(step, cells);
+                    return !Missing(step, cells) && node != null && node.Inflow > 0.0;
                 }
             }
             return true;
         }
 
-        /// A wait with nothing to read is met, so a missing marker never strands the player; it says so once.
+        /// True when a wait has nothing to read: it is then never met (a skipped line hides a broken one), and says so once.
         private bool Missing(Step step, ConduitCells cells)
         {
             if (step.Target != null && cells != null && PowerGrid.Current != null) return false;
-            Warn($"has nothing to read; skipped");
+            Warn("has nothing to read; holding");
             return true;
+        }
+
+        /// A slot stands for the component in it, when there is one: what is looked at, boxed and read is the component.
+        private static Transform Resolve(Transform t)
+        {
+            if (t != null && t.TryGetComponent<ComponentSlot>(out var slot) && slot.Component != null) return slot.Component.transform;
+            return t;
+        }
+
+        /// What the arrow points at: the first highlight, which marks what the player has to find, else the target.
+        /// A target can sit well away from it (a panel's container has its pivot on the floor, metres from its cube).
+        private static Transform PointAt(Step step)
+        {
+            foreach (var t in step.Lasers) if (t != null) return t;
+            foreach (var t in step.Boxes) if (t != null) return Resolve(t);
+            return Resolve(step.Target);
         }
 
         private T Find<T>(Step step) where T : Component
         {
+            // The target itself first (a slot is asked as a slot), then the component in it (a reactor in its slot).
             var found = step.Target != null ? step.Target.GetComponentInParent<T>() : null;
-            if (found == null) Warn($"has no {typeof(T).Name} on or above its target; skipped");
+            var inside = Resolve(step.Target);
+            if (found == null && inside != null && inside != step.Target) found = inside.GetComponentInChildren<T>();
+            if (found == null) Warn($"has no {typeof(T).Name} on or above its target; holding");
             return found;
         }
 
@@ -215,12 +373,12 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             Debug.LogWarning($"[SpaceScape] Surge: step{_at + 1} ({_steps[_at].Wait}) {what}", this);
         }
 
-        private bool Seen(Transform target)
+        private bool Seen(Transform target, float degrees)
         {
             if (target == null || !PlayerHands.TryHeadPose(out var head, out var forward)) return true;
             var to = target.position - head;
             float distance = to.magnitude;
-            bool seen = distance <= _seenReach && Vector3.Angle(forward, to) <= _seenDegrees && Clear(head, to, distance, target);
+            bool seen = distance <= _seenReach && Vector3.Angle(forward, to) <= degrees && Clear(head, to, distance, Resolve(target));
             _seenFor = seen ? _seenFor + Time.deltaTime : 0f;
             return _seenFor >= _seenSeconds;
         }
@@ -242,27 +400,33 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private void MakeHighlights(Step step)
         {
-            foreach (var t in step.Boxes) if (t != null) _boxes.Add(MakeLine("Highlight Box", 16));
-            foreach (var t in step.Lasers) if (t != null) _lasers.Add(MakeLine("Highlight Laser", 2));
+            foreach (var t in step.Boxes) if (t != null) _boxes.Add(MakeLine("Highlight Box", 16, _lineWidth));
+            foreach (var t in step.Lasers) if (t != null) _lasers.Add(MakeLine("Highlight Laser", 2, _laserWidth));
             UpdateHighlights(step);
         }
 
-        private LineRenderer MakeLine(string name, int points)
+        private LineRenderer MakeLine(string name, int points, float width)
         {
             var go = new GameObject(name);
             go.transform.SetParent(transform, false);
             var line = go.AddComponent<LineRenderer>();
             line.useWorldSpace = true;
             line.positionCount = points;
-            line.widthMultiplier = _lineWidth;
+            line.widthMultiplier = width;
             line.sharedMaterial = _highlightMaterial;
             line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             line.receiveShadows = false;
             return line;
         }
 
+        private MaterialPropertyBlock _flash;
+
         private void UpdateHighlights(Step step)
         {
+            if (_flash == null) _flash = new MaterialPropertyBlock();
+            _flash.SetColor("_BaseColor", Mathf.Repeat(Time.time * _flashesPerSecond, 1f) < 0.5f ? _flashA : _flashB);
+            foreach (var line in _boxes) if (line != null) line.SetPropertyBlock(_flash);
+            foreach (var line in _lasers) if (line != null) line.SetPropertyBlock(_flash);
             int b = 0, l = 0;
             foreach (var t in step.Boxes)
             {
@@ -281,11 +445,13 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         private static Bounds BoundsOf(Transform t)
         {
+            t = Resolve(t);
             var bounds = new Bounds(t.position, Vector3.one * GridCell.Size);
             bool any = false;
             foreach (var r in t.GetComponentsInChildren<Renderer>())
             {
-                if (r is LineRenderer) continue;
+                // The model only: not particles (a reactor's smoke sits at the origin), lines, or anything hidden.
+                if (!(r is MeshRenderer || r is SkinnedMeshRenderer) || !r.enabled || r.forceRenderingOff || r.bounds.size.sqrMagnitude <= 0f) continue;
                 if (!any) { bounds = r.bounds; any = true; }
                 else bounds.Encapsulate(r.bounds);
             }
@@ -325,8 +491,40 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
 
         /// For the Editor tools (SurgeScriptMenu): the sounds folder, the lines, and setting them.
         public string SoundsFolder => _soundsFolder;
-        public int StepCount => _steps.Count;
+        public int StepCount => _lines.Length;
         public void SetClips(AudioClip[] clips) => _clips = clips;
-        public void SetSteps(List<Step> steps) => _steps = steps;
+        public List<Step> GetSteps() => BuildSteps();
+
+        /// Stores the lines as the flat arrays a world build keeps.
+        public void SetSteps(List<Step> steps)
+        {
+            int n = steps.Count;
+            _lines = new string[n]; _tasks = new string[n]; _waits = new int[n]; _targets = new Transform[n]; _faces = new int[n];
+            _addons = new ConduitAddon[n]; _seconds = new float[n]; _seenDegreesPerLine = new float[n]; _reveals = new GameObject[n];
+            var boxes = new List<Transform>(); var boxLines = new List<int>();
+            var lasers = new List<Transform>(); var laserLines = new List<int>();
+            for (int i = 0; i < n; i++)
+            {
+                var s = steps[i];
+                _lines[i] = s.Line; _tasks[i] = s.Task; _waits[i] = (int)s.Wait; _targets[i] = s.Target; _faces[i] = (int)s.Face;
+                _addons[i] = s.Addon; _seconds[i] = s.Seconds; _seenDegreesPerLine[i] = s.SeenDegrees; _reveals[i] = s.Reveal;
+                foreach (var t in s.Boxes) if (t != null) { boxes.Add(t); boxLines.Add(i + 1); }
+                foreach (var t in s.Lasers) if (t != null) { lasers.Add(t); laserLines.Add(i + 1); }
+            }
+            _boxTargets = boxes.ToArray(); _boxLines = boxLines.ToArray();
+            _laserTargets = lasers.ToArray(); _laserLines = laserLines.ToArray();
+            _steps = BuildSteps();
+        }
+
+        public void SetBreaks(SurgeBreaks breaks) => _breaks = breaks;
+
+        public void SetHud(SurgeHud hud) => _hud = hud;
+
+        /// Sets the task lines alone, one per line, leaving everything else as set in the scene.
+        public void SetTasks(string[] tasks)
+        {
+            _tasks = tasks;
+            _steps = BuildSteps();
+        }
     }
 }

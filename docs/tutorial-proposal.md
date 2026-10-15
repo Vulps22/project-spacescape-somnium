@@ -305,37 +305,40 @@ The bay starts broken, on every client the same way:
 ### The script
 
 Each line waits for what is in its right-hand column before the next plays. The wording is Vulps's, tidied.
+The **task box** is what stays on screen once the line has finished, until its wait is met ([[#Built: the HUD|the HUD]]).
 
-| #   | Line                                                                                                                                                                | Waits for                                                               |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| 1   | "A power surge has wreaked havoc on engineering. This is a great time to learn the fundamentals."                                                                   |                                                                         |
-| 2   | "First things first: we need power flowing. Look at the reactor."                                                                                                   | the S2 reactor seen                                                     |
-| 3   | "Good, it still has a fuel rod. So we just need to repair the conduit that feeds it for a cold start. Open the access panel: wave a hand through the glowing cube." | the panel open                                                          |
-| 4   | "See the sparks? That conduit was damaged. Put a hand on it to open it up."                                                                                         | the hologram open on the popped cell                                    |
-| 5   | "Drag the sphere from the centre out to fill the gap and complete the circuit."                                                                                     | the cell mended                                                         |
-| 6   | "Excellent. You can tell a conduit is powered when it lights up like that. Now try the lever on the reactor. A little goes a long way with an S2."                  | the reactor's output above zero                                         |
-| 7   | "Great. Now let's put the switch back on the conduit you just repaired."                                                                                            | the switch picked up                                                    |
-| 8   | "Open the conduit again and drop the switch in the blue square."                                                                                                    | the switch installed                                                    |
-| 9   | "It goes in off. That's fine: a running reactor doesn't need its starter."                                                                                          | 2 second pause                                                          |
-| 10  | "Bridge says they aren't getting any power. Let's check the battery banks for damage."                                                                              | the wrecked battery seen                                                |
-| 11  | "There. That S1 battery says it's wrecked. We'll have to replace it. Pull the red handle to unlock it."                                                             | the slot unlocked                                                       |
-| 12  | "Now drag it out of its slot."                                                                                                                                      | the battery out of the slot                                             |
-| 13  | "Our engineers have just delivered a replacement. Install it in the empty slot."                                                                                    | the new battery locked in                                               |
-| 14  | "Hmm. Something's not right. Check the ports on the back of the battery."                                                                                           | its ports seen                                                          |
-| 15  | "That explains it. Those three ports are on every component, at least one of them. Blue takes power in, red is data, and green sends power out."                    |                                                                         |
-| 16  | "Put a hand next to the green port and drag the spheres out, like you did to repair the conduit."                                                                   | a conduit installed on the green port                                   |
-| 17  | "Good. Any port or conduit with a dead end lets you install a new conduit like that, power or item."                                                                |                                                                         |
-| 18  | "Now lay a line from it to the end of the bridge feed."                                                                                                             | a run of conduits from the green port to the cell beside the feed's end |
-| 19  | "The end of the feed got knocked aside. Open it and drag its handle round to meet your line."                                                                       | the feed's end segment on the face toward the new line                  |
-| 20  | "Now its arrow. Slide it in, toward the centre, so power comes in from your line."                                                                                  | that segment In                                                         |
-| 21  | "There. Bridge has power."                                                                                                                                          | the bridge feed carrying power                                          |
+| #   | Line                                                                                                                                                                | Waits for                                                               | Task box (Vulps, 2026-10-15) |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | --- |
+| 1   | "A power surge has wreaked havoc on engineering. This is a great time to learn the fundamentals."                                                                   |                                                                         |  |
+| 2   | "First things first: we need power flowing. Look at the reactor."                                                                                                   | the S2 reactor seen                                                     | Look at the reactor |
+| 3   | "Good, it still has a fuel rod. So we just need to repair the conduit that feeds it for a cold start. Open the access panel: wave a hand through the glowing cube." | the panel open                                                          | Wave a hand through the glowing cube to open the panel |
+| 4   | "See the sparks? That conduit was damaged. Put a hand on it to open it up."                                                                                         | the hologram open on the popped cell                                    | Put a hand on the sparking conduit |
+| 5   | "Drag the sphere from the centre out to fill the gap and complete the circuit."                                                                                     | the cell mended                                                         | Drag the sphere from the centre out to close the gap |
+| 6   | "Excellent. You can tell a conduit is powered when it lights up like that. Now try the lever on the reactor. A little goes a long way with an S2."                  | the reactor's output above zero                                         | Pull the lever on the reactor until the output reads 70 kW |
+| 7   | "Great. Now let's put the switch back on the conduit you just repaired."                                                                                            | the switch picked up                                                    | Pick up a switch from the shelves by the entrance |
+| 8   | "Open the conduit again and drop the switch in the blue square."                                                                                                    | the switch installed                                                    | Open the conduit and drop the switch in the blue square |
+| 9   | "It goes in off. That's fine: a running reactor doesn't need its starter."                                                                                          | 2 second pause                                                          |  |
+| 10  | "Bridge says they aren't getting any power. Let's check the battery banks for damage."                                                                              | the wrecked battery seen                                                | Find the broken battery |
+| 11  | "There. That S1 battery says it's wrecked. We'll have to replace it. Pull the red handle to unlock it."                                                             | the slot unlocked                                                       | Pull the red handle on the wrecked battery |
+| 12  | "Now drag it out of its slot."                                                                                                                                      | the battery out of the slot                                             | Pull the battery out of its slot |
+| 13  | "Our engineers have just delivered a replacement. Install it in the empty slot."                                                                                    | the new battery locked in                                               | Put the new battery in the empty slot |
+| 14  | "Hmm. Something's not right. Check the ports on the back of the battery."                                                                                           | its ports seen                                                          | Look at the ports on the back of the new battery |
+| 15  | "That explains it. Those three ports are on every component, at least one of them. Blue takes power in, red is data, and green sends power out."                    |                                                                         |  |
+| 16  | "Put a hand next to the green port and drag the spheres out, like you did to repair the conduit."                                                                   | a conduit installed on the green port                                   | Put a hand by the green port and drag a sphere into the green port |
+| 17  | "Good. Any port or conduit with a dead end lets you install a new conduit like that, power or item."                                                                |                                                                         |  |
+| 18  | "Now lay a line from it to the end of the bridge feed."                                                                                                             | a run of conduits from the green port to the cell beside the feed's end | Lay conduits from the green port to the bridge feed on the wall above you |
+| 19  | "The end of the feed got knocked aside. Open it and drag its handle round to meet your line."                                                                       | the feed's end segment on the face toward the new line                  | Open the feed's end and drag its handle round to meet your line |
+| 20  | "Now its arrow. Slide it in, toward the centre, so power comes in from your line."                                                                                  | that segment In                                                         | Slide its arrow in, toward the centre |
+| 21  | "There. Bridge has power."                                                                                                                                          |                                                                         |  |
+| 22  | "And now you know the fundamentals of repairing and maintaining a star ship!"                                                                                     |                                                                         |  |
 
 The surge is only cosmetic when it starts: the sparks, a bang and the line. The breaks themselves are what a crew would
 see after a real one.
 
 **Seen** (Vulps, 2026-10-13, refined): the target within about 15° of where the head points, in reach, with nothing
 solid between, held for half a second. In 2D the same test runs from the camera. Not a single ray from the head: that
-counts only dead centre, and some targets (round ports) have no collider to hit.
+counts only dead centre, and some targets (round ports) have no collider to hit. A line can set its own angle
+(**Seen Degrees** on the step): line 14, the ports, is **30°** (Vulps, 2026-10-15: 15° was too narrow).
 ### What the script covers, and what it does not yet
 
 From [[#What it teaches]]: opening (4), repairing and the pop (4, 5), ports (14 to 16), wiring from a port (16, 17), an
@@ -364,19 +367,63 @@ integrity, conduits changing colour with load.
 
 ### Built: the script runner
 
-**Status (2026-10-13):** compiles; untested, not in the scene yet.
+**Status (2026-10-13):** in the scene (**Surge Tutorial**), untested.
+
+**In the scene:** a glowing blue **Cube** with a question mark on each side and the top, at (30, 1.3, -18) in
+engineering; a **Voice** (2D, Environment layer); **Markers** in the cells the script reads and breaks; `SurgeScript`
+with all 22 lines, clips, targets and white highlights; and `SurgeBreaks`, run by line 1 (the surge) and line 13 (the
+delivery). The bay is the ship's engineering for now: the reactor feed is the S0 battery's run to the S2 reactor, the
+popped cell is its switch cell (80, 2, -21) behind `ConduitContainer S0`, the wrecked battery is **Slot S1 (5)**, its
+Out run's first three cells are cut, and (61, 2, -65) is the feed end knocked aside. The replacement Battery S1 is
+made at (30.25, 0.75, -24).
+
+**The zone** (2026-10-13, Play-tested offline in the Editor; untested with players): **Local Zone**, a `LocalZone` box
+over engineering (x 20.6 to 41, y -1 to 6, z -34 to 0), holding all 292 conduit cells, 9 slots and 31 access panels.
+One grid, not two (everything reads `PowerGrid.Current` and `ConduitCells.Current`): inside the box, conduit cells are
+never written to or read from the network and their edits are not sent; each client uninstalls its own and drops their
+addons as local items; tiles decide their own pops (`PowerNode.DecidesOwnFailures`); slots make their starting
+components locally (`LocalZone.MakeLocal`, which takes off every network part, so `ComponentNetwork` runs as it does
+with no network); panels open and shut locally; hologram messages for zone cells are not sent. The surge's breaks go
+through `ConduitCells.Break` (damage, not a hand: a shut panel does not stop it). **Not built:** stopping the zone's sim
+while the player is outside it. Items from dispensers outside the zone are still networked, and are used up as
+usual when installed.
 
 `SurgeScript` (`scripts/Ship/Surge`): the cube (a collider; a local hand inside its bounds starts it and hides it),
 then the lines in order. Line N plays `stepN` from `Sounds/Surge` (filled into **Clips** in the Editor by name, any
 audio type; **Find Step Sounds** in its context menu), through the **Voice** AudioSource, which goes on a child on the
 Environment layer. The next line plays once this one has finished and its **Wait** is met. **Fill Lines From The
-Script** in its context menu puts in all 21 lines with their waits (both menu items live in the editor package,
+Script** in its context menu puts in all 22 lines with their waits (both menu items live in the editor package,
 `SurgeScriptMenu`, as the uploader rejects world scripts that mention the Editor); each step's **Target** is set in the scene: the thing to see, a marker in a conduit's cell,
 or the panel, slot or reactor. **Face** for the segment waits, **Addon** for the switch, **Seconds** for the pause,
 **Reveal** to turn on the delivered battery, **Boxes** and **Lasers** for the white highlights (`HighlightWhite.mat`,
 line renderers). A wait with nothing to read is skipped with one warning. The head's direction is
-`PlayerHands.TryHeadPose`. Local: it reads whatever the bay's state is on this client and sends nothing. Not built:
+`PlayerHands.TryHeadPose`. **The starter battery** (2026-10-15, untested): the S0 that feeds the cold start is
+endless (the battery's **Fuck Loads Of Power** box) from the cube until the reactor runs, so a slow player is not left
+with a flat battery, and runs down as usual after that so it cannot be farmed. Its slot's handle cannot be grabbed:
+a player unlocked it and could not put it back. **Side to side** (2026-10-15, untested): the sparked cell's
+handles land only to the left or right of the player as they face it when they take hold; up, down, toward and away
+are shut (`ConduitHologram.SideToSide`, from the cube until the script ends). A player mended it upward and the
+script moved on. Local: it reads whatever the bay's state is on this client and sends nothing. Not built:
 the zone, the bay's broken start, ghost hands, hitting the cube in 2D.
+
+### Built: the HUD
+
+**Status (2026-10-15):** in the scene (**Surge Tutorial → HUD**), seen in the Editor's game view; untested in VR.
+Players could not find the markers or tell what to do next.
+
+`SurgeHud` (`scripts/Ship/Surge`), told what to show by `SurgeScript`:
+
+- **Subtitles:** the line as it is spoken, 20° below the middle of the view, 1.2 m out, trailing the head a little.
+- **The task box:** once the line finishes, its **Task** in a white box in the same place, until the wait is met.
+  A line with no task shows nothing after it. The drafts are in the script table above; **Fill Tasks From The
+  Script** on `SurgeScript`'s context menu puts them in without touching the targets.
+- **The arrow:** a white chevron 15° from the middle of the view, on the target's side, pointing at it, while the step's
+  **Target** is more than **30°** from where the head points (Vulps: to be tuned in VR). Not for lines that wait on
+  nothing or a pause. It points at the step's first laser or box when it has one, as those mark what is to be found;
+  a target can be metres from it (step 3's is the panel's container, its pivot on the floor by the reactor).
+- The text is on an overlay shader (`HudText.mat`), so a wall close in front does not hide it; the box and the arrow
+  use `HighlightWhite.mat` and can be. The head is `PlayerHands.TryHeadRotation`: the avatar's head, or the main
+  camera in 2D and the Editor.
 
 > [!info] Networking
 > **Status (2026-10-13):** decided (Vulps): **none.** The bay is local to each player: nothing in the zone is sent,

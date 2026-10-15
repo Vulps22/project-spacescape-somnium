@@ -16,6 +16,9 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         /// False when the cell is isolated by hand.
         public bool Enabled = true;
 
+        /// Never runs down: it puts out what it offers without spending any of its hold.
+        public bool Infinite;
+
         private double _offered;
 
         public BatteryBehaviour(Capacitor hold, double chargeWatts, double dischargeWatts)
@@ -46,8 +49,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         /// further down the run and this will happily cook everything between here and there.
         public double WattsOffered(PowerNode node, double seconds)
         {
-            _offered = (!Enabled || !Release(node) || Hold.Charge <= 0.0) ? 0.0 : ReleaseWatts;
-            if (seconds > 0.0 && _offered * seconds > Hold.Charge) _offered = Hold.Charge / seconds;
+            _offered = (!Enabled || !Release(node) || (!Infinite && Hold.Charge <= 0.0)) ? 0.0 : ReleaseWatts;
+            if (!Infinite && seconds > 0.0 && _offered * seconds > Hold.Charge) _offered = Hold.Charge / seconds;
             return _offered;
         }
 
@@ -58,7 +61,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Power
         protected virtual double ReleaseWatts => DischargeWatts;
 
         /// Spends what it put out. The intake half arrives through Receive.
-        public void ProvidePower(PowerNode node, double seconds) => Hold.Draw(_offered * seconds);
+        public void ProvidePower(PowerNode node, double seconds)
+        {
+            if (!Infinite) Hold.Draw(_offered * seconds);
+        }
 
         /// Banks what the grid gave it.
         public void Receive(double watts, double seconds)
