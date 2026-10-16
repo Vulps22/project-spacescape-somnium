@@ -89,7 +89,8 @@ the bridge.
 
 ## Disruptor model
 
-**Status (2026-10-09):** proposed, in the house look ([[component-models]]); after the radar.
+**Status (2026-10-16):** deferred (Vulps): left out of the [[component-models]] rework until the weapons take shape.
+Proposed 2026-10-09, in the house look:
 
 - A long square barrel on a yoke in a braced cradle.
 - The barrel visibly follows the aim, which is already networked.

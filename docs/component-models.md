@@ -6,11 +6,13 @@ tags:
 ---
 # Component models
 
-**Decided 2026-10-09: every component's model is replaced with one in the loader's look. This is the next
-piece of work, ahead of everything except a major bug.** The house look, the rules and the process every model
-follows. Each component's own model is in its doc: the S5 reactor ([[reactor#S5|reactor → S5]]) and the batteries,
-S0 to S5 but the S4 ([[battery]], 2026-10-11), are done; the radar ([[radar#Model|radar → Model]]) and disruptor
-([[weapons#Disruptor model|weapons → Disruptor model]]) are not started.
+**Decided 2026-10-09: every component's model is replaced with one in the loader's look.** The house look, the
+rules and the process every model follows. Each component's own model is in its doc: the S5 reactor
+([[reactor#S5|reactor → S5]]) and the batteries, S0 to S5 but the S4 ([[battery]], 2026-10-11), are done.
+
+**Status (2026-10-16):** done for now (Vulps). The radar ([[radar#Model|radar → Model]]) and disruptor
+([[weapons#Disruptor model|weapons → Disruptor model]]) are left out until those systems take shape: what a radar or
+a gun looks like cannot be designed yet.
 
 ## Why
 

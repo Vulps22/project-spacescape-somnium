@@ -18,8 +18,6 @@ A feature that works for one player and has not had that conversation is not rea
 - `docs/README.md`: the project, and every doc grouped by kind. `docs/principles.md`: the design rules. Read first.
 - **Planning docs are thin:** `docs/todolist.md` (one line per item, pointing to its doc; removed when done),
   `docs/polish.md` (what the many-player test turned up), and the arcs `docs/the-loop.md` and `docs/flight.md`.
-- **Next, and to be insisted on (2026-10-09): `docs/component-models.md`**, replacing every component model in the
-  loader's look. Only a major bug comes before it.
 - **One topic, one doc, and text is moved, never copied.** Everything about a thing, including what was tried and
   failed, lives in its own doc; anywhere else that needs it links there in a sentence at most. A rough idea in a
   planning doc moves out to its doc once refined. Links point from the specific to the general: a component or

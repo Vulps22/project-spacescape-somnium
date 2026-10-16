@@ -10,10 +10,6 @@ One line per piece of work, pointing to the doc that holds everything about its 
 in the topic docs, never here; an item is removed once it is done. Build everything with networking in mind
 ([[networking#Rules|networking → Rules]]). What is being polished from the last test is in [[polish]].
 
-## NEXT (insisted on; only a major bug comes first)
-
-- [ ] Replace every component model in the loader's look: radar, disruptor (the S5 reactor and the batteries are done). [[component-models]]
-
 ## Weapons and data
 
 - [ ] Test in-world: the radar's data reaching the gun over conduits, auto-aim, and a hand fighting it. [[radar]], [[weapons]]

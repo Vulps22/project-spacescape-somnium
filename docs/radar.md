@@ -109,7 +109,8 @@ is in [[weapons]].
 
 ## Model
 
-**Status (2026-10-09):** proposed, in the house look ([[component-models]]); next after the battery.
+**Status (2026-10-16):** deferred (Vulps): left out of the [[component-models]] rework until the radar takes shape.
+Proposed 2026-10-09, in the house look:
 
 - A rig carrying a square phased-array panel on a turret that **sweeps while powered** and stops dead when
   it isn't.
