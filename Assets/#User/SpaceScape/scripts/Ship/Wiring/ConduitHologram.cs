@@ -88,6 +88,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         /// player cannot mend it onto a face that leads nowhere.
         public static readonly HashSet<Vector3Int> SideToSide = new HashSet<Vector3Int>();
 
+        /// Cells whose conduit does not open for a hand: the surge tutorial's knocked-aside feed end, until its line,
+        /// so it is not mended before the line to it is laid.
+        public static readonly HashSet<Vector3Int> KeptShut = new HashSet<Vector3Int>();
+
         private Drag _drag;
         private bool _sideToSide;      // this drag is in a SideToSide cell
         private bool _facingAlongX;    // and the player faced it along X when they took hold, so X is shut too

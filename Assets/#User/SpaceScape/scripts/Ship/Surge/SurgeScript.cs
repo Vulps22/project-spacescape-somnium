@@ -28,6 +28,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             ConduitOnFace,   // a conduit installed in Target's cell, with a segment on Face (any, for None)
             SegmentIn,       // the conduit in Target's cell with an In segment on Face
             Powered,         // the conduit in Target's cell carrying power
+            RunReaches,      // conduits joined from From's cell (in front of a port) to a cell beside Target's, with a segment toward it; any arrows
+            RunFlows,        // that run with every arrow pointing from the port toward Target
+            FacesRun,        // the conduit in Target's cell with a segment toward where the last run line's run ends
+            FacesRunIn,      // and that segment In
         }
 
         /// One line, put together at runtime from the flat arrays below. Never serialized itself: a Somnium world
@@ -41,7 +45,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             public Wait Wait;
             [Tooltip("What the wait reads: the thing to see, a marker in a conduit's cell, the panel, slot or reactor.")]
             public Transform Target;
-            [Tooltip("ConduitOnFace and SegmentIn: the face of Target's cell.")]
+            [Tooltip("ConduitOnFace and SegmentIn: the face of Target's cell. RunReaches and RunFlows: the face of Target's cell that leads on into what it feeds; the cell there is not the end of the run.")]
             public GridDirection Face = GridDirection.None;
             [Tooltip("AddonHeld and AddonInstalled: the addon wanted. Empty: any.")]
             public ConduitAddon Addon;
@@ -51,6 +55,10 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             public float SeenDegrees;
             [Tooltip("Turned on as this line starts.")]
             public GameObject Reveal;
+            [Tooltip("RunReaches and RunFlows: a marker in the cell in front of the port the run starts from.")]
+            public Transform From;
+            [Tooltip("Not played when its wait is already met as it comes up: something the player may have done early.")]
+            public bool SkipIfDone;
             [Tooltip("Marked with a white box round their renderers while this line waits: components.")]
             public Transform[] Boxes = Array.Empty<Transform>();
             [Tooltip("Marked with a white laser standing above them while this line waits: conduits, items, addons, ports.")]
@@ -110,6 +118,11 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [Tooltip("Markers in cells whose handles may only land left or right of the player while the tutorial runs: the sparked conduit.")]
         [SerializeField] private Transform[] _sideToSideCells = Array.Empty<Transform>();
 
+        [Header("Kept shut")]
+        [Tooltip("Markers in cells whose conduit does not open for a hand from the cube until line Open At Line: the knocked-aside feed end, so it is not mended before the line to it is laid.")]
+        [SerializeField] private Transform[] _keptShutCells = Array.Empty<Transform>();
+        [SerializeField] private int _openAtLine = 20;
+
         [Header("Lines (one entry per line, in order; plain arrays so a world build keeps them)")]
         [SerializeField, TextArea(1, 3)] private string[] _lines = Array.Empty<string>();
         [SerializeField] private string[] _tasks = Array.Empty<string>();
@@ -120,6 +133,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         [SerializeField] private float[] _seconds = Array.Empty<float>();
         [SerializeField] private float[] _seenDegreesPerLine = Array.Empty<float>();
         [SerializeField] private GameObject[] _reveals = Array.Empty<GameObject>();
+        [SerializeField] private Transform[] _froms = Array.Empty<Transform>();
+        [SerializeField] private bool[] _skipIfDone = Array.Empty<bool>();
         [Header("Highlights (each with the line it belongs to, from 1)")]
         [SerializeField] private Transform[] _boxTargets = Array.Empty<Transform>();
         [SerializeField] private int[] _boxLines = Array.Empty<int>();
@@ -139,6 +154,19 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         private bool _tasked;          // the line has finished and its task is up
         private readonly List<LineRenderer> _boxes = new List<LineRenderer>();
         private readonly List<LineRenderer> _lasers = new List<LineRenderer>();
+        private LineRenderer _runLaser;   // on the run's open end, or the cell to fix, for the run waits
+        private Transform _runMark;       // where that is, for the laser and the HUD's arrow
+
+        private static readonly GridDirection[] Faces =
+        {
+            GridDirection.XPlus, GridDirection.XMinus, GridDirection.YPlus,
+            GridDirection.YMinus, GridDirection.ZPlus, GridDirection.ZMinus,
+        };
+        private readonly Dictionary<Vector3Int, Vector3Int> _runFrom = new Dictionary<Vector3Int, Vector3Int>();
+        private readonly Queue<Vector3Int> _runQueue = new Queue<Vector3Int>();
+        private readonly List<Vector3Int> _runPath = new List<Vector3Int>();
+        private Step _runStep;            // the last run line to start, which FacesRun follows
+        private GridDirection _runToward; // from its Target's cell toward where its run ends; None while it does not reach
 
         /// The line playing or waiting, from 1; 0 before the cube is hit.
         public int Line => _at < 0 ? 0 : Mathf.Min(_at + 1, _steps.Count);
@@ -166,6 +194,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     Seconds = i < _seconds.Length ? _seconds[i] : 2f,
                     SeenDegrees = i < _seenDegreesPerLine.Length ? _seenDegreesPerLine[i] : 0f,
                     Reveal = i < _reveals.Length ? _reveals[i] : null,
+                    From = i < _froms.Length ? _froms[i] : null,
+                    SkipIfDone = i < _skipIfDone.Length && _skipIfDone[i],
                     Boxes = boxes.ToArray(),
                     Lasers = lasers.ToArray(),
                 });
@@ -251,16 +281,26 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             {
                 StartStarter();
                 foreach (var t in _sideToSideCells) if (t != null) ConduitHologram.SideToSide.Add(GridCell.ToCell(t.position));
+                foreach (var t in _keptShutCells) if (t != null) ConduitHologram.KeptShut.Add(GridCell.ToCell(t.position));
             }
+            if (index + 1 >= _openAtLine) foreach (var t in _keptShutCells) if (t != null) ConduitHologram.KeptShut.Remove(GridCell.ToCell(t.position));
             if (index >= _steps.Count)
             {
                 Debug.Log("[SpaceScape] Surge: finished", this);
                 if (_hud != null) _hud.Clear();
                 foreach (var t in _sideToSideCells) if (t != null) ConduitHologram.SideToSide.Remove(GridCell.ToCell(t.position));
+                foreach (var t in _keptShutCells) if (t != null) ConduitHologram.KeptShut.Remove(GridCell.ToCell(t.position));
                 return;
             }
 
             var step = _steps[index];
+            if (IsRun(step)) _runStep = step;
+            if (step.SkipIfDone && Met(step))
+            {
+                Debug.Log($"[SpaceScape] Surge: step{index + 1} already done; skipped", this);
+                Begin(index + 1);
+                return;
+            }
             if (step.Reveal != null) step.Reveal.SetActive(true);
             if (_breaks != null && index + 1 == _surgeAtLine) _breaks.Surge();
             if (_breaks != null && index + 1 == _deliverAtLine) _breaks.Deliver();
@@ -281,7 +321,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             if (_hud != null)
             {
                 _hud.Say(step.Line);
-                _hud.Point(step.Wait == Wait.None || step.Wait == Wait.Pause ? null : PointAt(step));
+                _hud.Point(step.Wait == Wait.None || step.Wait == Wait.Pause ? null : IsRun(step) ? RunMark : PointAt(step));
             }
             Debug.Log($"[SpaceScape] Surge: step{index + 1}, waits for {step.Wait}", this);
         }
@@ -328,8 +368,124 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                     var node = PowerGrid.Current != null && step.Target != null ? PowerGrid.Current.TileAt(cell)?.Node : null;
                     return !Missing(step, cells) && node != null && node.Inflow > 0.0;
                 }
+                case Wait.RunReaches:
+                case Wait.RunFlows:
+                {
+                    if (Missing(step, cells)) return false;
+                    if (step.From == null) { Warn("has no From; holding"); return false; }
+                    FollowRun(step, cells, out bool reaches, out bool flows, out _);
+                    return step.Wait == Wait.RunReaches ? reaches : flows;
+                }
+                case Wait.FacesRun:
+                case Wait.FacesRunIn:
+                {
+                    if (Missing(step, cells)) return false;
+                    if (_runStep == null) { Warn("has no run line before it; holding"); return false; }
+                    FollowRun(_runStep, cells, out _, out _, out _);
+                    int toward = ConduitCells.Bit(_runToward);
+                    if (c == null || toward == 0 || (c.Used & toward) == 0) return false;
+                    return step.Wait == Wait.FacesRun || (c.Out & toward) == 0;
+                }
             }
             return true;
+        }
+
+        private static bool IsRun(Step step) => (step.Wait == Wait.RunReaches || step.Wait == Wait.RunFlows) && step.From != null;
+
+        private Transform RunMark
+        {
+            get
+            {
+                if (_runMark == null)
+                {
+                    _runMark = new GameObject("Run Mark").transform;
+                    _runMark.SetParent(transform, false);
+                }
+                return _runMark;
+            }
+        }
+
+        /// A continuity test: follows the power conduits joined to From's cell, whichever way their arrows point, never
+        /// through Target's cell. Reaches: the run comes to a cell beside Target's (any but the one on Face, where
+        /// Target leads on), with a segment toward it. Flows: it reaches, and every arrow along it points from the port
+        /// toward Target. Where, the cell to mark: the first along the run whose arrow points back toward the port;
+        /// while it does not reach, the run's cell nearest Target (From's cell while it has no conduit).
+        private void FollowRun(Step step, ConduitCells cells, out bool reaches, out bool flows, out Vector3Int where)
+        {
+            var start = GridCell.ToCell(step.From.position);
+            var target = GridCell.ToCell(step.Target.position);
+            var onward = target + step.Face.Offset();
+            reaches = flows = false;
+            where = start;
+            _runToward = GridDirection.None;
+            var first = cells.Get(start);
+            if (first == null || first.Kind != ConduitCells.Kind.Power) return;
+
+            _runFrom.Clear();
+            _runQueue.Clear();
+            _runFrom[start] = start;
+            _runQueue.Enqueue(start);
+            int nearest = Distance(start, target);
+            var end = start;
+            var toTarget = GridDirection.None;
+            while (_runQueue.Count > 0)
+            {
+                var cell = _runQueue.Dequeue();
+                int d = Distance(cell, target);
+                if (d <= nearest) { nearest = d; where = cell; }   // a tie goes to the cell further along the run
+                var c = cells.Get(cell);
+                var face0 = FaceBetween(cell, target);
+                if (d == 1 && cell != onward && (c.Used & ConduitCells.Bit(face0)) != 0)
+                {
+                    end = cell;
+                    toTarget = face0;
+                    break;
+                }
+                foreach (var face in Faces)
+                {
+                    if ((c.Used & ConduitCells.Bit(face)) == 0) continue;
+                    var next = cell + face.Offset();
+                    if (next == target) continue;
+                    var n = cells.Get(next);
+                    if (n == null || n.Kind != ConduitCells.Kind.Power || _runFrom.ContainsKey(next)) continue;
+                    if ((n.Used & ConduitCells.Bit(GridNode.Opposite(face))) == 0) continue;
+                    _runFrom[next] = cell;
+                    _runQueue.Enqueue(next);
+                }
+            }
+            if (toTarget == GridDirection.None) return;
+            var last = cells.Get(end);
+            reaches = true;
+            _runToward = GridNode.Opposite(toTarget);
+
+            _runPath.Clear();
+            for (var cell = end; ; cell = _runFrom[cell])
+            {
+                _runPath.Add(cell);
+                if (cell == start) break;
+            }
+            _runPath.Reverse();
+            // Power comes in from the port, goes out of each cell toward the next, and in at the next.
+            foreach (var port in cells.Ports)
+                if (port.Front == start && (first.Out & ConduitCells.Bit(port.Into)) != 0) { where = start; return; }
+            for (int i = 0; i + 1 < _runPath.Count; i++)
+            {
+                var a = _runPath[i];
+                var b = _runPath[i + 1];
+                var face = FaceBetween(a, b);
+                if ((cells.Get(a).Out & ConduitCells.Bit(face)) == 0) { where = a; return; }
+                if ((cells.Get(b).Out & ConduitCells.Bit(GridNode.Opposite(face))) != 0) { where = b; return; }
+            }
+            where = end;
+            flows = (last.Out & ConduitCells.Bit(toTarget)) != 0;
+        }
+
+        private static int Distance(Vector3Int a, Vector3Int b) => Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y) + Mathf.Abs(a.z - b.z);
+
+        private static GridDirection FaceBetween(Vector3Int a, Vector3Int b)
+        {
+            foreach (var face in Faces) if (a + face.Offset() == b) return face;
+            return GridDirection.None;
         }
 
         /// True when a wait has nothing to read: it is then never met (a skipped line hides a broken one), and says so once.
@@ -402,6 +558,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
         {
             foreach (var t in step.Boxes) if (t != null) _boxes.Add(MakeLine("Highlight Box", 16, _lineWidth));
             foreach (var t in step.Lasers) if (t != null) _lasers.Add(MakeLine("Highlight Laser", 2, _laserWidth));
+            if (IsRun(step)) _runLaser = MakeLine("Highlight Laser (run)", 2, _laserWidth);
             UpdateHighlights(step);
         }
 
@@ -427,6 +584,15 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             _flash.SetColor("_BaseColor", Mathf.Repeat(Time.time * _flashesPerSecond, 1f) < 0.5f ? _flashA : _flashB);
             foreach (var line in _boxes) if (line != null) line.SetPropertyBlock(_flash);
             foreach (var line in _lasers) if (line != null) line.SetPropertyBlock(_flash);
+            if (_runLaser != null && ConduitCells.Current != null && step.Target != null)
+            {
+                FollowRun(step, ConduitCells.Current, out _, out _, out var where);
+                var at = GridCell.ToWorld(where);
+                RunMark.position = at;
+                _runLaser.SetPropertyBlock(_flash);
+                _runLaser.SetPosition(0, at);
+                _runLaser.SetPosition(1, at + Vector3.up * _laserHeight);
+            }
             int b = 0, l = 0;
             foreach (var t in step.Boxes)
             {
@@ -487,6 +653,8 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             foreach (var line in _lasers) if (line != null) Destroy(line.gameObject);
             _boxes.Clear();
             _lasers.Clear();
+            if (_runLaser != null) Destroy(_runLaser.gameObject);
+            _runLaser = null;
         }
 
         /// For the Editor tools (SurgeScriptMenu): the sounds folder, the lines, and setting them.
@@ -501,6 +669,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
             int n = steps.Count;
             _lines = new string[n]; _tasks = new string[n]; _waits = new int[n]; _targets = new Transform[n]; _faces = new int[n];
             _addons = new ConduitAddon[n]; _seconds = new float[n]; _seenDegreesPerLine = new float[n]; _reveals = new GameObject[n];
+            _froms = new Transform[n]; _skipIfDone = new bool[n];
             var boxes = new List<Transform>(); var boxLines = new List<int>();
             var lasers = new List<Transform>(); var laserLines = new List<int>();
             for (int i = 0; i < n; i++)
@@ -508,6 +677,7 @@ namespace SomniumSpace.Worlds.SpaceScape.Ship
                 var s = steps[i];
                 _lines[i] = s.Line; _tasks[i] = s.Task; _waits[i] = (int)s.Wait; _targets[i] = s.Target; _faces[i] = (int)s.Face;
                 _addons[i] = s.Addon; _seconds[i] = s.Seconds; _seenDegreesPerLine[i] = s.SeenDegrees; _reveals[i] = s.Reveal;
+                _froms[i] = s.From; _skipIfDone[i] = s.SkipIfDone;
                 foreach (var t in s.Boxes) if (t != null) { boxes.Add(t); boxLines.Add(i + 1); }
                 foreach (var t in s.Lasers) if (t != null) { lasers.Add(t); laserLines.Add(i + 1); }
             }

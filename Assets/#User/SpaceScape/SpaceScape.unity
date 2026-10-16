@@ -3057,6 +3057,7 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 27597ce09183b181cafd06b67dff1de3, type: 3}
   - {fileID: 8300000, guid: a719f8c020bb59dc3a68360affafdf11, type: 3}
   - {fileID: 8300000, guid: bfdb981636754a10aa9984dbef6ac934, type: 3}
+  - {fileID: 8300000, guid: f8942e43584b4c9f2979dc69c3ea1982, type: 3}
   - {fileID: 8300000, guid: 31da6df65c0faec4bb5b695b12e5b931, type: 3}
   - {fileID: 8300000, guid: 114276c2101bcadbf9932e6d7600eed6, type: 3}
   - {fileID: 8300000, guid: 766ecb878c47040ae998fa764f05f5a7, type: 3}
@@ -3079,6 +3080,9 @@ MonoBehaviour:
   _reactorSlot: {fileID: 1788762815}
   _sideToSideCells:
   - {fileID: 38835104}
+  _keptShutCells:
+  - {fileID: 1341630060}
+  _openAtLine: 20
   _lines:
   - A power surge has wreaked havoc on engineering. This is a great time to learn
     the fundamentals.
@@ -3105,7 +3109,11 @@ MonoBehaviour:
     the conduit.
   - Good. Any port or conduit with a dead end lets you install a new conduit like
     that, power or item.
-  - Now lay a line from it to the end of the bridge feed.
+  - Now connect it to the bridge feed. Each conduit you add opens the space after
+    it. Keep going until you reach the feed line on the wall above you.
+  - When you open a conduit you will notice there are 2 arrows on each one. Power
+    goes the way the arrows point. Yours point at the battery. Point the arrows towards
+    the bridge line to continue.
   - The end of the feed got knocked aside. Open it and drag its handle round to meet
     your line.
   - Now its arrow. Slide it in, toward the centre, so power comes in from your line.
@@ -3129,12 +3137,13 @@ MonoBehaviour:
   - 
   - Put a hand by the green port and drag a sphere into the green port
   - 
-  - Lay conduits from the green port to the bridge feed on the wall above you
+  - Add conduits from the battery up to the bridge feed
+  - Point the arrows along your line toward the bridge feed
   - Open the feed's end and drag its handle round to meet your line
   - Slide its arrow in, toward the centre
   - 
   - 
-  _waits: 00000000020000000300000004000000050000000600000007000000080000000100000002000000090000000a0000000b00000002000000000000000c000000000000000c0000000c0000000d0000000000000000000000
+  _waits: 00000000020000000300000004000000050000000600000007000000080000000100000002000000090000000a0000000b00000002000000000000000c000000000000000f0000001000000011000000120000000000000000000000
   _targets:
   - {fileID: 0}
   - {fileID: 1788762816}
@@ -3153,12 +3162,13 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 688204206}
   - {fileID: 0}
-  - {fileID: 397590264}
+  - {fileID: 1341630060}
+  - {fileID: 1341630060}
   - {fileID: 1341630060}
   - {fileID: 1341630060}
   - {fileID: 0}
   - {fileID: 0}
-  _faces: 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005000000000000000300000004000000040000000000000000000000
+  _faces: 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000500000000000000030000000300000000000000000000000000000000000000
   _addons:
   - {fileID: 0}
   - {fileID: 0}
@@ -3182,7 +3192,9 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
+  - {fileID: 0}
   _seconds:
+  - 2
   - 2
   - 2
   - 2
@@ -3228,6 +3240,7 @@ MonoBehaviour:
   - 0
   - 0
   - 0
+  - 0
   _reveals:
   - {fileID: 0}
   - {fileID: 0}
@@ -3251,6 +3264,32 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
+  - {fileID: 0}
+  _froms:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 688204206}
+  - {fileID: 688204206}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  _skipIfDone: 0000000000000000000000000000000000000101010000
   _boxTargets:
   - {fileID: 1788762816}
   - {fileID: 1788762816}
@@ -3271,7 +3310,7 @@ MonoBehaviour:
   - {fileID: 1341630060}
   - {fileID: 1341630060}
   - {fileID: 1341630060}
-  _laserLines: 03000000040000000500000007000000080000000d0000000e00000010000000120000001300000014000000
+  _laserLines: 03000000040000000500000007000000080000000d0000000e00000010000000120000001400000015000000
 --- !u!114 &738098288
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9490,7 +9529,7 @@ MonoBehaviour:
   AssetDescription: 'HEAVY WORK IN PROGRESS! DO NOT EXPECT MUCH                               '
   PreviewPicturePath: 
   PreviewTexture: {fileID: 2800000, guid: acf8c4ecc0b2b52d2bafbbf574f7af82, type: 3}
-  LastBuildSizeBytes: 8530592
+  LastBuildSizeBytes: 8751216
   BoundsIsDisplay: 0
   IsOpen360Preview: 0
   IsEditSpawnPos: 0
@@ -9518,7 +9557,7 @@ MonoBehaviour:
     Free:
       Count: 4
       MaxCount: 10
-      AvailableSize: 240866880
+      AvailableSize: 240647264
     Paid:
       Entries: []
   OwnedTokens: []

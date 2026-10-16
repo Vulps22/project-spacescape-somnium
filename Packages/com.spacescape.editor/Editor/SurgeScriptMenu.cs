@@ -57,7 +57,8 @@ namespace SomniumSpace.Worlds.SpaceScape.EditorTools
             "",
             "Put a hand by the green port and drag a sphere into the green port",
             "",
-            "Lay conduits from the green port to the bridge feed on the wall above you",
+            "Add conduits from the battery up to the bridge feed",
+            "Point the arrows along your line toward the bridge feed",
             "Open the feed's end and drag its handle round to meet your line",
             "Slide its arrow in, toward the centre",
             "",
@@ -80,8 +81,8 @@ namespace SomniumSpace.Worlds.SpaceScape.EditorTools
         {
             var script = (SurgeScript)command.context;
             var steps = new List<SurgeScript.Step>();
-            void Add(string line, SurgeScript.Wait wait, float seconds = 2f) =>
-                steps.Add(new SurgeScript.Step { Line = line, Wait = wait, Seconds = seconds });
+            void Add(string line, SurgeScript.Wait wait, float seconds = 2f, bool skipIfDone = false) =>
+                steps.Add(new SurgeScript.Step { Line = line, Wait = wait, Seconds = seconds, SkipIfDone = skipIfDone });
             Add("A power surge has wreaked havoc on engineering. This is a great time to learn the fundamentals.", SurgeScript.Wait.None);
             Add("First things first: we need power flowing. Look at the reactor.", SurgeScript.Wait.Seen);
             Add("Good, it still has a fuel rod. So we just need to repair the conduit that feeds it for a cold start. Open the access panel: wave a hand through the glowing cube.", SurgeScript.Wait.PanelOpen);
@@ -99,9 +100,10 @@ namespace SomniumSpace.Worlds.SpaceScape.EditorTools
             Add("That explains it. Those three ports are on every component, at least one of them. Blue takes power in, red is data, and green sends power out.", SurgeScript.Wait.None);
             Add("Put a hand next to the green port and drag the spheres out, like you did to repair the conduit.", SurgeScript.Wait.ConduitOnFace);
             Add("Good. Any port or conduit with a dead end lets you install a new conduit like that, power or item.", SurgeScript.Wait.None);
-            Add("Now lay a line from it to the end of the bridge feed.", SurgeScript.Wait.ConduitOnFace);
-            Add("The end of the feed got knocked aside. Open it and drag its handle round to meet your line.", SurgeScript.Wait.ConduitOnFace);
-            Add("Now its arrow. Slide it in, toward the centre, so power comes in from your line.", SurgeScript.Wait.SegmentIn);
+            Add("Now connect it to the bridge feed. Each conduit you add opens the space after it. Keep going until you reach the feed line on the wall above you.", SurgeScript.Wait.RunReaches);
+            Add("When you open a conduit you will notice there are 2 arrows on each one. Power goes the way the arrows point. Yours point at the battery. Point the arrows towards the bridge line to continue.", SurgeScript.Wait.RunFlows, skipIfDone: true);
+            Add("The end of the feed got knocked aside. Open it and drag its handle round to meet your line.", SurgeScript.Wait.FacesRun, skipIfDone: true);
+            Add("Now its arrow. Slide it in, toward the centre, so power comes in from your line.", SurgeScript.Wait.FacesRunIn, skipIfDone: true);
             Add("There. Bridge has power.", SurgeScript.Wait.None);
             Add("And now you know the fundamentals of repairing and maintaining a star ship!", SurgeScript.Wait.None);
             Undo.RecordObject(script, "Fill Lines From The Script");

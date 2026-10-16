@@ -307,6 +307,17 @@ The bay starts broken, on every client the same way:
 Each line waits for what is in its right-hand column before the next plays. The wording is Vulps's, tidied.
 The **task box** is what stays on screen once the line has finished, until its wait is met ([[#Built: the HUD|the HUD]]).
 
+**Lines 18 to 21** (Vulps, 2026-10-15): players muttered "run a line?", fixed the knocked-aside feed end before
+wiring, and wired from the top down. Line 18 then passed on its first cell (it waited for any conduit beside the feed
+end), and the voice was on the arrow while they were down at the battery. Now line 18 says what to do in plain words,
+waits for the whole run, and a laser stands on the run's open end (the green port's cell until there is one); a run laid
+backwards gets line 19, its laser on the first cell whose arrow points the wrong way; lines 19 to 21 are skipped when
+already done. The wait is a **continuity test** (Vulps, 2026-10-15): a player took their own route up and the test,
+then on one fixed cell, never passed. Any run of conduits joined from the green port to any cell beside the feed's end
+counts. The feed's end **does not open** from the cube until line 20, so it cannot be fixed before the line to it is
+laid. Lines 20 and 21 follow the run live (`FacesRun`, `FacesRunIn`): the feed's end must point at the cell the run
+actually ends in, not just downward, where the original run came in.
+
 | #   | Line                                                                                                                                                                | Waits for                                                               | Task box (Vulps, 2026-10-15) |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | --- |
 | 1   | "A power surge has wreaked havoc on engineering. This is a great time to learn the fundamentals."                                                                   |                                                                         |  |
@@ -326,11 +337,12 @@ The **task box** is what stays on screen once the line has finished, until its w
 | 15  | "That explains it. Those three ports are on every component, at least one of them. Blue takes power in, red is data, and green sends power out."                    |                                                                         |  |
 | 16  | "Put a hand next to the green port and drag the spheres out, like you did to repair the conduit."                                                                   | a conduit installed on the green port                                   | Put a hand by the green port and drag a sphere into the green port |
 | 17  | "Good. Any port or conduit with a dead end lets you install a new conduit like that, power or item."                                                                |                                                                         |  |
-| 18  | "Now lay a line from it to the end of the bridge feed."                                                                                                             | a run of conduits from the green port to the cell beside the feed's end | Lay conduits from the green port to the bridge feed on the wall above you |
-| 19  | "The end of the feed got knocked aside. Open it and drag its handle round to meet your line."                                                                       | the feed's end segment on the face toward the new line                  | Open the feed's end and drag its handle round to meet your line |
-| 20  | "Now its arrow. Slide it in, toward the centre, so power comes in from your line."                                                                                  | that segment In                                                         | Slide its arrow in, toward the centre |
-| 21  | "There. Bridge has power."                                                                                                                                          |                                                                         |  |
-| 22  | "And now you know the fundamentals of repairing and maintaining a star ship!"                                                                                     |                                                                         |  |
+| 18  | "Now connect it to the bridge feed. Each conduit you add opens the space after it. Keep going until you reach the feed line on the wall above you." | a run of conduits joined from the green port to any cell beside the feed's end, whichever way its arrows point | Add conduits from the battery up to the bridge feed |
+| 19  | "When you open a conduit you will notice there are 2 arrows on each one. Power goes the way the arrows point. Yours point at the battery. Point the arrows towards the bridge line to continue." | every arrow on that run pointing from the port toward the feed; **skipped** if they already do | Point the arrows along your line toward the bridge feed |
+| 20  | "The end of the feed got knocked aside. Open it and drag its handle round to meet your line."                                                                       | **skipped** if already done; else the feed's end with a segment toward the cell the player's run ends in                  | Open the feed's end and drag its handle round to meet your line |
+| 21  | "Now its arrow. Slide it in, toward the centre, so power comes in from your line."                                                                                  | **skipped** if already done; else that segment In                                                         | Slide its arrow in, toward the centre |
+| 22  | "There. Bridge has power."                                                                                                                                          |                                                                         |  |
+| 23  | "And now you know the fundamentals of repairing and maintaining a star ship!"                                                                                     |                                                                         |  |
 
 The surge is only cosmetic when it starts: the sparks, a bang and the line. The breaks themselves are what a crew would
 see after a real one.
@@ -342,7 +354,8 @@ counts only dead centre, and some targets (round ports) have no collider to hit.
 ### What the script covers, and what it does not yet
 
 From [[#What it teaches]]: opening (4), repairing and the pop (4, 5), ports (14 to 16), wiring from a port (16, 17), an
-addon (7, 8), slots and unlocking (11 to 13), wiring a line (18), redirecting with a handle and an arrow (19, 20).
+addon (7, 8), slots and unlocking (11 to 13), wiring a line (18), which way arrows point (19, if wired backwards),
+redirecting with a handle and an arrow (20, 21).
 **Not yet:** parking on purpose, the green circle, and slot sizes.
 
 ### What it needs
@@ -371,7 +384,7 @@ integrity, conduits changing colour with load.
 
 **In the scene:** a glowing blue **Cube** with a question mark on each side and the top, at (30, 1.3, -18) in
 engineering; a **Voice** (2D, Environment layer); **Markers** in the cells the script reads and breaks; `SurgeScript`
-with all 22 lines, clips, targets and white highlights; and `SurgeBreaks`, run by line 1 (the surge) and line 13 (the
+with all 23 lines, clips, targets and white highlights; and `SurgeBreaks`, run by line 1 (the surge) and line 13 (the
 delivery). The bay is the ship's engineering for now: the reactor feed is the S0 battery's run to the S2 reactor, the
 popped cell is its switch cell (80, 2, -21) behind `ConduitContainer S0`, the wrecked battery is **Slot S1 (5)**, its
 Out run's first three cells are cut, and (61, 2, -65) is the feed end knocked aside. The replacement Battery S1 is
@@ -392,10 +405,13 @@ usual when installed.
 then the lines in order. Line N plays `stepN` from `Sounds/Surge` (filled into **Clips** in the Editor by name, any
 audio type; **Find Step Sounds** in its context menu), through the **Voice** AudioSource, which goes on a child on the
 Environment layer. The next line plays once this one has finished and its **Wait** is met. **Fill Lines From The
-Script** in its context menu puts in all 22 lines with their waits (both menu items live in the editor package,
+Script** in its context menu puts in all 23 lines with their waits (both menu items live in the editor package,
 `SurgeScriptMenu`, as the uploader rejects world scripts that mention the Editor); each step's **Target** is set in the scene: the thing to see, a marker in a conduit's cell,
 or the panel, slot or reactor. **Face** for the segment waits, **Addon** for the switch, **Seconds** for the pause,
-**Reveal** to turn on the delivered battery, **Boxes** and **Lasers** for the white highlights (`HighlightWhite.mat`,
+**Reveal** to turn on the delivered battery, **From** for the run waits (the cell in front of the port the run
+starts from; `RunReaches`, `RunFlows`), **Skip If Done** for a line the player may already have done, **Kept Shut Cells** whose conduit
+does not open for a hand from the cube until **Open At Line** (the feed's end, until line 20;
+`ConduitHologram.KeptShut`), **Boxes** and **Lasers** for the white highlights (`HighlightWhite.mat`,
 line renderers). A wait with nothing to read is skipped with one warning. The head's direction is
 `PlayerHands.TryHeadPose`. **The starter battery** (2026-10-15, untested): the S0 that feeds the cold start is
 endless (the battery's **Fuck Loads Of Power** box) from the cube until the reactor runs, so a slow player is not left
